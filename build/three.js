@@ -12619,6 +12619,10 @@ THREE.MaterialLoader.prototype = {
 		if ( json.transparent !== undefined ) material.transparent = json.transparent;
 		if ( json.wireframe !== undefined ) material.wireframe = json.wireframe;
 
+		//@elephantatZAAK
+		//for PhongMaterial with map
+		if( json.map !== undefined) material.map = json.map;
+
 		// for PointCloudMaterial
 		if ( json.size !== undefined ) material.size = json.size;
 		if ( json.sizeAttenuation !== undefined ) material.sizeAttenuation = json.sizeAttenuation;
@@ -12868,6 +12872,9 @@ THREE.ObjectLoader.prototype = {
 
 				return textures[ name ];
 
+				
+
+
 			};
 
 			var loader = new THREE.MaterialLoader();
@@ -12884,7 +12891,9 @@ THREE.ObjectLoader.prototype = {
 				if ( data.map !== undefined ) {
 
 					material.map = getTexture( data.map );
-
+					
+					//Load Texture from Main Folder (( Pretty UGLY ))
+					material.map = load(data.map);
 				}
 
 				if ( data.bumpMap !== undefined ) {
@@ -13569,6 +13578,7 @@ THREE.Material.prototype = {
 			type: this.type
 		};
 
+
 		if ( this.name !== "" ) output.name = this.name;
 
 		if ( this instanceof THREE.MeshBasicMaterial ) {
@@ -13577,6 +13587,9 @@ THREE.Material.prototype = {
 			if ( this.vertexColors !== THREE.NoColors ) output.vertexColors = this.vertexColors;
 			if ( this.blending !== THREE.NormalBlending ) output.blending = this.blending;
 			if ( this.side !== THREE.FrontSide ) output.side = this.side;
+			
+
+			
 
 		} else if ( this instanceof THREE.MeshLambertMaterial ) {
 
@@ -13597,6 +13610,13 @@ THREE.Material.prototype = {
 			if ( this.shading !== THREE.SmoothShading ) output.shading = this.shading;
 			if ( this.blending !== THREE.NormalBlending ) output.blending = this.blending;
 			if ( this.side !== THREE.FrontSide ) output.side = this.side;
+
+			//@elephantatZAAK
+			//Add diffuseMap to json Export
+			if(this.map != null) {
+				//console.log(this.map.sourceFile);
+				output.map = this.map.sourceFile;
+			}
 
 		} else if ( this instanceof THREE.MeshNormalMaterial ) {
 
