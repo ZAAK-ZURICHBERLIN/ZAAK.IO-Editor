@@ -7,6 +7,10 @@ var EditorShortCutsList = function () {
 	var name = 'threejs-editor-shortcuts';
 
 	var storage = {
+
+		'history/undo':"ctrl+z",
+		'history/redo':"ctrl+y",
+
 		'transform/move':'g',
 		'transform/rotate':'r',
 		'transform/scale':'s',

@@ -60,117 +60,171 @@ Menubar.File = function ( editor ) {
 
 	options.add( new UI.HorizontalRule() );
 
-	// Export Geometry
+	// Export Media
+
 
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Export Geometry' );
+	option.setTextContent( 'Export Media' );
 	option.onClick( function () {
 
-		var object = editor.selected;
+		var images;
 
-		if ( object === null ) {
+		editor.storage.get(function ( state ) {
+			
+			images = state.scene.images;
 
-			alert( 'No object selected.' );
-			return;
+			for( var i = 0; i < images.length; i++){
 
-		}
+				// var _im = new Image();
+				// _im.src = images[i].data64;
 
-		var geometry = object.geometry;
+				// atob to base64_decode the data-URI
+			    var image_data = atob(images[i].data64.split(',')[1]);
+			    // Use typed arrays to convert the binary data to a Blob
+			    var arraybuffer = new ArrayBuffer(image_data.length);
+			    var view = new Uint8Array(arraybuffer);
+			    for (var i=0; i<image_data.length; i++) {
+			        view[i] = image_data.charCodeAt(i) & 0xff;
+			    }
+			    try {
+			        // This is the recommended method:
+			        var blob = new Blob([arraybuffer], {type: 'application/octet-stream'});
+			    } catch (e) {
+			        // The BlobBuilder API has been deprecated in favour of Blob, but older
+			        // browsers don't know about the Blob constructor
+			        // IE10 also supports BlobBuilder, but since the `Blob` constructor
+			        //  also works, there's no need to add `MSBlobBuilder`.
+			        var bb = new (window.WebKitBlobBuilder || window.MozBlobBuilder);
+			        bb.append(arraybuffer);
+			        var blob = bb.getBlob('application/octet-stream'); // <-- Here's the Blob
+			    }
 
-		if ( geometry === undefined ) {
+			    // Use the URL object to create a temporary URL
+			    var url = (window.webkitURL || window.URL).createObjectURL(blob + "hahaha");
+			    location.href = url; // <-- Download!
+			}
 
-			alert( 'The selected object doesn\'t have geometry.' );
-			return;
-
-		}
-
-		var output = geometry.toJSON();
-		output = JSON.stringify( output, null, '\t' );
-		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
-
-		exportString( output, 'geometry.json' );
+		} );
 
 	} );
 	options.add( option );
+
+	// Export Geometry
+
+	// var option = new UI.Panel();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Geometry' );
+	// option.onClick( function () {
+
+	// 	var object = editor.selected;
+
+	// 	if ( object === null ) {
+
+	// 		alert( 'No object selected.' );
+	// 		return;
+
+	// 	}
+
+	// 	var geometry = object.geometry;
+
+	// 	if ( geometry === undefined ) {
+
+	// 		alert( 'The selected object doesn\'t have geometry.' );
+	// 		return;
+
+	// 	}
+
+	// 	var output = geometry.toJSON();
+	// 	output = JSON.stringify( output, null, '\t' );
+	// 	output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+	// 	exportString( output, 'geometry.json' );
+
+	// } );
+	// options.add( option );
 
 	// Export Object
 
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Object' );
-	option.onClick( function () {
+	// var option = new UI.Panel();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Object' );
+	// option.onClick( function () {
 
-		var object = editor.selected;
+	// 	var object = editor.selected;
 
-		if ( object === null ) {
+	// 	if ( object === null ) {
 
-			alert( 'No object selected' );
-			return;
+	// 		alert( 'No object selected' );
+	// 		return;
 
-		}
+	// 	}
 
-		var output = object.toJSON();
-		output = JSON.stringify( output, null, '\t' );
-		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 	var output = object.toJSON();
+	// 	output = JSON.stringify( output, null, '\t' );
+	// 	output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		exportString( output, 'model.json' );
+	// 	exportString( output, 'model.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	// Export Scene
 
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Export Scene' );
+	option.setTextContent( 'Export WebVR' );
 	option.onClick( function () {
 
 		var output = editor.scene.toJSON();
+
+		// var output = editor.toJSON();
 		output = JSON.stringify( output, null, '\t' );
 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		exportString( output, 'scene.json' );
+		console.log(output);
+
+		exportString( output, 'vrScene.json' );
 
 	} );
 	options.add( option );
 
 	// Export OBJ
 
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export OBJ' );
-	option.onClick( function () {
+	// var option = new UI.Panel();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export OBJ' );
+	// option.onClick( function () {
 
-		var object = editor.selected;
+	// 	var object = editor.selected;
 
-		if ( object === null ) {
+	// 	if ( object === null ) {
 
-			alert( 'No object selected.' );
-			return;
+	// 		alert( 'No object selected.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var exporter = new THREE.OBJExporter();
+	// 	var exporter = new THREE.OBJExporter();
 
-		exportString( exporter.parse( object ), 'model.obj' );
+	// 	exportString( exporter.parse( object ), 'model.obj' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
-	// Export STL
+	// // Export STL
 
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export STL' );
-	option.onClick( function () {
+	// var option = new UI.Panel();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export STL' );
+	// option.onClick( function () {
 
-		var exporter = new THREE.STLExporter();
+	// 	var exporter = new THREE.STLExporter();
 
-		exportString( exporter.parse( editor.scene ), 'model.stl' );
+	// 	exportString( exporter.parse( editor.scene ), 'model.stl' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	//
 
@@ -278,25 +332,16 @@ Menubar.File = function ( editor ) {
 
 	//
 
-	var link = document.createElement( 'a' );
-	link.style.display = 'none';
-	document.body.appendChild( link ); // Firefox workaround, see #6594
-
 	var exportString = function ( output, filename ) {
 
 		var blob = new Blob( [ output ], { type: 'text/plain' } );
 		var objectURL = URL.createObjectURL( blob );
 
+		var link = document.createElement( 'a' );
 		link.href = objectURL;
 		link.download = filename || 'data.json';
 		link.target = '_blank';
-
-		var event = document.createEvent("MouseEvents");
-		event.initMouseEvent(
-			"click", true, false, window, 0, 0, 0, 0, 0
-			, false, false, false, false, 0, null
-		);
-		link.dispatchEvent(event);
+		link.click();
 
 	};
 

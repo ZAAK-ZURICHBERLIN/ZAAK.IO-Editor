@@ -7,7 +7,7 @@ Menubar.Edit = function ( editor ) {
 	var container = new UI.Panel();
 	container.setClass( 'menu' );
 
-	var title = new UI.Panel();
+	var title = new UI.Panel();	
 	title.setClass( 'title' );
 	title.setTextContent( 'Edit' );
 	container.add( title );
@@ -16,23 +16,21 @@ Menubar.Edit = function ( editor ) {
 	options.setClass( 'options' );
 	container.add( options );
 
-	// Undo
-
+	//Undo
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Undo' );
+	option.setTextContent( 'Undo ( ' + editor.shortcuts.getKey( 'history/undo' ) +' )' );
 	option.onClick( function () {
 
 		editor.history.undo();
 
 	} );
-	options.add( option );
+	options.add( option );	
 
-	// Redo
-
+	//Redo
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Redo' );
+	option.setTextContent( 'Redo ( ' + editor.shortcuts.getKey( 'history/redo' ) +' )' );
 	option.onClick( function () {
 
 		editor.history.redo();
@@ -40,120 +38,77 @@ Menubar.Edit = function ( editor ) {
 	} );
 	options.add( option );
 
-	// ---
-
-	options.add( new UI.HorizontalRule() );
-
-	// Clone
-
+	//Translate
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Clone' );
+	option.setTextContent( 'Translate ( ' + editor.shortcuts.getKey( 'transform/move' ) +' )' );
 	option.onClick( function () {
 
-		var object = editor.selected;
+		signals.transformModeChanged.dispatch( 'translate' );
 
-		if ( object.parent === null ) return; // avoid cloning the camera or scene
+	} );
 
-		object = object.clone();
+	//Scale
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Scale ( ' + editor.shortcuts.getKey( 'transform/scale' ) +' )' );
+		option.onClick( function () {
 
-		editor.addObject( object );
-		editor.select( object );
+		signals.transformModeChanged.dispatch( 'scale' );
 
 	} );
 	options.add( option );
 
-	// Delete
-
+	//Rotate
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Delete' );
+	option.setTextContent( 'Rotate ( ' + editor.shortcuts.getKey( 'transform/rotate' ) +' )' );
 	option.onClick( function () {
 
-		var object = editor.selected;
-
-		if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
-
-		var parent = object.parent;
-		editor.removeObject( object );
-		editor.select( parent );
+		signals.transformModeChanged.dispatch( 'rotate' );
 
 	} );
-	options.add( option );
 
-	// Minify shaders
-
+	//TODO: Put the action to a different place
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Minify Shaders' );
-	option.onClick( function() {
+	option.setTextContent( 'Clone ( ' + editor.shortcuts.getKey( 'edit/cloneObject' ) +' )');
+	option.onClick( function () {
 
-		var root = editor.selected || editor.scene;
+		// var object = editor.selected;
 
-		var errors = [];
-		var nMaterialsChanged = 0;
+		// if ( object.parent === undefined ) return; // avoid cloning the camera or scene
 
-		var path = [];
+		// object = object.clone();
 
-		function getPath ( object ) {
-
-			path.length = 0;
-
-			var parent = object.parent;
-			if ( parent !== undefined ) getPath( parent );
-
-			path.push( object.name || object.uuid );
-
-			return path;
-
-		}
-
-		root.traverse( function ( object ) {
-
-			var material = object.material;
-
-			if ( material instanceof THREE.ShaderMaterial ) {
-
-				try {
-
-					var shader = glslprep.minifyGlsl( [
-							material.vertexShader, material.fragmentShader ] );
-
-					material.vertexShader = shader[ 0 ];
-					material.fragmentShader = shader[ 1 ];
-
-					++nMaterialsChanged;
-
-				} catch ( e ) {
-
-					var path = getPath( object ).join( "/" );
-
-					if ( e instanceof glslprep.SyntaxError )
-
-						errors.push( path + ":" +
-								e.line + ":" + e.column + ": " + e.message );
-
-					else {
-
-						errors.push( path +
-								": Unexpected error (see console for details)." );
-
-						console.error( e.stack || e );
-
-					}
-
-				}
-
-			}
-
-		} );
-
-		window.alert( nMaterialsChanged +
-				" material(s) were changed.\n" + errors.join( "\n" ) );
+		// editor.addObject( object );
+		// editor.select( object );
+		editor.cloneObject();
 
 	} );
 	options.add( option );
 
+	//TODO: Put the action to a different place
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Delete ( X )' );
+	option.onClick( function () {
+	
+		// var object = editor.selected;
+
+		// if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
+
+		// var parent = object.parent;
+		// editor.removeObject( object );
+		// editor.select( parent );
+		editor.destoryCurrent();
+
+	} );
+	options.add( option );
+
+
+	options.add( option );
+	
 
 	return container;
 

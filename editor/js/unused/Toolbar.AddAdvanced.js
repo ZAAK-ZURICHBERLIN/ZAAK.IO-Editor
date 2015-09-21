@@ -2,21 +2,27 @@
  * @author mrdoob / http://mrdoob.com/
  */
 
-Menubar.Add = function ( editor ) {
+Toolbar.AddAdvanced = function ( editor ) {
+
+	var signals = editor.signals;
 
 	var container = new UI.Panel();
 	container.setClass( 'menu' );
-
+ 
 	var title = new UI.Panel();
 	title.setClass( 'title' );
-	title.setTextContent( 'Add' );
+	// title.setTextContent( 'Add' );
+	title.setBackground('#E6E6E6 url(img/toolbar-01.png)');
+	title.setBackgroundRepeat("no-repeat");
+	title.setBackgroundSize("50px");
 	container.add( title );
 
 	var options = new UI.Panel();
 	options.setClass( 'options' );
 	container.add( options );
 
-	
+	//
+
 	var meshCount = 0;
 	var lightCount = 0;
 	var cameraCount = 0;
@@ -29,23 +35,15 @@ Menubar.Add = function ( editor ) {
 
 	} );
 
-	// Box
+	// Group
+
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Box' );
+	option.setTextContent( 'Group' );
 	option.onClick( function () {
 
-		var width = 100;
-		var height = 100;
-		var depth = 100;
-
-		var widthSegments = 1;
-		var heightSegments = 1;
-		var depthSegments = 1;
-
-		var geometry = new THREE.BoxGeometry( width, height, depth, widthSegments, heightSegments, depthSegments );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial() );
-		mesh.name = 'Box ' + ( ++ meshCount );
+		var mesh = new THREE.Group();
+		mesh.name = 'Group ' + ( ++ meshCount );
 
 		editor.addObject( mesh );
 		editor.select( mesh );
@@ -53,46 +51,19 @@ Menubar.Add = function ( editor ) {
 	} );
 	options.add( option );
 
-	// Cylinder
+	// Icosahedron
+
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Cylinder' );
-	option.onClick( function () {
-
-		var radiusTop = 20;
-		var radiusBottom = 20;
-		var height = 100;
-		var radiusSegments = 32;
-		var heightSegments = 1;
-		var openEnded = false;
-
-		var geometry = new THREE.CylinderGeometry( radiusTop, radiusBottom, height, radiusSegments, heightSegments, openEnded );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial() );
-		mesh.name = 'Cylinder ' + ( ++ meshCount );
-
-		editor.addObject( mesh );
-		editor.select( mesh );
-
-	} );
-	options.add( option );
-
-	// Sphere
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Sphere' );
+	option.setTextContent( 'Icosahedron' );
 	option.onClick( function () {
 
 		var radius = 75;
-		var widthSegments = 32;
-		var heightSegments = 16;
-		var phiStart = 0;
-		var phiLength = Math.PI * 2;
-		var thetaStart = 0;
-		var thetaLength = Math.PI;
+		var detail = 2;
 
-		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
+		var geometry = new THREE.IcosahedronGeometry( radius, detail );
 		var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial() );
-		mesh.name = 'Sphere ' + ( ++ meshCount );
+		mesh.name = 'Icosahedron ' + ( ++ meshCount );
 
 		editor.addObject( mesh );
 		editor.select( mesh );
@@ -100,8 +71,8 @@ Menubar.Add = function ( editor ) {
 	} );
 	options.add( option );
 
-	
 	// Text
+
 	var option = new UI.Panel();
 	option.setClass( 'option' );
 	option.setTextContent( 'Text' );
@@ -204,56 +175,6 @@ Menubar.Add = function ( editor ) {
 	} );
 	options.add( option );
 
-	// Mediasphere
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Mediasphere' );
-	option.onClick( function () {
-
-		//Media Object
-		var radius = 120;
-		var widthSegments = 64;
-		var heightSegments = 64;
-		var phiStart = 0;
-		var phiLength = Math.PI * 2;
-		var thetaStart = 0;
-		var thetaLength = Math.PI;
-
-		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		THREE.ImageUtils.crossOrigin = '';
-		var texture = THREE.ImageUtils.loadTexture('http://upload.wikimedia.org/wikipedia/commons/1/18/Rheingauer_Dom%2C_Geisenheim%2C_360_Panorama_%28Equirectangular_projection%29.jpg');
-		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial({map: texture, side: THREE.FrontSide, needsUpdate: true}) );
-
-		mediaObject.name = 'MediaSphere';
-
-
-		editor.addObject( mediaObject );
-		mediaObject.scale.set(-1,1,1);
-
-		//TargetObject
-		var radius = 15;
-		var widthSegments = 10;
-		var heightSegments = 10;
-		var phiStart = 0;
-		var phiLength = Math.PI * 2;
-		var thetaStart = 0;
-		var thetaLength = Math.PI;
-
-		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: true, depthWrite: true, needsUpdate: true}) );
-		// var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: false, depthWrite: false, needsUpdate: true}) );
-
-		mesh.name = 'Target_name';
-
-		editor.addObject( mesh );
-		mesh.scale.set(-1,1,1);
-		
-		editor.select( mediaObject );
-
-		editor.moveObject(mesh, mediaObject);
-
-	} );
 	options.add( option );
 
 	return container;

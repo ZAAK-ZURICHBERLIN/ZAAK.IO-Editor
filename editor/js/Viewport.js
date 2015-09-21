@@ -10,7 +10,7 @@ var Viewport = function ( editor ) {
 	container.setId( 'viewport' );
 	container.setPosition( 'absolute' );
 
-	container.add( new Viewport.Info( editor ) );
+	// container.add( new Viewport.Info( editor ) );
 
 	var scene = editor.scene;
 	var sceneHelpers = editor.sceneHelpers;
@@ -272,6 +272,64 @@ var Viewport = function ( editor ) {
 		renderer.setClearColor( clearColor );
 
 		render();
+
+	} );
+
+	signals.cameraPositionSnap.add( function ( mode ) {
+
+		//Needs Update to work without selected object
+
+		var distance;
+		var newPos;
+
+		if(editor.selected)
+			distance = editor.selected.position.distanceTo(camera.position);
+
+		switch(mode){
+
+			case "top" :
+				newPos = new THREE.Vector3(0, distance, 0);
+			break;
+
+			case "bottom" :
+				newPos = new THREE.Vector3(0, -distance, 0);
+			break;
+
+			case "left" :
+				newPos = new THREE.Vector3(distance, 0, 0);
+			break;
+
+			case "right" :
+				newPos = new THREE.Vector3(-distance, 0, 0);
+			break;
+
+			case "front" :
+				newPos = new THREE.Vector3(0, 0, -distance);
+			break;
+
+			case "back" :
+				newPos = new THREE.Vector3(0, 0, distance);
+			break;
+
+		}
+		
+		if(editor.selected){
+
+			camera.position.set(newPos.x + editor.selected.position.x, 
+				newPos.y + editor.selected.position.y, 
+				newPos.z + editor.selected.position.z);
+
+			controls.focus(editor.selected);
+
+		}
+		else
+		{
+
+			controls.center.set( 0, 0, 0 );
+			render();
+		}
+
+		signals.cameraChanged.dispatch( camera );
 
 	} );
 

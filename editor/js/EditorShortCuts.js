@@ -3,9 +3,9 @@
  * keyboard reco code @author Jérome Etienne
  */
 
-var EditorShortCuts = function () {
+var EditorShortCuts = function (editor) {
 
-	this.shortcuts = new EditorShortCutsList();
+	this.shortcuts = editor.shortcuts;
 
 	this.domElement = document;
 	// to store the current state
@@ -59,6 +59,13 @@ EditorShortCuts.ALIAS	= {
 EditorShortCuts.prototype = {
 
 	keyCheck: function( keyCode ){
+
+		//History
+		//Undo
+		if( this.pressed(this.shortcuts.getKey('history/undo' ))) editor.history.undo();
+
+		//Redo
+		if( this.pressed(this.shortcuts.getKey('history/redo' ))) editor.history.redo();
 
 
 		//Transform

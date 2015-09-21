@@ -2,7 +2,7 @@
  * @author mrdoob / http://mrdoob.com/
  */
 
-var Editor = function () {
+var Editor = function (shortcuts) {
 
 	var SIGNALS = signals;
 
@@ -65,14 +65,18 @@ var Editor = function () {
 		showGridChanged: new SIGNALS.Signal(),
 
 		// added by Sam
-		cameraPositionSnap: new SIGNALS.Signal()
-
+		cameraPositionSnap: new SIGNALS.Signal(),
+		saveProject: new SIGNALS.Signal(),
+		unsaveProject: new SIGNALS.Signal(),
+		undo: new SIGNALS.Signal(),
+		redo: new SIGNALS.Signal()
 	};
 
 	this.config = new Config();
 	this.history = new History( this );
 	this.storage = new Storage();
 	this.loader = new Loader( this );
+	this.shortcuts = new EditorShortCutsList();
 
 	this.camera = new THREE.PerspectiveCamera( 50, 1, 1, 100000 );
 	this.camera.position.set( 500, 250, 500 );
@@ -156,6 +160,34 @@ Editor.prototype = {
 		this.signals.objectAdded.dispatch( object );
 		this.signals.sceneGraphChanged.dispatch();
 
+	},
+
+	cloneObject: function(){
+
+		var object = editor.selected;
+
+		if( object === null ) return;
+
+		if ( object.parent === undefined ) return; // avoid cloning the camera or scene
+
+		object = object.clone();
+
+		editor.addObject( object );
+		editor.select( object );
+	},
+
+	destoryCurrent: function(){
+
+		var object = this.selected;
+		console.log("hey");
+
+		if(object === null) return;
+
+		if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
+
+		var parent = object.parent;
+		this.removeObject( object );
+		this.select( null );
 	},
 
 	moveObject: function ( object, parent, before ) {
@@ -516,6 +548,8 @@ Editor.prototype = {
 	},
 
 	toJSON: function () {
+
+		console.log(this.scene.toJSON())
 
 		return {
 

@@ -118,11 +118,14 @@
 		<script src="js/Sidebar.Script.js"></script>
 		<script src="js/Toolbar.js"></script>
 		<script src="js/Viewport.js"></script>
-		<script src="js/Viewport.Info.js"></script>
+		<!-- <script src="js/Viewport.Info.js"></script> -->
 
 		<!-- Sam Imports -->
 		<script src="js/EditorShortCuts.js"></script>
 		<script src="js/EditorShortCutsList.js"></script>
+
+		<script src="js/Menubar.Light.js"></script>
+		<script src="js/Menubar.Navigation.js"></script>
 
 		<script>
 
@@ -134,10 +137,12 @@
 			};
 
 			//
-			var shortcuts = new EditorShortCuts();
+			
 
 
 			var editor = new Editor();
+
+			var shortcuts = new EditorShortCuts(editor);
 
 			var viewport = new Viewport( editor );
 			document.body.appendChild( viewport.dom );
@@ -165,6 +170,7 @@
 
 			//
 
+			editor.config.setKey( 'autosave', false ); // Hacky
 			editor.setTheme( editor.config.getKey( 'theme' ) );
 
 			editor.storage.init( function () {
@@ -191,13 +197,30 @@
 
 				var timeout;
 
-				var saveState = function ( scene ) {
+				var sceneChanged = function(){
 
-					if ( editor.config.getKey( 'autosave' ) === false ) {
+					editor.signals.unsaveProject.dispatch();
 
-						return;
+					if ( editor.config.getKey( 'autosave' ) === false ) return;
 
-					}
+					// else {
+						
+					// 	saveState(1000);
+						
+					// }
+					
+				};
+
+				var manualSave = function () {
+
+					saveState(1000);
+					// console.log("manualSave");
+				};
+
+				// var saveState = function ( scene ) {
+				var saveState = function ( time ) {
+
+					console.log("h2");
 
 					clearTimeout( timeout );
 
@@ -213,20 +236,47 @@
 
 						}, 100 );
 
-					}, 1000 );
+					}, time );
 
 				};
 
+				// var saveState = function ( scene ) {
+
+				// 	if ( editor.config.getKey( 'autosave' ) === false ) {
+
+				// 		return;
+
+				// 	}
+
+				// 	clearTimeout( timeout );
+
+				// 	timeout = setTimeout( function () {
+
+				// 		editor.signals.savingStarted.dispatch();
+
+				// 		timeout = setTimeout( function () {
+
+				// 			editor.storage.set( editor.toJSON() );
+
+				// 			editor.signals.savingFinished.dispatch();
+
+				// 		}, 100 );
+
+				// 	}, 1000 );
+
+				// };
+
 				var signals = editor.signals;
 
-				signals.editorCleared.add( saveState );
-				signals.geometryChanged.add( saveState );
-				signals.objectAdded.add( saveState );
-				signals.objectChanged.add( saveState );
-				signals.objectRemoved.add( saveState );
-				signals.materialChanged.add( saveState );
-				signals.sceneGraphChanged.add( saveState );
-				signals.scriptChanged.add( saveState );
+				signals.editorCleared.add( sceneChanged );
+				signals.geometryChanged.add( sceneChanged );
+				signals.objectAdded.add( sceneChanged );
+				signals.objectChanged.add( sceneChanged );
+				signals.objectRemoved.add( sceneChanged );
+				signals.materialChanged.add( sceneChanged );
+				signals.sceneGraphChanged.add( sceneChanged );
+				// signals.scriptChanged.add( saveState );
+				signals.saveProject.add( manualSave );
 
 				/*
 				var showDialog = function ( content ) {
@@ -272,16 +322,6 @@
 
 					case 8:
 						event.preventDefault(); // prevent browser back
-
-
-						// var object = editor.selected;
-
-						// if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
-
-						// var parent = object.parent;
-						// editor.removeObject( object );
-						// editor.select( parent );
-
 						break;
 
 					default:
