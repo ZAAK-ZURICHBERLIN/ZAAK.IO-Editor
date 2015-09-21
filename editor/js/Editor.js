@@ -62,7 +62,10 @@ var Editor = function () {
 		fogParametersChanged: new SIGNALS.Signal(),
 		windowResize: new SIGNALS.Signal(),
 
-		showGridChanged: new SIGNALS.Signal()
+		showGridChanged: new SIGNALS.Signal(),
+
+		// added by Sam
+		cameraPositionSnap: new SIGNALS.Signal()
 
 	};
 
@@ -406,6 +409,54 @@ Editor.prototype = {
 
 		this.focus( this.scene.getObjectById( id, true ) );
 
+	},
+
+	hide: function(){
+
+		if(this.selected !== null){
+			this.selected.visible = false;
+			this.deselect();
+		}
+	},
+
+	unhideAll: function(){
+
+		this.scene.traverse( function ( child ) {
+
+			child.visible = true;
+
+		} );
+
+		this.signals.sceneGraphChanged.dispatch();
+	},
+
+	isolate: function(){
+
+		var mode = !this.isolationMode;
+		this.isolationMode = mode;
+
+		if(this.selected !== null){
+			this.scene.traverse( function ( child ) {
+
+				if ( child.parent !== undefined //don't hide scene
+					&& !(child instanceof THREE.Light // dont hide lights
+					)){ 
+					child.visible = mode;
+				}
+
+			} );
+
+			this.selected.traverse( function ( child2 ) { //Show all chilrden
+
+				child2.visible = true;
+
+			} );
+
+			//TODO: Add parent iteration so all parents of an object stay visible and don't hide the child
+
+			this.signals.sceneGraphChanged.dispatch();
+
+		}
 	},
 
 	clear: function () {

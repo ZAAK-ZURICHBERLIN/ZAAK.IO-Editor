@@ -120,6 +120,10 @@
 		<script src="js/Viewport.js"></script>
 		<script src="js/Viewport.Info.js"></script>
 
+		<!-- Sam Imports -->
+		<script src="js/EditorShortCuts.js"></script>
+		<script src="js/EditorShortCutsList.js"></script>
+
 		<script>
 
 			window.URL = window.URL || window.webkitURL;
@@ -130,6 +134,8 @@
 			};
 
 			//
+			var shortcuts = new EditorShortCuts();
+
 
 			var editor = new Editor();
 
@@ -151,6 +157,7 @@
 			var sidebar = new Sidebar( editor );
 			document.body.appendChild( sidebar.dom );
 
+			
 			/*
 			var dialog = new UI.Dialog();
 			document.body.appendChild( dialog.dom );
@@ -259,21 +266,27 @@
 
 			document.addEventListener( 'keydown', function ( event ) {
 
+				// console.log( shortcuts );
+
 				switch ( event.keyCode ) {
 
 					case 8:
 						event.preventDefault(); // prevent browser back
 
-						var object = editor.selected;
 
-						if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
+						// var object = editor.selected;
 
-						var parent = object.parent;
-						editor.removeObject( object );
-						editor.select( parent );
+						// if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
+
+						// var parent = object.parent;
+						// editor.removeObject( object );
+						// editor.select( parent );
 
 						break;
 
+					default:
+						shortcuts.keyCheck( event.keyCode );
+						break;
 				}
 
 			}, false );
