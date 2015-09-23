@@ -1,5 +1,5 @@
 /**
- * @author bhouston / http://clara.io
+ * @author bhouston / http://exocortex.com
  */
 
 THREE.Ray = function ( origin, direction ) {

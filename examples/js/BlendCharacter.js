@@ -20,13 +20,12 @@ THREE.BlendCharacter = function () {
 
 			THREE.SkinnedMesh.call( scope, geometry, originalMaterial );
 
-			scope.mixer = new THREE.AnimationMixer( scope );
+			// Create the animations
 
-			// Create the animations		
 			for ( var i = 0; i < geometry.animations.length; ++ i ) {
 
 				var animName = geometry.animations[ i ].name;
-				scope.animations[ animName ] = geometry.animations[ i ];
+				scope.animations[ animName ] = new THREE.Animation( scope, geometry.animations[ i ] );
 
 			}
 
@@ -39,71 +38,191 @@ THREE.BlendCharacter = function () {
 
 	this.update = function( dt ) {
 
-		this.mixer.update( dt );
+		for ( var i = this.weightSchedule.length - 1; i >= 0; -- i ) {
+
+			var data = this.weightSchedule[ i ];
+			data.timeElapsed += dt;
+
+			// If the transition is complete, remove it from the schedule
+
+			if ( data.timeElapsed > data.duration ) {
+
+				data.anim.weight = data.endWeight;
+				this.weightSchedule.splice( i, 1 );
+
+				// If we've faded out completely, stop the animation
+
+				if ( data.anim.weight == 0 ) {
+
+					data.anim.stop( 0 );
+
+				}
+
+			} else {
+
+				// interpolate the weight for the current time
+
+				data.anim.weight = data.startWeight + ( data.endWeight - data.startWeight ) * data.timeElapsed / data.duration;
+
+			}
+
+		}
+
+		this.updateWarps( dt );
+
+	};
+
+	this.updateWarps = function( dt ) {
+
+		// Warping modifies the time scale over time to make 2 animations of different
+		// lengths match. This is useful for smoothing out transitions that get out of
+		// phase such as between a walk and run cycle
+
+		for ( var i = this.warpSchedule.length - 1; i >= 0; -- i ) {
+
+			var data = this.warpSchedule[ i ];
+			data.timeElapsed += dt;
+
+			if ( data.timeElapsed > data.duration ) {
+
+				data.to.weight = 1;
+				data.to.timeScale = 1;
+				data.from.weight = 0;
+				data.from.timeScale = 1;
+				data.from.stop( 0 );
+
+				this.warpSchedule.splice( i, 1 );
+
+			} else {
+
+				var alpha = data.timeElapsed / data.duration;
+
+				var fromLength = data.from.data.length;
+				var toLength = data.to.data.length;
+
+				var fromToRatio = fromLength / toLength;
+				var toFromRatio = toLength / fromLength;
+
+				// scale from each time proportionally to the other animation
+
+				data.from.timeScale = ( 1 - alpha ) + fromToRatio * alpha;
+				data.to.timeScale = alpha + toFromRatio * ( 1 - alpha );
+
+				data.from.weight = 1 - alpha;
+				data.to.weight = alpha;
+
+			}
+
+		}
 
 	};
 
 	this.play = function( animName, weight ) {
 
-		this.mixer.removeAllActions();
-		
-		this.mixer.play( new THREE.AnimationAction( this.animations[ animName ] ) );
+		this.animations[ animName ].play( 0, weight );
 
 	};
 
 	this.crossfade = function( fromAnimName, toAnimName, duration ) {
 
-		this.mixer.removeAllActions();
- 
-		var fromAction = new THREE.AnimationAction( this.animations[ fromAnimName ] );
-		var toAction = new THREE.AnimationAction( this.animations[ toAnimName ] );
+		var fromAnim = this.animations[ fromAnimName ];
+		var toAnim = this.animations[ toAnimName ];
 
-		this.mixer.play( fromAction );
-		this.mixer.play( toAction );
+		fromAnim.play( 0, 1 );
+		toAnim.play( 0, 0 );
 
-		this.mixer.crossFade( fromAction, toAction, duration, false );
+		this.weightSchedule.push( {
+
+			anim: fromAnim,
+			startWeight: 1,
+			endWeight: 0,
+			timeElapsed: 0,
+			duration: duration
+
+		} );
+
+		this.weightSchedule.push( {
+
+			anim: toAnim,
+			startWeight: 0,
+			endWeight: 1,
+			timeElapsed: 0,
+			duration: duration
+
+		} );
 
 	};
 
 	this.warp = function( fromAnimName, toAnimName, duration ) {
 
-		this.mixer.removeAllActions();
+		var fromAnim = this.animations[ fromAnimName ];
+		var toAnim = this.animations[ toAnimName ];
 
-		var fromAction = new THREE.AnimationAction( this.animations[ fromAnimName ] );
-		var toAction = new THREE.AnimationAction( this.animations[ toAnimName ] );
+		fromAnim.play( 0, 1 );
+		toAnim.play( 0, 0 );
 
-		this.mixer.play( fromAction );
-		this.mixer.play( toAction );
+		this.warpSchedule.push( {
 
-		this.mixer.crossFade( fromAction, toAction, duration, true );
+			from: fromAnim,
+			to: toAnim,
+			timeElapsed: 0,
+			duration: duration
+
+		} );
 
 	};
 
 	this.applyWeight = function( animName, weight ) {
 
-		var action = this.mixer.findActionByName( animName );
-		if( action ) {
-			action.weight = weight;
-		}
+		this.animations[ animName ].weight = weight;
 
 	};
 
 	this.pauseAll = function() {
 
-		this.mixer.timeScale = 0;
+		for ( var a in this.animations ) {
+
+			if ( this.animations[ a ].isPlaying ) {
+
+				this.animations[ a ].stop();
+
+			}
+
+		}
 
 	};
 
 	this.unPauseAll = function() {
 
-		this.mixer.timeScale = 1;
+		for ( var a in this.animations ) {
+
+			if ( this.animations[ a ].isPlaying && this.animations[ a ].isPaused ) {
+
+				this.animations[ a ].pause();
+
+			}
+
+		}
 
 	};
 
 
 	this.stopAll = function() {
 
-		this.mixer.removeAllActions();
+		for ( a in this.animations ) {
+
+			if ( this.animations[ a ].isPlaying ) {
+
+				this.animations[ a ].stop( 0 );
+
+			}
+
+			this.animations[ a ].weight = 0;
+
+		}
+
+		this.weightSchedule.length = 0;
+		this.warpSchedule.length = 0;
 
 	};
 

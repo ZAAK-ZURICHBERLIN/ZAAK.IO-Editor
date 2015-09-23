@@ -1,7 +1,7 @@
 /**
  * @author WestLangley / http://github.com/WestLangley
  * @author zz85 / http://github.com/zz85
- * @author bhouston / http://clara.io
+ * @author bhouston / http://exocortex.com
  *
  * Creates an arrow for visualizing directions
  *

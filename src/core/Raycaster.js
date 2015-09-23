@@ -1,6 +1,6 @@
 /**
  * @author mrdoob / http://mrdoob.com/
- * @author bhouston / http://clara.io/
+ * @author bhouston / http://exocortex.com/
  * @author stephomi / http://stephaneginier.com/
  */
 

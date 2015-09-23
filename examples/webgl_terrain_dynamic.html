@@ -498,23 +498,21 @@
 
 					var material = new THREE.MeshLambertMaterial( { color: 0xffaa55, morphTargets: true, vertexColors: THREE.FaceColors } );
 
-					var mesh = new THREE.Mesh( geometry, material );
-					mesh.speed = speed;
+					var meshAnim = new THREE.MorphAnimMesh( geometry, material );
 
-					var mixer = new THREE.AnimationMixer( mesh );
-					mixer.addAction( new THREE.AnimationAction( geometry.animations[0] ).warpToDuration( duration ) );
-					mixer.update( 600 * Math.random() );
-					mesh.mixer = mixer;
+					meshAnim.speed = speed;
+					meshAnim.duration = duration;
+					meshAnim.time = 600 * Math.random();
 
-					mesh.position.set( x, y, z );
-					mesh.rotation.y = Math.PI/2;
+					meshAnim.position.set( x, y, z );
+					meshAnim.rotation.y = Math.PI/2;
 
-					mesh.castShadow = true;
-					mesh.receiveShadow = false;
+					meshAnim.castShadow = true;
+					meshAnim.receiveShadow = false;
 
-					scene.add( mesh );
+					scene.add( meshAnim );
 
-					morphs.push( mesh );
+					morphs.push( meshAnim );
 
 				}
 
@@ -541,24 +539,24 @@
 				loader.load( "models/animated/parrot.js", function( geometry ) {
 
 					morphColorsToFaceColors( geometry );
-					addMorph( geometry, 250, 0.5, startX -500, 500, 700 );
-					addMorph( geometry, 250, 0.5, startX - Math.random() * 500, 500, -200 );
-					addMorph( geometry, 250, 0.5, startX - Math.random() * 500, 500, 200 );
-					addMorph( geometry, 250, 0.5, startX - Math.random() * 500, 500, 1000 );
+					addMorph( geometry, 250, 500, startX -500, 500, 700 );
+					addMorph( geometry, 250, 500, startX - Math.random() * 500, 500, -200 );
+					addMorph( geometry, 250, 500, startX - Math.random() * 500, 500, 200 );
+					addMorph( geometry, 250, 500, startX - Math.random() * 500, 500, 1000 );
 
 				} );
 
 				loader.load( "models/animated/flamingo.js", function( geometry ) {
 
 					morphColorsToFaceColors( geometry );
-					addMorph( geometry, 500, 1, startX - Math.random() * 500, 350, 40 );
+					addMorph( geometry, 500, 1000, startX - Math.random() * 500, 350, 40 );
 
 				} );
 
 				loader.load( "models/animated/stork.js", function( geometry ) {
 
 					morphColorsToFaceColors( geometry );
-					addMorph( geometry, 350, 1, startX - Math.random() * 500, 350, 340 );
+					addMorph( geometry, 350, 1000, startX - Math.random() * 500, 350, 340 );
 
 				} );
 
@@ -690,7 +688,7 @@
 
 						morph = morphs[ i ];
 
-						morph.mixer.update( delta );
+						morph.updateAnimation( 1000 * delta );
 
 						morph.position.x += morph.speed * delta;
 

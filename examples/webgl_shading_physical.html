@@ -38,11 +38,10 @@
 		<div id="info">
 			<a href="http://threejs.org" target="_blank">three.js</a> - webgl physically based shading testbed
 		</div>
--
+
 		<script src="../build/three.min.js"></script>
 
 		<script src="js/controls/TrackballControls.js"></script>
-		<script src="js/AnimationClipCreator.js"></script>
 
 		<script src="js/Detector.js"></script>
 		<script src="js/libs/stats.min.js"></script>
@@ -74,7 +73,7 @@
 
 			var sunLight, pointLight, ambientLight;
 
-			var mixer;
+			var morph;
 
 			var parameters, tweenDirection, tweenDay, tweenNight;
 
@@ -272,22 +271,18 @@
 
 					var morphMaterial = new THREE.MeshPhongMaterial( { color: 0x000000, specular: 0xff9900, shininess: 50, morphTargets: true, side: THREE.DoubleSide, shading: THREE.FlatShading } );
 
-					mesh = new THREE.Mesh( geometry, morphMaterial );
-
-					mixer = new THREE.AnimationMixer( mesh );
-
-					mixer.addAction( new THREE.AnimationAction( geometry.animations[0] ).warpToDuration( 10 ) );
+					morph = new THREE.MorphAnimMesh( geometry, morphMaterial );
 
 					var s = 200;
-					mesh.scale.set( s, s, s );
+					morph.scale.set( s, s, s );
 
-					//morph.duration = 8000;
-					//morph.mirroredLoop = true;
+					morph.duration = 8000;
+					morph.mirroredLoop = true;
 
-					mesh.castShadow = true;
-					mesh.receiveShadow = true;
+					morph.castShadow = true;
+					morph.receiveShadow = true;
 
-					scene.add( mesh );
+					scene.add( morph );
 
 				} );
 
@@ -521,16 +516,12 @@
 
 				// update
 
-				var delta = clock.getDelta();
+				var delta = 1000 * clock.getDelta();
 
 				TWEEN.update();
 				controls.update();
 
-				if ( mixer ) {
-
-					mixer.update( delta );
-
-				}
+				if ( morph ) morph.updateAnimation( delta );
 
 				scene.fog.color.setHSL( 0.63, 0.05, parameters.control );
 				renderer.setClearColor( scene.fog.color );

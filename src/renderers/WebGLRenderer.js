@@ -804,7 +804,11 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			if ( index !== null ) {
 
-				count = index.array.length;
+				count = index.count;
+
+			} else if ( position instanceof THREE.InterleavedBufferAttribute ) {
+
+				count = position.data.array.length / 3;
 
 			} else {
 
@@ -1109,7 +1113,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 		//
 
-		shadowMap.render( scene );
+		shadowMap.render( scene, camera );
 
 		//
 
