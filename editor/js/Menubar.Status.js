@@ -26,6 +26,13 @@ Menubar.Status = function ( editor ) {
 	var title = new UI.Panel();
 	title.setClass( 'title' );
 	title.setTextContent( 'Size: unknown' );
+
+	editor.storage.size( function (size){
+					title.setTextContent( "Size : " + size + "/100Mb");
+					// title.setWidth(size);
+
+		});
+
 	container.add( title );
 
 	// var loading = new UI.Panel();

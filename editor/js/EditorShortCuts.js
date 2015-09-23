@@ -5,7 +5,8 @@
 
 var EditorShortCuts = function (editor) {
 
-	this.shortcuts = editor.shortcuts;
+	this.editor = editor;
+	this.shortcuts = this.editor.shortcuts;
 
 	this.domElement = document;
 	// to store the current state
@@ -62,59 +63,59 @@ EditorShortCuts.prototype = {
 
 		//History
 		//Undo
-		if( this.pressed(this.shortcuts.getKey('history/undo' ))) editor.history.undo();
+		if( this.pressed(this.shortcuts.getKey('history/undo' ))) this.editor.history.undo();
 
 		//Redo
-		if( this.pressed(this.shortcuts.getKey('history/redo' ))) editor.history.redo();
+		if( this.pressed(this.shortcuts.getKey('history/redo' ))) this.editor.history.redo();
 
 
 		//Transform
 		//Translate
-		if( this.pressed(this.shortcuts.getKey('transform/move' ))) editor.signals.transformModeChanged.dispatch( 'translate' );
+		if( this.pressed(this.shortcuts.getKey('transform/move' ))) this.editor.signals.transformModeChanged.dispatch( 'translate' );
 
 		//Rotate
-		if( this.pressed(this.shortcuts.getKey('transform/rotate' ))) editor.signals.transformModeChanged.dispatch( 'rotate' );
+		if( this.pressed(this.shortcuts.getKey('transform/rotate' ))) this.editor.signals.transformModeChanged.dispatch( 'rotate' );
 
 		//Sccale
-		if( this.pressed(this.shortcuts.getKey('transform/scale' ))) editor.signals.transformModeChanged.dispatch( 'scale' );
+		if( this.pressed(this.shortcuts.getKey('transform/scale' ))) this.editor.signals.transformModeChanged.dispatch( 'scale' );
 
 		//Delete Shortcut -HHACK IT ATM
 		if( event.keyCode == 88 ) {
-			editor.destoryCurrent();
+			this.editor.destoryCurrent();
 		}
 
 		//Clone Object
-		if( this.pressed(this.shortcuts.getKey( 'edit/clone' ))) editor.cloneObject();
+		if( this.pressed(this.shortcuts.getKey( 'edit/clone' ))) this.editor.cloneObject();
 
 		//Hide Current
-		if( this.pressed(this.shortcuts.getKey( 'view/hide' ))) editor.hide();
+		if( this.pressed(this.shortcuts.getKey( 'view/hide' ))) this.editor.hide();
 
 		//Unhide all
-		if( this.pressed(this.shortcuts.getKey( 'view/unhideAll' ))) editor.unhideAll();
+		if( this.pressed(this.shortcuts.getKey( 'view/unhideAll' ))) this.editor.unhideAll();
 
 		//Isolate - toggle
-		if( this.pressed(this.shortcuts.getKey( 'view/isolate' ))) editor.isolate();
+		if( this.pressed(this.shortcuts.getKey( 'view/isolate' ))) this.editor.isolate();
 
 		//Focus object
-		if( this.pressed(this.shortcuts.getKey( 'view/focus' ))) editor.focus(editor.selected);
+		if( this.pressed(this.shortcuts.getKey( 'view/focus' ))) this.editor.focus(this.editor.selected);
 
 		// //Camera Positions - Hack Style
-		// if(keyboard.pressed("7")) editor.signals.cameraPositionSnap.dispatch( 'top' );
-		// if(keyboard.pressed("3")) editor.signals.cameraPositionSnap.dispatch( 'left' );
-		// if(keyboard.pressed("1")) editor.signals.cameraPositionSnap.dispatch( 'front' );
+		// if(keyboard.pressed("7")) this.editor.signals.cameraPositionSnap.dispatch( 'top' );
+		// if(keyboard.pressed("3")) this.editor.signals.cameraPositionSnap.dispatch( 'left' );
+		// if(keyboard.pressed("1")) this.editor.signals.cameraPositionSnap.dispatch( 'front' );
 
-		// if(keyboard.pressed("alt+7")) editor.signals.cameraPositionSnap.dispatch( 'bottom' );
-		// if(keyboard.pressed("alt+3")) editor.signals.cameraPositionSnap.dispatch( 'right' );
-		// if(keyboard.pressed("alt+1")) editor.signals.cameraPositionSnap.dispatch( 'back' );
+		// if(keyboard.pressed("alt+7")) this.editor.signals.cameraPositionSnap.dispatch( 'bottom' );
+		// if(keyboard.pressed("alt+3")) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
+		// if(keyboard.pressed("alt+1")) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
 
 		//Camera Positions - Hack Style
-		if( this.pressed(this.shortcuts.getKey( 'camera/top' ))) editor.signals.cameraPositionSnap.dispatch( 'top' );
-		if( this.pressed(this.shortcuts.getKey( 'camera/left' ))) editor.signals.cameraPositionSnap.dispatch( 'left' );
-		if( this.pressed(this.shortcuts.getKey( 'camera/front' ))) editor.signals.cameraPositionSnap.dispatch( 'front' );
+		if( this.pressed(this.shortcuts.getKey( 'camera/top' ))) this.editor.signals.cameraPositionSnap.dispatch( 'top' );
+		if( this.pressed(this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'left' );
+		if( this.pressed(this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'front' );
 
-		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/top' ))) editor.signals.cameraPositionSnap.dispatch( 'bottom' );
-		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/left' ))) editor.signals.cameraPositionSnap.dispatch( 'right' );
-		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/front' ))) editor.signals.cameraPositionSnap.dispatch( 'back' );
+		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/top' ))) this.editor.signals.cameraPositionSnap.dispatch( 'bottom' );
+		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
+		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
 
 	},
 

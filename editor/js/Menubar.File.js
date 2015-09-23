@@ -101,6 +101,18 @@ Menubar.File = function ( editor ) {
 
 	};
 
+	// Save to Platform
+
+    var option = new UI.Panel();
+    option.setClass( 'option' );
+    option.setTextContent( 'Publish' );
+
+    option.onClick( function () {
+        var output = editor.scene.toJSON();
+        App.Helper.Save(output);
+    } );
+    options.add( option );
+
 	return container;
 
 };

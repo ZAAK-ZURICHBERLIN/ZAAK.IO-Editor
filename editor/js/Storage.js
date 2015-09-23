@@ -113,7 +113,7 @@ var Storage = function () {
 		            	// dbSize = parseInt(size) / 1000000;
 		            	// console.log(dbSize);
 		            	size /= 1000000;
-		            	size = size.toPrecision(4);
+		            	size = parseInt(size);
 
 		            	callback(size,null);
 		            }
