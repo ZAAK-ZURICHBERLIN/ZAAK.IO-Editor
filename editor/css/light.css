@@ -1,6 +1,8 @@
 ﻿.Outliner {
-	color: #444;
-	background: #fff;
+	/*color: #868686;*/
+	/*background: #222;*/
+	color: #fff;
+	background: #222;
 	padding: 0;
 	width: 100%;
 	height: 140px;
@@ -12,16 +14,24 @@
 
 	.Outliner .option {
 		padding: 4px;
-		color: #666;
 		white-space: nowrap;
 	}
 
 	.Outliner .option.active {
-		background-color: #f8f8f8;
+		/*background-color: #153C5E;*/
+		background-color: #08f;
 	}
 
+.Panel.Collapsible.collapsed .Static .Button {
+	border-left-color: #444;
+}
+
+.Panel.Collapsible:not(.collapsed) .Static .Button {
+	border-top-color: #444;
+}
+
 input.Number {
-	color: #0080f0!important;
+	color: #2A75B7!important;
 	font-size: 12px;							/** TODO: Use of !imporant is not ideal **/
 	background-color: transparent!important;	/* For now this is a quick fix a rendering issue due to inherited background */
 	border: 1px solid transparent;
@@ -31,37 +41,17 @@ input.Number {
 
 #viewport {
 	position: absolute;
-	top: 32px;
+	top: 0px;
 	left: 0px;
-	right: 300px;
-	bottom: 32px;
-}
+	right: 0px;
+	bottom: 0px;
+
+	}
 
 	#viewport #info {
 		text-shadow: 1px 1px 0px rgba(0,0,0,0.25);
-		pointer-events: none;
+		display: none;
 	}
-
-img.ri {
-        position: absolute;
-        max-width: 90%;
-        top: 10%;
-        left: -10%;
-        z-index:2;
-}
-
-img.ri:empty {
-        top: 50%;
-        left: 50%;
-        -webkit-transform: translate(-50%, -50%);
-        -moz-transform: translate(-50%, -50%);
-        -ms-transform: translate(-50%, -50%);
-        -o-transform: translate(-50%, -50%);
-        transform: translate(-50%, -50%);
-}
-
-
-#preloader {}	
 
 #script {
 	position: absolute;
@@ -77,67 +67,58 @@ img.ri:empty {
 	top: 32px;
 	left: 0px;
 	right: 300px;
-	bottom: 32px;
+	bottom: 0px;
 }
 
 #menubar {
 	position: absolute;
 	width: 100%;
 	height: 32px;
-	background: #eee;
+	/*background: #EAEFF2;*/
 	padding: 0px;
 	margin: 0px;
 	right: 0px;
 	top: 0px;
+	/*opacity: 0.2;*/
 }
 
 	#menubar .menu {
 		float: left;
 		cursor: pointer;
+		/*padding-right: 8px;*/
+		padding-left: 8px;
 		padding-right: 8px;
+		/*color:#222;*/
+		background: #fff;
+		
+
 	}
 
 	#menubar .menu.right {
 		float: right;
 		cursor: auto;
 		text-align: right;
+		padding:0px;
+		/*opacity: 0.9;*/
+		
 	}
 
 		#menubar .menu .title {
 			display: inline-block;
-			color: #888;
+			/*color: #fff;*/
 			margin: 0px;
 			padding: 8px;
+			opacity: 0.9;
 		}
 
 		#menubar .menu .options {
 			position: absolute;
 			display: none;
 			padding: 5px 0px;
-			background: #eee;
+			background: #111;
 			width: 150px;
-		}
+			opacity: 0.9;
 
-		#menubar .menu .button {
-			display: inline-block;
-			color: #888;
-
-			padding: 8px 8px 8px 0px;
-			padding-right: 0px;
-			width: 300px;
-			cursor: pointer;
-		}
-
-
-		#menubar .menu.right .button {
-			color: #888;
-			margin-right: -8px;
-			padding: 8px 8px 8px 0px;
-			padding-right: 0px;
-			width: 300px;
-			cursor: pointer;
-			text-indent:255px; 
-			text-align: left;
 		}
 
 		#menubar .menu:hover .options {
@@ -145,11 +126,11 @@ img.ri:empty {
 		}
 
 			#menubar .menu .options hr {
-				border-color: #ddd;
+				border-color: #333;
 			}
 
 			#menubar .menu .options .option {
-				color: #666;
+				color: #888;
 				background-color: transparent;
 				padding: 5px 10px;
 				margin: 0px !important;
@@ -161,18 +142,29 @@ img.ri:empty {
 				}
 
 				#menubar .menu .options .option:active {
-					color: #666;
 					background: transparent;
 				}
 
+		#menubar .menu .button {
+			display: inline-block;
+			color: #888;
+			/*margin: 0px;*/
+			padding: 8px;
+			padding-left:0px;
+			width: 150px;
+			cursor: pointer;
+		}
+
 #sidebar {
 	position: absolute;
+	/*height: ;*/
 	right: 0px;
 	top: 32px;
 	bottom: 0px;
 	width: 300px;
-	background: #eee;
-	overflow: auto;
+	background-color:#E6E6E6;
+	opacity: 0.9;
+	overflow:auto;
 }
 
 	#sidebar * {
@@ -182,8 +174,12 @@ img.ri:empty {
 	#sidebar input,
 	#sidebar textarea,
 	#sidebar select {
+		/*background: #222;*/
 		border: 1px solid transparent;
-		color: #444;
+/*		color: #888;*/
+		color: #fff;
+		/*background: #08f;*/
+		background: #222;
 	}
 
 	#sidebar .Panel {
@@ -197,7 +193,13 @@ img.ri:empty {
 	#sidebar > .Panel {
 		color: #888;
 		padding: 10px;
-		border-top: 1px solid #ccc;
+		border-top: 1px solid #333;
+	}
+
+	#sidebar .Panel.Material canvas {
+
+		border: solid 1px #5A5A5A;
+
 	}
 
 #toolbar {

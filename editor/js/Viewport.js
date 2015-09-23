@@ -10,7 +10,7 @@ var Viewport = function ( editor ) {
 	container.setId( 'viewport' );
 	container.setPosition( 'absolute' );
 
-	container.add( new Viewport.Info( editor ) );
+	// container.add( new Viewport.Info( editor ) );
 
 	var scene = editor.scene;
 	var sceneHelpers = editor.sceneHelpers;
@@ -21,23 +21,6 @@ var Viewport = function ( editor ) {
 
 	var grid = new THREE.GridHelper( 500, 25 );
 	sceneHelpers.add( grid );
-
-	// instantiate a loader
-	var loader = new THREE.JSONLoader();
-	var vrHuman;
-
-	// load a resource
-	loader.load(
-		// resource URL
-		'3D/dummy.js',
-		// Function when resource is loaded
-		function ( geometry, materials ) {
-			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
-			vrHuman.scale.set(20,20,20);
-			sceneHelpers.add( vrHuman );
-		}
-	);
-
 
 	//
 
@@ -368,8 +351,6 @@ var Viewport = function ( editor ) {
 
 	} );
 
-
-
 	signals.rendererChanged.add( function ( newRenderer ) {
 
 		if ( renderer !== null ) {
@@ -542,16 +523,6 @@ var Viewport = function ( editor ) {
 
 	} );
 
-	//@elephantatwork, changeable bgColor
-	signals.bgColorChanged.add(function ( bgColor ) {
-
-		renderer.setClearColor( bgColor, 1 );
-		editor.config.setKey( 'backgroundColor', bgColor);
-
-		render();
-
-	} );
-
 	signals.fogColorChanged.add( function ( fogColor ) {
 
 		oldFogColor = fogColor;
@@ -588,13 +559,6 @@ var Viewport = function ( editor ) {
 	signals.showGridChanged.add( function ( showGrid ) {
 
 		grid.visible = showGrid;
-		render();
-
-	} );
-
-	signals.showManChanged.add( function ( showMan ) {
-
-		vrHuman.visible = showMan;
 		render();
 
 	} );
@@ -650,8 +614,6 @@ var Viewport = function ( editor ) {
 		requestAnimationFrame( animate );
 
 		// animations
-
-		// editor.storage.size();
 
 		if ( THREE.AnimationHandler.animations.length > 0 ) {
 

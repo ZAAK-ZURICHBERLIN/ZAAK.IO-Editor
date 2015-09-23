@@ -23,41 +23,24 @@ Menubar.Status = function ( editor ) {
 	// } );
 	// container.add( checkbox );
 
-	var title = new UI.Panel();
-	title.setClass( 'title' );
-	title.setTextContent( 'Size: unknown' );
-	container.add( title );
-
-	// var loading = new UI.Panel();
-	// loading.setClass( 'status' );
-
-	// container.add( loading );
+	// var title = new UI.Panel();
+	// title.setClass( 'title' );
+	// title.setTextContent( 'Autosave' );
+	// container.add( title );
 
 	var saveButton = new UI.Panel();
 	saveButton.setClass( 'button' );
-	// saveButton.setWidth("300px");
+	saveButton.setWidth("292px");
+	// saveButton.setMarginLeft("0px");
+	// saveButton.setPaddingRight("0px");
 	saveButton.setTextContent( 'Save' );
 	saveButton.onClick( function() {
-
-		editor.storage.size( function (size){
-					title.setTextContent( "Size : " + size + "/100Mb");
-					// title.setWidth(size);
-
-		});
-
-		// console.log(editor.storage.dbSize);
-		// title.setTextContent( "Size : " + editor.storage.dbSize + "/100Mb");
 
 		editor.signals.saveProject.dispatch();
 		// console.log("savebutton");
 
 	} );
 	container.add(saveButton);
-
-	// var title = new UI.Panel();
-	// title.setClass( 'title' );
-	// title.setTextContent( 'Size: unknown' );
-	// container.add( title );
 
 	editor.signals.unsaveProject.add( function () {
 

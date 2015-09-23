@@ -13170,8 +13170,6 @@ THREE.JSONLoader.prototype = {
 		var geometry = new THREE.Geometry(),
 		scale = ( json.scale !== undefined ) ? 1.0 / json.scale : 1.0;
 
-		console.log(json);
-
 		parseModel( scale );
 
 		parseSkin();
@@ -13205,16 +13203,12 @@ THREE.JSONLoader.prototype = {
 
 			uvLayer, uv, u, v,
 
-
-
 			faces = json.faces,
 			vertices = json.vertices,
 			normals = json.normals,
 			colors = json.colors,
 
 			nUvLayers = 0;
-
-			
 
 			if ( json.uvs !== undefined ) {
 

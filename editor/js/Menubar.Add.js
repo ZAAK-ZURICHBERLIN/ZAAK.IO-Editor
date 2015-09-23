@@ -29,20 +29,6 @@ Menubar.Add = function ( editor ) {
 
 	} );
 
-	// Soundsource
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Soundsource' );
-	option.onClick( function () {
-
-		var source = new THREE.Audio(editor.listener);
-
-		editor.addObject( source );
-		editor.select( source );
-
-	} );
-	options.add( option );
-
 	// Box
 	var option = new UI.Panel();
 	option.setClass( 'option' );
