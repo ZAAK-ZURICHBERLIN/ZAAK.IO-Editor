@@ -113,7 +113,6 @@ Editor.prototype = {
 
 		document.getElementById( 'theme' ).href = value;
 
-		console.log(value);
 		this.signals.themeChanged.dispatch( value );
 
 	},

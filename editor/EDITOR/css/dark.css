@@ -49,6 +49,27 @@ input.Number {
 		pointer-events: none;
 	}
 
+img.ri {
+        position: absolute;
+        max-width: 90%;
+        top: 10%;
+        left: -10%;
+        z-index:2;
+}
+
+img.ri:empty {
+        top: 50%;
+        left: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        -moz-transform: translate(-50%, -50%);
+        -ms-transform: translate(-50%, -50%);
+        -o-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+}
+
+
+#preloader {}
+
 #script {
 	position: absolute;
 	top: 32px;
@@ -93,7 +114,7 @@ input.Number {
 			display: inline-block;
 			color: #888;
 			margin: 0px;
-			padding: 8px;
+			padding: 8px 8px 8px 8px;
 		}
 
 		#menubar .menu .options {
@@ -102,6 +123,28 @@ input.Number {
 			padding: 5px 0px;
 			background: #111;
 			width: 150px;
+		}
+
+		#menubar .menu .button {
+			display: inline-block;
+			color: #888;
+
+			padding: 8px 8px 8px 0px;
+			padding-right: 0px;
+			width: 300px;
+			cursor: pointer;
+		}
+
+
+		#menubar .menu.right .button {
+			color: #888;
+			margin-right: -8px;
+			padding: 8px 8px 8px 0px;
+			padding-right: 0px;
+			width: 300px;
+			cursor: pointer;
+			text-indent:255px; 
+			text-align: left;
 		}
 
 		#menubar .menu:hover .options {
