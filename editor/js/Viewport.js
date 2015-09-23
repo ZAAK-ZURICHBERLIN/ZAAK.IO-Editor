@@ -22,21 +22,20 @@ var Viewport = function ( editor ) {
 	var grid = new THREE.GridHelper( 500, 25 );
 	sceneHelpers.add( grid );
 
-	// // instantiate a loader
-	// var loader = new THREE.JSONLoader();
-	// var vrHuman;
+	// instantiate a loader
+	var loader = new THREE.JSONLoader();
+	var vrHuman;
 
-	// // load a resource
-	// loader.load(
-	// 	// resource URL
-	// 	'3D/dummy.js',
-	// 	// Function when resource is loaded
-	// 	function ( geometry, materials ) {
-	// 		vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
-	// 		vrHuman.scale.set(20,20,20);
-	// 		sceneHelpers.add( vrHuman );
-	// 	}
-	// );
+	// load a resource
+	loader.load(
+		// resource URL
+		'3D/dummy.json',
+		// Function when resource is loaded
+		function ( geometry, materials ) {
+			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
+			sceneHelpers.add( vrHuman );
+		}
+	);
 
 
 	//

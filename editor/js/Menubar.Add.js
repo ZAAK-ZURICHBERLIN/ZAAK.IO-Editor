@@ -29,19 +29,19 @@ Menubar.Add = function ( editor ) {
 
 	} );
 
-	// Soundsource
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Soundsource' );
-	option.onClick( function () {
+	// // Soundsource
+	// var option = new UI.Panel();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Soundsource' );
+	// option.onClick( function () {
 
-		var source = new THREE.Audio(editor.listener);
+	// 	var source = new THREE.Audio(editor.listener);
 
-		editor.addObject( source );
-		editor.select( source );
+	// 	editor.addObject( source );
+	// 	editor.select( source );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	// Box
 	var option = new UI.Panel();
@@ -115,108 +115,116 @@ Menubar.Add = function ( editor ) {
 	options.add( option );
 
 	
-	// Text
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Text' );
-	option.onClick( function () {
+	// // Text
+	// var option = new UI.Panel();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Text' );
+	// option.onClick( function () {
 
-		var text = "three.js",
+	// 	var text = "three.js",
+	// 			height = 20,
+	// 			size = 70,
+	// 			hover = 30,
 
-				height = 0,
-				size = 70,
-				hover = 30,
+	// 			curveSegments = 4,
 
-				curveSegments = 6,
+	// 			bevelThickness = 2,
+	// 			bevelSize = 1.5,
+	// 			bevelSegments = 3,
+	// 			bevelEnabled = true,
 
-				bevelThickness = 2,
-				bevelSize = 1.5,
-				bevelSegments = 3,
-				bevelEnabled = true,
-
-				font = "helvetiker", // helvetiker, optimer, gentilis, droid sans, droid serif
-				weight = "normal", // normal bold
-				style = "normal"; // normal italic
-
-		textGeo = new THREE.TextGeometry( "New Text", {
-
-					size: size,
-					height: height,
-					curveSegments: curveSegments,
-
-					font: font,
-					weight: weight,
-					style: style,
-
-					bevelThickness: bevelThickness,
-					bevelSize: bevelSize,
-					bevelEnabled: bevelEnabled,
-
-					material: 0,
-					extrudeMaterial: 1
-
-				});
-
-		textGeo.computeBoundingBox();
-		textGeo.computeVertexNormals();
-
-		// "fix" side normals by removing z-component of normals for side faces
-		// (this doesn't work well for beveled geometry as then we lose nice curvature around z-axis)
+	// 			font = "helvetiker", // helvetiker, optimer, gentilis, droid sans, droid serif
+	// 			weight = "bold", // normal bold
+	// 			style = "normal"; // normal italic
 
 
-		var triangleAreaHeuristics = 0.1 * ( height * size );
 
-		for ( var i = 0; i < textGeo.faces.length; i ++ ) {
+	// 	var textGeo = new THREE.TextGeometry( text, {
 
-			var face = textGeo.faces[ i ];
+	// 		size: size,
+	// 		height: height,
+	// 		curveSegments: curveSegments,
 
-			if ( face.materialIndex == 1 ) {
+	// 		font: font,
+	// 		weight: weight,
+	// 		style: style,
 
-				for ( var j = 0; j < face.vertexNormals.length; j ++ ) {
+	// 		bevelThickness: bevelThickness,
+	// 		bevelSize: bevelSize,
+	// 		bevelEnabled: bevelEnabled,
 
-					face.vertexNormals[ j ].z = 0;
-					face.vertexNormals[ j ].normalize();
+	// 		material: 0,
+	// 		extrudeMaterial: 1
 
-				}
+	// 	});
 
-				var va = textGeo.vertices[ face.a ];
-				var vb = textGeo.vertices[ face.b ];
-				var vc = textGeo.vertices[ face.c ];
+	// 	console.log(textGeo);
 
-				var s = THREE.GeometryUtils.triangleArea( va, vb, vc );
+	// 	textGeo.computeBoundingBox();
+	// 	textGeo.computeVertexNormals();
 
-				if ( s > triangleAreaHeuristics ) {
+	// 	// "fix" side normals by removing z-component of normals for side faces
+	// 	// (this doesn't work well for beveled geometry as then we lose nice curvature around z-axis)
 
-					for ( var j = 0; j < face.vertexNormals.length; j ++ ) {
+	// 	if ( ! bevelEnabled ) {
 
-						face.vertexNormals[ j ].copy( face.normal );
+	// 		var triangleAreaHeuristics = 0.1 * ( height * size );
 
-					}
+	// 		for ( var i = 0; i < textGeo.faces.length; i ++ ) {
 
-				}
+	// 			var face = textGeo.faces[ i ];
 
-			}
+	// 			if ( face.materialIndex == 1 ) {
 
-		}	
+	// 				for ( var j = 0; j < face.vertexNormals.length; j ++ ) {
 
-		var centerOffset = -0.5 * ( textGeo.boundingBox.max.x - textGeo.boundingBox.min.x );
+	// 					face.vertexNormals[ j ].z = 0;
+	// 					face.vertexNormals[ j ].normalize();
 
-		var textMesh1 = new THREE.Mesh( textGeo, new THREE.MeshBasicMaterial({color: 'antiquewhite', needsUpdate: true })  );
+	// 				}
 
-		textMesh1.position.x = centerOffset;
-		textMesh1.position.y = 30;
-		textMesh1.position.z = 0;
+	// 				var va = textGeo.vertices[ face.a ];
+	// 				var vb = textGeo.vertices[ face.b ];
+	// 				var vc = textGeo.vertices[ face.c ];
 
-		textMesh1.rotation.x = 0;
-		textMesh1.rotation.y = Math.PI * 2;
+	// 				var s = THREE.GeometryUtils.triangleArea( va, vb, vc );
 
-		textMesh1.name = "Text Object";
+	// 				if ( s > triangleAreaHeuristics ) {
 
-		editor.addObject( textMesh1 );
-		editor.select( textMesh1 );
+	// 					for ( var j = 0; j < face.vertexNormals.length; j ++ ) {
 
-	} );
-	options.add( option );
+	// 						face.vertexNormals[ j ].copy( face.normal );
+
+	// 					}
+
+	// 				}
+
+	// 			}
+
+	// 		}
+
+	// 	}
+
+	// 	var centerOffset = -0.5 * ( textGeo.boundingBox.max.x - textGeo.boundingBox.min.x );
+
+	// 	textMesh1 = new THREE.Mesh( textGeo, new THREE.MeshBasicMaterial({color: 'antiquewhite', needsUpdate: true }) );
+
+	// 	textMesh1.position.x = centerOffset;
+	// 	textMesh1.position.y = hover;
+	// 	textMesh1.position.z = 0;
+
+	// 	textMesh1.rotation.x = 0;
+	// 	textMesh1.rotation.y = Math.PI * 2;
+
+	// 	textMesh1.name = "Text Object";
+
+	// 	console.log(textMesh1);
+
+	// 	editor.addObject( textMesh1 );
+	// 	editor.select( textMesh1 );
+
+	// } );
+	// options.add( option );
 
 	// Mediasphere
 

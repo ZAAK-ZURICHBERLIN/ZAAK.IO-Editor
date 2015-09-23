@@ -61,7 +61,7 @@ Menubar.Navigation = function ( editor ) {
 		var heightSegments = 1;
 
 		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
-		var material = new THREE.MeshBasicMaterial({side: THREE.DoubleSide, transparent: true, depthTest: false, depthWrite: false, needsUpdate: true});
+		var material = new THREE.MeshBasicMaterial({side: THREE.DoubleSide, transparent: true, depthTest: true, depthWrite: true, needsUpdate: true});
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = 'Pointer_name';
 		parent.add(mesh); 
