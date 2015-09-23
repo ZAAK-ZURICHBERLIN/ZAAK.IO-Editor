@@ -69,7 +69,10 @@ var Editor = function (shortcuts) {
 		saveProject: new SIGNALS.Signal(),
 		unsaveProject: new SIGNALS.Signal(),
 		undo: new SIGNALS.Signal(),
-		redo: new SIGNALS.Signal()
+		redo: new SIGNALS.Signal(),
+		soundAdded: new SIGNALS.Signal(),
+		showManChanged: new SIGNALS.Signal(),
+		bgColorChanged: new SIGNALS.Signal()
 	};
 
 	this.config = new Config();
@@ -83,6 +86,9 @@ var Editor = function (shortcuts) {
 	this.camera.lookAt( new THREE.Vector3() );
 	this.camera.name = 'Camera';
 
+	this.listener = new THREE.AudioListener();
+	this.camera.add( this.listener );
+
 	this.scene = new THREE.Scene();
 	this.scene.name = 'Scene';
 
@@ -93,6 +99,8 @@ var Editor = function (shortcuts) {
 	this.materials = {};
 	this.textures = {};
 	this.scripts = {};
+	
+	this.soundCollection = new SoundCollection({cam:this.camera});
 
 	this.selected = null;
 	this.helpers = {};
@@ -105,6 +113,7 @@ Editor.prototype = {
 
 		document.getElementById( 'theme' ).href = value;
 
+		console.log(value);
 		this.signals.themeChanged.dispatch( value );
 
 	},
@@ -517,6 +526,35 @@ Editor.prototype = {
 
 	},
 
+	play: function ( ) {
+	
+		this.scene.traverse( function ( child ) {
+		
+			if ( child.sounds ) {
+			
+				if ( child.sounds.constant ) {
+					editor.soundCollection.playAttachedSound( child.sounds.constant, child );
+				}
+			
+			}
+		
+		}.bind( this ) );
+		
+	},
+	
+	stop: function ( ) {
+	
+		this.scene.traverse( function ( child ) {
+			
+			if ( child.sounds ) {
+			
+				editor.soundCollection.stop( child.sounds.constant, true );
+				console.log(child.name);
+			}
+		
+		}.bind( this ) );
+	},	
+
 	//
 
 	fromJSON: function ( json ) {
@@ -545,16 +583,19 @@ Editor.prototype = {
 		this.setScene( loader.parse( json.scene ) );
 		this.scripts = json.scripts;
 
+		document.getElementById( "preloader" ).style.display = "none";
+
+
 	},
 
 	toJSON: function () {
 
-		console.log(this.scene.toJSON())
+		// console.log(this.scene.toJSON())
 
 		return {
 
 			project: {
-				vr: this.config.getKey( 'project/vr' )
+				// vr: this.config.getKey( 'project/vr' )
 			},
 			camera: this.camera.toJSON(),
 			scene: this.scene.toJSON(),

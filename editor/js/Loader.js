@@ -140,6 +140,8 @@ var Loader = function ( editor ) {
 
 					var contents = event.target.result;
 
+					document.getElementById( "preloader" ).style.display = "block";
+
 					// 2.0
 
 					if ( contents.indexOf( 'postMessage' ) !== -1 ) {
@@ -157,7 +159,6 @@ var Loader = function ( editor ) {
 						};
 
 						worker.postMessage( Date.now() );
-
 						return;
 
 					}
@@ -357,6 +358,10 @@ var Loader = function ( editor ) {
 
 	var handleJSON = function ( data, file, filename ) {
 
+		data.metadata = data.object.metadata;
+
+		delete data.object.metadata;
+
 		if ( data.metadata === undefined ) { // 2.0
 
 			data.metadata = { type: 'Geometry' };
@@ -386,6 +391,9 @@ var Loader = function ( editor ) {
 			editor.select( mesh );
 
 		} else if ( data.metadata.type.toLowerCase() === 'geometry' ) {
+
+			// console.log("hey")
+
 
 			var loader = new THREE.JSONLoader();
 			loader.setTexturePath( scope.texturePath );
@@ -435,6 +443,7 @@ var Loader = function ( editor ) {
 
 		} else if ( data.metadata.type.toLowerCase() === 'object' ) {
 
+
 			var loader = new THREE.ObjectLoader();
 			loader.setTexturePath( scope.texturePath );
 
@@ -463,6 +472,8 @@ var Loader = function ( editor ) {
 			}, '' );
 
 		}
+		
+		document.getElementById( "preloader" ).style.display = "none";
 
 	};
 

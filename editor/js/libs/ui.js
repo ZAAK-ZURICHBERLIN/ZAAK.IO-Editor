@@ -1041,3 +1041,130 @@ UI.Dialog.prototype.showModal = function () {
 	return this;
 
 };
+
+// Sound
+
+UI.Sound = function (  ) {
+
+	UI.Element.call( this );
+
+	var scope = this;
+
+	var dom = document.createElement( 'div' );
+	dom.className = 'SoundDrop';
+
+	this.dom = dom;
+	
+	this.dom.dropArea = document.createElement( 'div' );
+	this.dom.dropArea.className = 'dropArea';
+	this.dom.dropArea.textContent = 'Drop audio file here';
+	
+	this.dom.appendChild( this.dom.dropArea );
+	
+	var playButton = document.createElement( 'button' );
+	playButton.textContent = '>';
+	playButton.style.display = 'none';
+	this.dom.playButton = playButton;
+	
+	this.dom.appendChild( playButton );
+	
+	
+	this.dom._deleteSoundButton = document.createElement( 'button' );
+	this.dom._deleteSoundButton.className = 'deleteButton';
+	this.dom._deleteSoundButton.textContent = 'x';
+	this.dom._deleteSoundButton.addEventListener( 'click', this.setValue.bind(this) );
+	
+	// Setup the dnd listeners.
+	this.dom.addEventListener('dragover', this.handleDragOver.bind(this), false);
+	this.dom.addEventListener('drop', this.handleFileSelect.bind(this), false);
+	
+	// create the (initially inactive) play listeners
+	this._mouseListeners = {
+		down: this.play.bind(this),
+		up: this.stop.bind(this)
+	};
+
+	return this;
+
+};
+
+UI.Sound.prototype = Object.create( UI.Element.prototype );
+
+UI.Sound.prototype.setLabel = function ( value ) {
+
+	this.dom.textContent = value;
+
+	return this;
+
+};
+
+UI.Sound.prototype.handleFileSelect = function(evt) {
+	evt.stopPropagation();
+	evt.preventDefault();
+
+	var files = evt.dataTransfer.files; // FileList object.
+	
+	if (files && files[0]) {		
+		this.setValue( files[0] );
+	}
+}
+
+UI.Sound.prototype.handleDragOver = function(evt) {
+	evt.stopPropagation();
+	evt.preventDefault();
+	evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+}
+
+UI.Sound.prototype.getValue = function() {
+	return this.sound;
+};
+
+UI.Sound.prototype.setValue = function(sound) {
+
+	if (sound instanceof Blob) {
+	
+		// add sound
+		this.sound = sound;
+		editor.soundCollection.add( sound, new THREE.Vector3(0, 0, 0), function( buffer ) {
+		
+			var changeEvent = document.createEvent('HTMLEvents');
+			changeEvent.initEvent( 'change', true, true );
+			changeEvent.buffer = buffer;
+			this.dom.dispatchEvent( changeEvent );
+			
+		}.bind(this) );
+		this.dom.dropArea.textContent = sound.name;
+		this.dom.dropArea.appendChild ( this.dom._deleteSoundButton );
+		this.dom.playButton.style.display = '';
+		this.dom.playButton.addEventListener( 'mousedown', this._mouseListeners.down, false );
+		this.dom.playButton.addEventListener( 'mouseup', this._mouseListeners.up, false );
+		
+	} else {
+	
+		// remove sound
+		this.stop();
+		this.dom.playButton.style.display = 'none';
+		this.dom.playButton.removeEventListener( 'mousedown', this._mouseListeners.down, false );
+		this.dom.playButton.removeEventListener( 'mouseup', this._mouseListeners.up, false );
+		this.dom.dropArea.textContent = 'Drop audio file here';
+		this.sound = undefined;
+		
+		var changeEvent = document.createEvent('HTMLEvents');
+		changeEvent.initEvent( 'change', true, true );
+		this.dom.dispatchEvent( changeEvent );
+	}
+	
+};
+
+UI.Sound.prototype.play = function() {
+	if (this.sound) {
+		editor.soundCollection.stop(this.sound);
+		editor.soundCollection.play(this.sound);
+	}
+}
+
+UI.Sound.prototype.stop = function() {
+	if (this.sound) {
+		editor.soundCollection.stop(this.sound);
+	}
+}

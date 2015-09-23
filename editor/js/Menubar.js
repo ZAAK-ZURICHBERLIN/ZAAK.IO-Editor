@@ -13,10 +13,7 @@ var Menubar = function ( editor ) {
 	container.add( new Menubar.Light( editor ) );
 	container.add( new Menubar.Navigation( editor ) );
 	container.add( new Menubar.View( editor ) );
-	// container.add( new Menubar.Play( editor ) );
-	// container.add( new Menubar.Examples( editor ) );
-	// container.add( new Menubar.View( editor ) );
-	// container.add( new Menubar.Help( editor ) );
+	container.add( new Menubar.Play( editor ) );
 
 	container.add( new Menubar.Status( editor ) );
 
