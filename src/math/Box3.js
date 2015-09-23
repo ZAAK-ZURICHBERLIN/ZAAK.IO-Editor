@@ -1,5 +1,5 @@
 /**
- * @author bhouston / http://clara.io
+ * @author bhouston / http://exocortex.com
  * @author WestLangley / http://github.com/WestLangley
  */
 

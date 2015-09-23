@@ -36,8 +36,8 @@
 
 			var container, stats;
 			var camera, scene1, scene2, renderer;
-			var mixers = [];
 
+			var morphs = [];
 			var clock = new THREE.Clock();
 
 			init();
@@ -87,24 +87,21 @@
 
 				//
 
-				
 				var loader = new THREE.JSONLoader();
 				loader.load( "models/animated/flamingo.js", function( geometry ) {
 
 					morphColorsToFaceColors( geometry );
 
 					var material = new THREE.MeshPhongMaterial( { color: 0xffffff, morphTargets: true, vertexColors: THREE.FaceColors, shading: THREE.FlatShading } );
-					var mesh = new THREE.Mesh( geometry, material );
+					var meshAnim = new THREE.MorphAnimMesh( geometry, material );
 
-					mesh.scale.set( 1.5, 1.5, 1.5 );
-					mesh.position.y = 150;
+					meshAnim.duration = 5000;
 
-					scene1.add( mesh );
+					meshAnim.scale.set( 1.5, 1.5, 1.5 );
+					meshAnim.position.y = 150;
 
-					var mixer = new THREE.AnimationMixer( mesh );
-					mixer.addAction( new THREE.AnimationAction( geometry.animations[ 0 ] ).warpToDuration( 5 ) );
-
-					mixers.push( mixer );
+					scene1.add( meshAnim );
+					morphs.push( meshAnim );
 
 				} );
 
@@ -115,17 +112,15 @@
 					geometry.computeMorphNormals();
 
 					var material = new THREE.MeshPhongMaterial( { color: 0xffffff, specular: 0xffffff, shininess: 20, morphTargets: true, morphNormals: true, vertexColors: THREE.FaceColors, shading: THREE.SmoothShading } );
-					var mesh = new THREE.Mesh( geometry, material );
-					
-					mesh.scale.set( 1.5, 1.5, 1.5 );
-					mesh.position.y = 150;
+					var meshAnim = new THREE.MorphAnimMesh( geometry, material );
 
-					scene2.add( mesh );
+					meshAnim.duration = 5000;
 
-					var mixer = new THREE.AnimationMixer( mesh );
-					mixer.addAction( new THREE.AnimationAction( geometry.animations[ 0 ] ).warpToDuration( 5 ) );
+					meshAnim.scale.set( 1.5, 1.5, 1.5 );
+					meshAnim.position.y = 150;
 
-					mixers.push( mixer );
+					scene2.add( meshAnim );
+					morphs.push( meshAnim );
 
 				} );
 
@@ -210,8 +205,10 @@
 
 				var delta = clock.getDelta();
 
-   				for ( var i = 0; i < mixers.length; i ++ ) {
-					mixers[ i ].update( delta );
+				for ( var i = 0; i < morphs.length; i ++ ) {
+
+					morph = morphs[ i ];
+					morph.updateAnimation( 1000 * delta );
 
 				}
 

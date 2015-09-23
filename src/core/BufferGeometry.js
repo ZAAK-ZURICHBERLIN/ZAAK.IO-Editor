@@ -66,8 +66,6 @@ THREE.BufferGeometry.prototype = {
 			console.warn( 'THREE.BufferGeometry.addAttribute: Use .setIndex() for index attribute.' );
 			this.setIndex( attribute );
 
-			return;
-
 		}
 
 		this.attributes[ name ] = attribute;

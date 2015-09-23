@@ -1,7 +1,7 @@
 /**
  * @author mrdoob / http://mrdoob.com/
  * @author WestLangley / http://github.com/WestLangley
- * @author bhouston / http://clara.io
+ * @author bhouston / http://exocortex.com
  */
 
 THREE.Euler = function ( x, y, z, order ) {

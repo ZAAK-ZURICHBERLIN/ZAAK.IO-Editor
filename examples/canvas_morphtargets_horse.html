@@ -26,7 +26,7 @@
 
 			var container, stats;
 			var camera, scene, projector, renderer;
-			var mesh, mixer;
+			var mesh, animation;
 
 			init();
 			animate();
@@ -69,10 +69,8 @@
 					mesh.scale.set( 1.5, 1.5, 1.5 );
 					scene.add( mesh );
 
-					mixer = new THREE.AnimationMixer( mesh );
-
-					var clip = THREE.AnimationClip.CreateFromMorphTargetSequence( 'gallop', geometry.morphTargets, 30 );
-					mixer.addAction( new THREE.AnimationAction( clip ).warpToDuration( 1.5 ) );
+					animation = new THREE.MorphAnimation( mesh );
+					animation.play();
 
 				} );
 
@@ -131,11 +129,11 @@
 
 				camera.lookAt( camera.target );
 
-				if ( mixer ) {
+				if ( animation ) {
 
 					var time = Date.now();
 
-					mixer.update( ( time - prevTime ) * 0.001 );
+					animation.update( time - prevTime );
 
 					prevTime = time;
 

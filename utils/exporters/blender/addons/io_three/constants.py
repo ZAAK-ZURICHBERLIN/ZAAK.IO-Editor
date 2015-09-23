@@ -51,6 +51,7 @@ NUMERIC = {
     'LinearMipMapNearestFilter': 1007,
     'LinearMipMapLinearFilter': 1008
 }
+
 JSON = 'json'
 EXTENSION = '.%s' % JSON
 INDENT = 'indent'
@@ -78,11 +79,7 @@ MAPS = 'maps'
 FRAME_STEP = 'frameStep'
 FRAME_INDEX_AS_TIME = 'frameIndexAsTime'
 ANIMATION = 'animations'
-CLIPS="clips"
-KEYFRAMES = 'tracks'
 MORPH_TARGETS = 'morphTargets'
-MORPH_TARGETS_ANIM = 'morphTargetsAnimation'
-BLEND_SHAPES = 'blendShapes'
 POSE = 'pose'
 REST = 'rest'
 SKIN_INDICES = 'skinIndices'
@@ -113,7 +110,6 @@ ERROR = 'error'
 WARNING = 'warning'
 INFO = 'info'
 DEBUG = 'debug'
-DISABLED = 'disabled'
 
 NONE = 'None'
 MSGPACK = 'msgpack'
@@ -145,11 +141,9 @@ EXPORT_OPTIONS = {
     COMPRESSION: None,
     MAPS: False,
     ANIMATION: OFF,
-    KEYFRAMES: False,
     BONES: False,
     SKINNING: False,
     MORPH_TARGETS: False,
-    BLEND_SHAPES: False,
     CAMERAS: False,
     LIGHTS: False,
     HIERARCHY: False,
@@ -166,7 +160,7 @@ EXPORT_OPTIONS = {
 }
 
 
-FORMAT_VERSION = 4.4
+FORMAT_VERSION = 4.3
 VERSION = 'version'
 THREE = 'io_three'
 GENERATOR = 'generator'
@@ -224,8 +218,6 @@ ATTRIBUTES = 'attributes'
 NORMAL = 'normal'
 ITEM_SIZE = 'itemSize'
 ARRAY = 'array'
-
-FLOAT_32 = 'Float32Array'
 
 VISIBLE = 'visible'
 CAST_SHADOW = 'castShadow'

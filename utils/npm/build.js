@@ -87,9 +87,9 @@ var buildModule = function ( name, version ) {
 var cmdExe, args;
 if (process.platform === 'win32' || process.platform === 'win64') {
 	cmdExe = "cmd.exe";
-	args = [ "/c", "build.bat" ];
+	args = [ "/c", "build_all.bat" ];
 } else {
-	cmdExe = './build.sh';
+	cmdExe = './build_all.sh';
 	args = [];
 }
 var opts = { "cwd": "../build" };
@@ -106,4 +106,5 @@ buildAll.stderr.on('data', function (data) {
 buildAll.on( 'exit', function ( exitCode ) {
 	console.log( "exitCode: " + exitCode );
 	buildModule( "three" );
+	buildModule( "three-math" );
 });

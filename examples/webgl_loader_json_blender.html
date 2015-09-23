@@ -39,9 +39,6 @@
 		</div>
 
 		<script src="../build/three.min.js"></script>
-		<script src="js/loaders/collada/Animation.js"></script>
-		<script src="js/loaders/collada/AnimationHandler.js"></script>
-		<script src="js/loaders/collada/KeyFrameAnimation.js"></script>
 
 		<script src="js/loaders/ColladaLoader.js"></script>
 
@@ -59,7 +56,7 @@
 			var dae;
 
 			var clock = new THREE.Clock();
-			var mixers = [];
+			var morphs = [];
 
 			// Collada model
 
@@ -124,26 +121,28 @@
 
 						if ( Math.abs( x ) < 2 && Math.abs( z ) < 2 ) continue;
 
-						mesh = new THREE.Mesh( geometry, faceMaterial );
+						morph = new THREE.MorphAnimMesh( geometry, faceMaterial );
 
-						var s = THREE.Math.randFloat( 0.00075, 0.001 );
-						mesh.scale.set( s, s, s );
+						// one second duration
 
-						mesh.position.set( x, 0, z );
-						mesh.rotation.y = THREE.Math.randFloat( -0.25, 0.25 );
-
-						mesh.matrixAutoUpdate = false;
-						mesh.updateMatrix();
-
-						scene.add( mesh );
-						
-						var mixer = new THREE.AnimationMixer( mesh );
-						mixer.addAction( new THREE.AnimationAction( geometry.animations[0] ).warpToDuration( 1 ) );
+						morph.duration = 1000;
 
 						// random animation offset
-						mixer.update( 1000 * Math.random() );
 
-						mixers.push( mixer );
+						morph.time = 1000 * Math.random();
+
+						var s = THREE.Math.randFloat( 0.00075, 0.001 );
+						morph.scale.set( s, s, s );
+
+						morph.position.set( x, 0, z );
+						morph.rotation.y = THREE.Math.randFloat( -0.25, 0.25 );
+
+						morph.matrixAutoUpdate = false;
+						morph.updateMatrix();
+
+						scene.add( morph );
+
+						morphs.push( morph );
 
 					}
 
@@ -203,12 +202,12 @@
 
 				THREE.AnimationHandler.update( delta );
 
-				for ( var i = 0; i < mixers.length; i ++ ) {
+				if ( morphs.length ) {
 
-					mixers[ i ].update( delta );
+					for ( var i = 0; i < morphs.length; i ++ )
+						morphs[ i ].updateAnimation( 1000 * delta );
 
 				}
-
 
 				render();
 				stats.update();
