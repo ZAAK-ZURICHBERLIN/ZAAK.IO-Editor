@@ -18,7 +18,9 @@ MainEditor.prototype = {
 			Number.prototype.format = function (){
 				return this.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
 			};
-			var editor = new Editor();
+
+            this.editor = new Editor();
+			var editor = this.editor;
 
 			var shortcuts = new EditorShortCuts(editor);
 
@@ -74,11 +76,11 @@ MainEditor.prototype = {
 					if ( editor.config.getKey( 'autosave' ) === false ) return;
 
 					// else {
-						
+
 					// 	saveState(1000);
-						
+
 					// }
-					
+
 				};
 
 				var manualSave = function () {
@@ -202,8 +204,8 @@ MainEditor.prototype = {
 				editor.fromJSON( event.data );
 
 			}, false );
-			
 
-		
+
+
 	}
 }

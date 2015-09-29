@@ -140,7 +140,7 @@ var Loader = function ( editor ) {
 
 					var contents = event.target.result;
 
-					document.getElementById( "preloader" ).style.display = "block";
+					// document.getElementById( "preloader" ).style.display = "block";
 
 					// 2.0
 
@@ -473,7 +473,7 @@ var Loader = function ( editor ) {
 
 		}
 		
-		document.getElementById( "preloader" ).style.display = "none";
+		// document.getElementById( "preloader" ).style.display = "none";
 
 	};
 

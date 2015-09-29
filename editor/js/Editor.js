@@ -582,7 +582,7 @@ Editor.prototype = {
 		this.setScene( loader.parse( json.scene ) );
 		this.scripts = json.scripts;
 
-		document.getElementById( "preloader" ).style.display = "none";
+		// document.getElementById( "preloader" ).style.display = "none";
 
 
 	},

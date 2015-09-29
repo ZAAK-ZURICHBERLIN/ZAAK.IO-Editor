@@ -66,19 +66,19 @@ Menubar.File = function ( editor ) {
 
 	// Export Scene
 
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Scene' );
-	option.onClick( function () {
+	// var option = new UI.Panel();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Scene' );
+	// option.onClick( function () {
 
-		var output = editor.scene.toJSON();
-		output = JSON.stringify( output, null, '\t' );
-		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 	var output = editor.scene.toJSON();
+	// 	output = JSON.stringify( output, null, '\t' );
+	// 	output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		exportString( output, 'scene.json' );
+	// 	exportString( output, 'scene.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	var link = document.createElement( 'a' );
 	link.style.display = 'none';

@@ -21453,7 +21453,7 @@ Editor.prototype = {
 		this.setScene( loader.parse( json.scene ) );
 		this.scripts = json.scripts;
 
-		document.getElementById( "preloader" ).style.display = "none";
+		// document.getElementById( "preloader" ).style.display = "none";
 
 
 	},
@@ -21782,7 +21782,7 @@ var Loader = function ( editor ) {
 
 					var contents = event.target.result;
 
-					document.getElementById( "preloader" ).style.display = "block";
+					// document.getElementById( "preloader" ).style.display = "block";
 
 					// 2.0
 
@@ -22115,7 +22115,7 @@ var Loader = function ( editor ) {
 
 		}
 		
-		document.getElementById( "preloader" ).style.display = "none";
+		// document.getElementById( "preloader" ).style.display = "none";
 
 	};
 
@@ -22139,6 +22139,7 @@ var Menubar = function ( editor ) {
 	container.add( new Menubar.Navigation( editor ) );
 	container.add( new Menubar.View( editor ) );
 	container.add( new Menubar.Play( editor ) );
+	container.add( new Menubar.Plus( editor ) );
 
 	container.add( new Menubar.Status( editor ) );
 
@@ -22216,19 +22217,19 @@ Menubar.File = function ( editor ) {
 
 	// Export Scene
 
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Scene' );
-	option.onClick( function () {
+	// var option = new UI.Panel();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Scene' );
+	// option.onClick( function () {
 
-		var output = editor.scene.toJSON();
-		output = JSON.stringify( output, null, '\t' );
-		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 	var output = editor.scene.toJSON();
+	// 	output = JSON.stringify( output, null, '\t' );
+	// 	output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		exportString( output, 'scene.json' );
+	// 	exportString( output, 'scene.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	var link = document.createElement( 'a' );
 	link.style.display = 'none';
@@ -23045,6 +23046,41 @@ Menubar.Status = function ( editor ) {
 
 	} );
 
+	return container;
+
+};
+
+// File:editor/js/Menubar.Plus.js
+
+/**
+ * @author mrdoob / http://mrdoob.com/
+ */
+
+Menubar.Plus = function ( editor ) {
+
+	var container = new UI.Panel();
+	container.setClass( 'menu' );
+
+	var title = new UI.Panel();
+	title.setClass( 'title' );
+	title.setTextContent( 'Plus' );
+	container.add( title );
+
+	var options = new UI.Panel();
+	options.setClass( 'options' );
+	container.add( options );
+
+	// Source code
+
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Return to ZAAK Plus' );
+	option.onClick( function () {
+
+		window.open( 'http://zaak.io' )
+
+	} );
+	options.add( option );
 	return container;
 
 };
