@@ -22177,7 +22177,7 @@ Menubar.File = function ( editor ) {
 		if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
 
 			editor.clear();
-            App.Helper.New();
+            // App.Helper.New();
 
 		}
 
@@ -22208,9 +22208,44 @@ Menubar.File = function ( editor ) {
 	} );
 	options.add( option );
 
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Reload from LocalStorage' );
+	option.onClick( function () {
+
+		var file = null;
+		var hash = window.location.hash;
+
+		if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
+		if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
+
+		if ( file !== null ) {
+
+			if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
+
+				var loader = new THREE.XHRLoader();
+				loader.crossOrigin = '';
+				loader.load( file, function ( text ) {
+
+					var json = JSON.parse( text );
+
+					editor.clear();
+					editor.fromJSON( json );
+
+				} );
+
+			}
+
+		}
+
+	} );
+	options.add( option );
+
+
 	//
 
 	options.add( new UI.HorizontalRule() );
+
 
 
 
@@ -22419,6 +22454,30 @@ Menubar.Add = function ( editor ) {
 		cameraCount = 0;
 
 	} );
+
+	// Plane
+
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Plane' );
+	option.onClick( function () {
+
+		var width = 200;
+		var height = 200;
+
+		var widthSegments = 1;
+		var heightSegments = 1;
+
+		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
+		var material = new THREE.MeshPhongMaterial();
+		var mesh = new THREE.Mesh( geometry, material );
+		mesh.name = 'Plane ' + ( ++ meshCount );
+
+		editor.addObject( mesh );
+		editor.select( mesh );
+
+	} );
+	options.add( option );
 
 	// // Soundsource
 	// var option = new UI.Panel();
@@ -29393,30 +29452,30 @@ MainEditor.prototype = {
 
 			//
 
-			var file = null;
-			var hash = window.location.hash;
+			// var file = null;
+			// var hash = window.location.hash;
 
-			if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
-			if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
+			// if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
+			// if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
 
-			if ( file !== null ) {
+			// if ( file !== null ) {
 
-				if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
+			// 	if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
 
-					var loader = new THREE.XHRLoader();
-					loader.crossOrigin = '';
-					loader.load( file, function ( text ) {
+			// 		var loader = new THREE.XHRLoader();
+			// 		loader.crossOrigin = '';
+			// 		loader.load( file, function ( text ) {
 
-						var json = JSON.parse( text );
+			// 			var json = JSON.parse( text );
 
-						editor.clear();
-						editor.fromJSON( json );
+			// 			editor.clear();
+			// 			editor.fromJSON( json );
 
-					} );
+			// 		} );
 
-				}
+			// 	}
 
-			}
+			// }
 
 			window.addEventListener( 'message', function ( event ) {
 

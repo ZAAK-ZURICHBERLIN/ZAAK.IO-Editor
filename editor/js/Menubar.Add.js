@@ -29,6 +29,30 @@ Menubar.Add = function ( editor ) {
 
 	} );
 
+	// Plane
+
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Plane' );
+	option.onClick( function () {
+
+		var width = 200;
+		var height = 200;
+
+		var widthSegments = 1;
+		var heightSegments = 1;
+
+		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
+		var material = new THREE.MeshPhongMaterial();
+		var mesh = new THREE.Mesh( geometry, material );
+		mesh.name = 'Plane ' + ( ++ meshCount );
+
+		editor.addObject( mesh );
+		editor.select( mesh );
+
+	} );
+	options.add( option );
+
 	// // Soundsource
 	// var option = new UI.Panel();
 	// option.setClass( 'option' );

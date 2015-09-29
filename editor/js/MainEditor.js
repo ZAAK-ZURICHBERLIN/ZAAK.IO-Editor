@@ -173,30 +173,30 @@ MainEditor.prototype = {
 
 			//
 
-			var file = null;
-			var hash = window.location.hash;
+			// var file = null;
+			// var hash = window.location.hash;
 
-			if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
-			if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
+			// if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
+			// if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
 
-			if ( file !== null ) {
+			// if ( file !== null ) {
 
-				if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
+			// 	if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
 
-					var loader = new THREE.XHRLoader();
-					loader.crossOrigin = '';
-					loader.load( file, function ( text ) {
+			// 		var loader = new THREE.XHRLoader();
+			// 		loader.crossOrigin = '';
+			// 		loader.load( file, function ( text ) {
 
-						var json = JSON.parse( text );
+			// 			var json = JSON.parse( text );
 
-						editor.clear();
-						editor.fromJSON( json );
+			// 			editor.clear();
+			// 			editor.fromJSON( json );
 
-					} );
+			// 		} );
 
-				}
+			// 	}
 
-			}
+			// }
 
 			window.addEventListener( 'message', function ( event ) {
 
