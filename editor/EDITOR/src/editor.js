@@ -22831,7 +22831,7 @@ Menubar.View = function ( editor ) {
 	option.onClick( function () {
 
 		editor.setTheme( 'css/light.css' );
-		editor.config.setKey( 'theme', 'css/light.css' );
+		editor.config.setKey( 'theme', THEME_LIGHT );
 		editor.hide();
 
 	} );
@@ -22845,7 +22845,7 @@ Menubar.View = function ( editor ) {
 	option.onClick( function () {
 
 		editor.setTheme( 'css/dark.css' );
-		editor.config.setKey( 'theme', 'css/dark.css' );
+		editor.config.setKey( 'theme', THEME_DARK );
 		editor.unhideAll();
 
 	} );
@@ -27382,7 +27382,8 @@ var Viewport = function ( editor ) {
 	// load a resource
 	loader.load(
 		// resource URL
-		'3D/dummy.json',
+		DUMMY,
+		// '3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
 			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
