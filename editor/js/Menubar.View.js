@@ -54,7 +54,7 @@ Menubar.View = function ( editor ) {
 	option.onClick( function () {
 
 		editor.setTheme( 'css/light.css' );
-		editor.config.setKey( 'theme', 'css/light.css' );
+		editor.config.setKey( 'theme', THEME_LIGHT );
 		editor.hide();
 
 	} );
@@ -68,7 +68,7 @@ Menubar.View = function ( editor ) {
 	option.onClick( function () {
 
 		editor.setTheme( 'css/dark.css' );
-		editor.config.setKey( 'theme', 'css/dark.css' );
+		editor.config.setKey( 'theme', THEME_DARK );
 		editor.unhideAll();
 
 	} );
