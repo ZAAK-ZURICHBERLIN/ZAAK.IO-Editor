@@ -8,6 +8,8 @@ var EditorShortCutsList = function () {
 
 	var storage = {
 
+		'file/exportscene':"ctrl+e",
+
 		'history/undo':"ctrl+z",
 		'history/redo':"ctrl+y",
 

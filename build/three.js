@@ -8366,6 +8366,7 @@ THREE.Object3D.prototype = {
 		var isRootObject = ( meta === undefined );
 
 		var data = {};
+		var output = { object: data };
 
 		// meta is a hash used to collect geometries, materials.
 		// not providing it implies that this is the root object
@@ -8380,7 +8381,7 @@ THREE.Object3D.prototype = {
 				images: {}
 			};
 
-			data.metadata = {
+			output.metadata = {
 				version: 4.4,
 				type: 'Object',
 				generator: 'Object3D.toJSON'
@@ -8411,7 +8412,7 @@ THREE.Object3D.prototype = {
 
 		}
 
-		var output = {};
+		// var output = {};
 
 		if ( isRootObject ) {
 
@@ -8427,7 +8428,7 @@ THREE.Object3D.prototype = {
 
 		}
 
-		output.object = data;
+		// output.object = data;
 
 		return output;
 
@@ -13169,8 +13170,6 @@ THREE.JSONLoader.prototype = {
 
 		var geometry = new THREE.Geometry(),
 		scale = ( json.scale !== undefined ) ? 1.0 / json.scale : 1.0;
-
-		console.log(json);
 
 		parseModel( scale );
 

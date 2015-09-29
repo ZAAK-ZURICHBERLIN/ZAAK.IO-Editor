@@ -31,6 +31,7 @@ var EditorShortCuts = function (editor) {
 	// bind window blur
 	window.addEventListener("blur", this._onBlur, false);
 
+
 };
 
 EditorShortCuts.MODIFIERS	= ['shift', 'ctrl', 'alt', 'meta'];
@@ -59,7 +60,21 @@ EditorShortCuts.ALIAS	= {
 
 EditorShortCuts.prototype = {
 
+
 	keyCheck: function( keyCode ){
+
+		//File
+		if( this.pressed(this.shortcuts.getKey('file/exportscene' ))) {
+
+			var output = this.editor.scene.toJSON();
+			output = JSON.stringify( output, null, '\t' );
+			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+			this.exportString( output, 'scene.json' );;
+
+		}
+		
+
 
 		//History
 		//Undo
@@ -117,6 +132,28 @@ EditorShortCuts.prototype = {
 		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
 		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
 
+	},
+
+	exportString: function ( output, filename ) {
+		
+		//export scnee hack
+		var link = document.createElement( 'a' );
+		link.style.display = 'none';
+		document.body.appendChild( link ); // Firefox workaround, see #6594
+
+		var blob = new Blob( [ output ], { type: 'text/plain' } );
+		var objectURL = URL.createObjectURL( blob );
+
+		link.href = objectURL;
+		link.download = filename || 'data.json';
+		link.target = '_blank';
+
+		var event = document.createEvent("MouseEvents");
+		event.initMouseEvent(
+			"click", true, false, window, 0, 0, 0, 0, 0
+			, false, false, false, false, 0, null
+		);
+		link.dispatchEvent(event);
 	},
 
 	/**

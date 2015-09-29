@@ -22,7 +22,7 @@ def main(argv=None):
 	parser.add_argument('--externs', action='append', default=['externs/common.js'])
 	parser.add_argument('--amd', action='store_true', default=False)
 	parser.add_argument('--minify', action='store_true', default=False)
-	parser.add_argument('--output', default='../../build/editor.js')
+	parser.add_argument('--output', default='../../editor/EDITOR/src/editor.js')
 	parser.add_argument('--sourcemaps', action='store_true', default=False)
 
 	args = parser.parse_args()

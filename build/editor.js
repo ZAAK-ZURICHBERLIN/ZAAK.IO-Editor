@@ -22000,9 +22000,9 @@ var Loader = function ( editor ) {
 
 	var handleJSON = function ( data, file, filename ) {
 
-		data.metadata = data.object.metadata;
+		// data.metadata = data.object.metadata;
 
-		delete data.object.metadata;
+		// delete data.object.metadata;
 
 		if ( data.metadata === undefined ) { // 2.0
 
@@ -23063,24 +23063,29 @@ Menubar.Plus = function ( editor ) {
 
 	var title = new UI.Panel();
 	title.setClass( 'title' );
-	title.setTextContent( 'Plus' );
-	container.add( title );
-
-	var options = new UI.Panel();
-	options.setClass( 'options' );
-	container.add( options );
-
-	// Source code
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Return to ZAAK Plus' );
-	option.onClick( function () {
+	title.setTextContent( 'Exit' );
+	title.onClick( function () {
 
 		window.open( 'http://zaak.io' )
 
 	} );
-	options.add( option );
+	container.add( title );
+
+	// var options = new UI.Panel();
+	// options.setClass( 'options' );
+	// container.add( options );
+
+	// // Source code
+
+	// var option = new UI.Panel();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Return to ZAAK Plus' );
+	// option.onClick( function () {
+
+	// 	window.open( 'http://zaak.io' )
+
+	// } );
+	// options.add( option );
 	return container;
 
 };
@@ -28105,6 +28110,11 @@ var EditorShortCuts = function (editor) {
 	// bind window blur
 	window.addEventListener("blur", this._onBlur, false);
 
+	//export scnee hack
+	var link = document.createElement( 'a' );
+	link.style.display = 'none';
+	document.body.appendChild( link ); // Firefox workaround, see #6594
+
 };
 
 EditorShortCuts.MODIFIERS	= ['shift', 'ctrl', 'alt', 'meta'];
@@ -28133,7 +28143,21 @@ EditorShortCuts.ALIAS	= {
 
 EditorShortCuts.prototype = {
 
+
 	keyCheck: function( keyCode ){
+
+		//File
+		if( this.pressed(this.shortcuts.getKey('file/exportscene' ))) {
+
+			var output = this.editor.scene.toJSON();
+			output = JSON.stringify( output, null, '\t' );
+			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+			exportString( output, 'scene.json' );;
+
+		}
+		
+
 
 		//History
 		//Undo
@@ -28191,6 +28215,23 @@ EditorShortCuts.prototype = {
 		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
 		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
 
+	},
+
+	exportString: function ( output, filename ) {
+
+		var blob = new Blob( [ output ], { type: 'text/plain' } );
+		var objectURL = URL.createObjectURL( blob );
+
+		link.href = objectURL;
+		link.download = filename || 'data.json';
+		link.target = '_blank';
+
+		var event = document.createEvent("MouseEvents");
+		event.initMouseEvent(
+			"click", true, false, window, 0, 0, 0, 0, 0
+			, false, false, false, false, 0, null
+		);
+		link.dispatchEvent(event);
 	},
 
 	/**
@@ -28297,6 +28338,8 @@ var EditorShortCutsList = function () {
 	var name = 'threejs-editor-shortcuts';
 
 	var storage = {
+
+		'file/exportscene':"ctrl+e",
 
 		'history/undo':"ctrl+z",
 		'history/redo':"ctrl+y",

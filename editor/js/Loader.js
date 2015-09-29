@@ -358,9 +358,9 @@ var Loader = function ( editor ) {
 
 	var handleJSON = function ( data, file, filename ) {
 
-		data.metadata = data.object.metadata;
+		// data.metadata = data.object.metadata;
 
-		delete data.object.metadata;
+		// delete data.object.metadata;
 
 		if ( data.metadata === undefined ) { // 2.0
 
