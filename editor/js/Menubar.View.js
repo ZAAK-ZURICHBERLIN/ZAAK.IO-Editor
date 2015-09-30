@@ -44,6 +44,7 @@ Menubar.View = function ( editor ) {
 		editor.isolate();
 
 	} );
+	options.add( option );
 
 	options.add( new UI.HorizontalRule() );
 
@@ -53,8 +54,8 @@ Menubar.View = function ( editor ) {
 	option.setTextContent( 'Light theme' );
 	option.onClick( function () {
 
-		editor.setTheme( 'css/light.css' );
-		editor.config.setKey( 'theme', THEME_LIGHT );
+		editor.setTheme( THEME_LIGHT );
+		editor.config.setKey( 'theme', "THEME_LIGHT" );
 		editor.hide();
 
 	} );
@@ -67,8 +68,8 @@ Menubar.View = function ( editor ) {
 	option.setTextContent( 'Dark theme' );
 	option.onClick( function () {
 
-		editor.setTheme( 'css/dark.css' );
-		editor.config.setKey( 'theme', THEME_DARK );
+		editor.setTheme( THEME_DARK );
+		editor.config.setKey( 'theme', "THEME_DARK" );
 		editor.unhideAll();
 
 	} );

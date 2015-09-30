@@ -105,6 +105,8 @@ var Editor = function (shortcuts) {
 	this.selected = null;
 	this.helpers = {};
 
+	this.isolationMode = false;
+
 };
 
 Editor.prototype = {
@@ -172,7 +174,7 @@ Editor.prototype = {
 
 	cloneObject: function(){
 
-		var object = editor.selected;
+		var object = this.selected;
 
 		if( object === null ) return;
 
@@ -180,8 +182,8 @@ Editor.prototype = {
 
 		object = object.clone();
 
-		editor.addObject( object );
-		editor.select( object );
+		this.addObject( object );
+		this.select( object );
 	},
 
 	destoryCurrent: function(){
@@ -478,19 +480,24 @@ Editor.prototype = {
 		if(this.selected !== null){
 			this.scene.traverse( function ( child ) {
 
-				if ( child.parent !== undefined //don't hide scene
-					&& !(child instanceof THREE.Light // dont hide lights
-					)){ 
+				console.log(child.name);
+				if ( !(child instanceof THREE.Light )){ 
+					if(child.name !== "Scene" ){
+					
 					child.visible = mode;
+					}
 				}
 
 			} );
 
-			this.selected.traverse( function ( child2 ) { //Show all chilrden
+			console.log(this.selected.name);
+			this.selected.visible = true;
 
-				child2.visible = true;
+			// this.selected.traverse( function ( child2 ) { //Show all chilrden
 
-			} );
+			// 	child2.visible = true;
+
+			// } );
 
 			//TODO: Add parent iteration so all parents of an object stay visible and don't hide the child
 
@@ -560,6 +567,7 @@ Editor.prototype = {
 
 		var loader = new THREE.ObjectLoader();
 
+
 		// backwards
 
 		if ( json.scene === undefined ) {
@@ -582,8 +590,17 @@ Editor.prototype = {
 		this.setScene( loader.parse( json.scene ) );
 		this.scripts = json.scripts;
 
-		// document.getElementById( "preloader" ).style.display = "none";
+		// console.log(json.background);
+		if(json.project.background != undefined){
+		
+			console.log("BG Found");
+			this.signals.bgColorChanged.dispatch(json.project.background);
+		}
 
+		//Meh
+		this.signals.saveProject.dispatch();
+
+		// document.getElementById( "preloader" ).style.display = "none";
 
 	},
 
@@ -594,6 +611,9 @@ Editor.prototype = {
 		return {
 
 			project: {
+						// editor.config.setKey( 'backgroundColor', bgColor);
+
+				background: this.config.getKey('backgroundColor')
 				// vr: this.config.getKey( 'project/vr' )
 			},
 			camera: this.camera.toJSON(),

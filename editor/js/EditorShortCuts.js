@@ -128,9 +128,9 @@ EditorShortCuts.prototype = {
 		if( this.pressed(this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'left' );
 		if( this.pressed(this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'front' );
 
-		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/top' ))) this.editor.signals.cameraPositionSnap.dispatch( 'bottom' );
-		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
-		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
+		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/top' ))) this.editor.signals.cameraPositionSnap.dispatch( 'bottom' );
+		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
+		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
 
 	},
 

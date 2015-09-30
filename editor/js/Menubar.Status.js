@@ -28,8 +28,11 @@ Menubar.Status = function ( editor ) {
 	title.setTextContent( 'Size: unknown' );
 
 	editor.storage.size( function (size){
-					title.setTextContent( "Size : " + size + "/100Mb");
-					// title.setWidth(size);
+
+				var _size = (size !== null) ? size : "0";
+
+				title.setTextContent( "Size : " + _size + "/50Mb");
+				// title.setWidth(size);
 
 		});
 
@@ -46,17 +49,8 @@ Menubar.Status = function ( editor ) {
 	saveButton.setTextContent( 'Save' );
 	saveButton.onClick( function() {
 
-		editor.storage.size( function (size){
-					title.setTextContent( "Size : " + size + "/100Mb");
-					// title.setWidth(size);
-
-		});
-
-		// console.log(editor.storage.dbSize);
-		// title.setTextContent( "Size : " + editor.storage.dbSize + "/100Mb");
-
 		editor.signals.saveProject.dispatch();
-		// console.log("savebutton");
+
 
 	} );
 	container.add(saveButton);
@@ -67,8 +61,11 @@ Menubar.Status = function ( editor ) {
 	// container.add( title );
 
 	editor.signals.unsaveProject.add( function () {
+		// e05e60 / saving : #333 / save : #2cbb84
 
-		saveButton.setBackgroundColor('crimson').setColor('white').setBorder('none');
+		saveButton.setBackgroundColor('#e05e60').setColor('white').setBorder('none');
+		// saveButton.setBackgroundColor('crimson').setColor('white').setBorder('none');
+
 		// saveButton.setColor('white');
 
 	} );
@@ -76,7 +73,7 @@ Menubar.Status = function ( editor ) {
 	editor.signals.savingStarted.add( function () {
 
 		// title.setTextDecoration( 'underline' );
-		saveButton.setBackgroundColor('lightgoldenrodyellow').setColor('darkslategrey');
+		saveButton.setBackgroundColor('#f2f2f2').setColor('darkslategrey');
 		//Create a "currently saving overlay"
 		// document.getElementById((saveOverlay).style.display = 'initial';
 
@@ -84,10 +81,12 @@ Menubar.Status = function ( editor ) {
 
 	editor.signals.savingFinished.add( function () {
 
-		saveButton.setBackgroundColor('lightgreen');
-		// 	title.setTextDecoration( 'none' );
-		// document.getElementById(saveOverlay).style.display = 'none';
+		saveButton.setBackgroundColor('#2cbb84');
+		
+		editor.storage.size( function (size){
+			title.setTextContent( "Size : " + size + "/50Mb");
 
+		});
 	} );
 
 	return container;

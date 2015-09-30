@@ -20976,6 +20976,8 @@ var Editor = function (shortcuts) {
 	this.selected = null;
 	this.helpers = {};
 
+	this.isolationMode = false;
+
 };
 
 Editor.prototype = {
@@ -21043,7 +21045,7 @@ Editor.prototype = {
 
 	cloneObject: function(){
 
-		var object = editor.selected;
+		var object = this.selected;
 
 		if( object === null ) return;
 
@@ -21051,8 +21053,8 @@ Editor.prototype = {
 
 		object = object.clone();
 
-		editor.addObject( object );
-		editor.select( object );
+		this.addObject( object );
+		this.select( object );
 	},
 
 	destoryCurrent: function(){
@@ -21349,19 +21351,24 @@ Editor.prototype = {
 		if(this.selected !== null){
 			this.scene.traverse( function ( child ) {
 
-				if ( child.parent !== undefined //don't hide scene
-					&& !(child instanceof THREE.Light // dont hide lights
-					)){ 
+				console.log(child.name);
+				if ( !(child instanceof THREE.Light )){ 
+					if(child.name !== "Scene" ){
+					
 					child.visible = mode;
+					}
 				}
 
 			} );
 
-			this.selected.traverse( function ( child2 ) { //Show all chilrden
+			console.log(this.selected.name);
+			this.selected.visible = true;
 
-				child2.visible = true;
+			// this.selected.traverse( function ( child2 ) { //Show all chilrden
 
-			} );
+			// 	child2.visible = true;
+
+			// } );
 
 			//TODO: Add parent iteration so all parents of an object stay visible and don't hide the child
 
@@ -21431,6 +21438,7 @@ Editor.prototype = {
 
 		var loader = new THREE.ObjectLoader();
 
+
 		// backwards
 
 		if ( json.scene === undefined ) {
@@ -21453,8 +21461,17 @@ Editor.prototype = {
 		this.setScene( loader.parse( json.scene ) );
 		this.scripts = json.scripts;
 
-		// document.getElementById( "preloader" ).style.display = "none";
+		// console.log(json.background);
+		if(json.project.background != undefined){
+		
+			console.log("BG Found");
+			this.signals.bgColorChanged.dispatch(json.project.background);
+		}
 
+		//Meh
+		this.signals.saveProject.dispatch();
+
+		// document.getElementById( "preloader" ).style.display = "none";
 
 	},
 
@@ -21465,6 +21482,9 @@ Editor.prototype = {
 		return {
 
 			project: {
+						// editor.config.setKey( 'backgroundColor', bgColor);
+
+				background: this.config.getKey('backgroundColor')
 				// vr: this.config.getKey( 'project/vr' )
 			},
 			camera: this.camera.toJSON(),
@@ -22138,7 +22158,7 @@ var Menubar = function ( editor ) {
 	container.add( new Menubar.Light( editor ) );
 	container.add( new Menubar.Navigation( editor ) );
 	container.add( new Menubar.View( editor ) );
-	container.add( new Menubar.Play( editor ) );
+	// container.add( new Menubar.Play( editor ) );
 	container.add( new Menubar.Plus( editor ) );
 
 	container.add( new Menubar.Status( editor ) );
@@ -22208,38 +22228,38 @@ Menubar.File = function ( editor ) {
 	} );
 	options.add( option );
 
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Reload from LocalStorage' );
-	option.onClick( function () {
+	// var option = new UI.Panel();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Reload from LocalStorage' );
+	// option.onClick( function () {
 
-		var file = null;
-		var hash = window.location.hash;
+	// 	var file = null;
+	// 	var hash = window.location.hash;
 
-		if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
-		if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
+	// 	if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
+	// 	if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
 
-		if ( file !== null ) {
+	// 	if ( file !== null ) {
 
-			if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
+	// 		if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
 
-				var loader = new THREE.XHRLoader();
-				loader.crossOrigin = '';
-				loader.load( file, function ( text ) {
+	// 			var loader = new THREE.XHRLoader();
+	// 			loader.crossOrigin = '';
+	// 			loader.load( file, function ( text ) {
 
-					var json = JSON.parse( text );
+	// 				var json = JSON.parse( text );
 
-					editor.clear();
-					editor.fromJSON( json );
+	// 				editor.clear();
+	// 				editor.fromJSON( json );
 
-				} );
+	// 			} );
 
-			}
+	// 		}
 
-		}
+	// 	}
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 
 	//
@@ -22346,6 +22366,8 @@ Menubar.Edit = function ( editor ) {
 	} );
 	options.add( option );
 
+	options.add( new UI.HorizontalRule() );
+
 	//Translate
 	var option = new UI.Panel();
 	option.setClass( 'option' );
@@ -22355,6 +22377,7 @@ Menubar.Edit = function ( editor ) {
 		signals.transformModeChanged.dispatch( 'translate' );
 
 	} );
+	options.add( option );
 
 	//Scale
 	var option = new UI.Panel();
@@ -22376,6 +22399,9 @@ Menubar.Edit = function ( editor ) {
 		signals.transformModeChanged.dispatch( 'rotate' );
 
 	} );
+	options.add( option );
+
+	options.add( new UI.HorizontalRule() );
 
 	//TODO: Put the action to a different place
 	var option = new UI.Panel();
@@ -22685,8 +22711,8 @@ Menubar.Add = function ( editor ) {
 
 		//Media Object
 		var radius = 120;
-		var widthSegments = 64;
-		var heightSegments = 64;
+		var widthSegments = 32;
+		var heightSegments = 32;
 		var phiStart = 0;
 		var phiLength = Math.PI * 2;
 		var thetaStart = 0;
@@ -22695,35 +22721,35 @@ Menubar.Add = function ( editor ) {
 		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
 		THREE.ImageUtils.crossOrigin = '';
 		var texture = THREE.ImageUtils.loadTexture('http://upload.wikimedia.org/wikipedia/commons/1/18/Rheingauer_Dom%2C_Geisenheim%2C_360_Panorama_%28Equirectangular_projection%29.jpg');
-		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial({map: texture, side: THREE.FrontSide, needsUpdate: true}) );
+		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({map: texture, side: THREE.BackSide, needsUpdate: true}) );
 
 		mediaObject.name = 'MediaSphere';
 
 
 		editor.addObject( mediaObject );
-		mediaObject.scale.set(-1,1,1);
+		mediaObject.scale.set(1,1,1);
 
-		//TargetObject
-		var radius = 15;
-		var widthSegments = 10;
-		var heightSegments = 10;
-		var phiStart = 0;
-		var phiLength = Math.PI * 2;
-		var thetaStart = 0;
-		var thetaLength = Math.PI;
+		// //TargetObject
+		// var radius = 15;
+		// var widthSegments = 10;
+		// var heightSegments = 10;
+		// var phiStart = 0;
+		// var phiLength = Math.PI * 2;
+		// var thetaStart = 0;
+		// var thetaLength = Math.PI;
 
-		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: true, depthWrite: true, needsUpdate: true}) );
-		// var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: false, depthWrite: false, needsUpdate: true}) );
+		// var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
+		// var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: true, depthWrite: true, needsUpdate: true}) );
+		// // var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: false, depthWrite: false, needsUpdate: true}) );
 
-		mesh.name = 'Target_name';
+		// mesh.name = 'Target_name';
 
-		editor.addObject( mesh );
-		mesh.scale.set(-1,1,1);
+		// editor.addObject( mesh );
+		// mesh.scale.set(-1,1,1);
 		
 		editor.select( mediaObject );
 
-		editor.moveObject(mesh, mediaObject);
+		// editor.moveObject(mesh, mediaObject);
 
 	} );
 	options.add( option );
@@ -22821,6 +22847,7 @@ Menubar.View = function ( editor ) {
 		editor.isolate();
 
 	} );
+	options.add( option );
 
 	options.add( new UI.HorizontalRule() );
 
@@ -22830,8 +22857,8 @@ Menubar.View = function ( editor ) {
 	option.setTextContent( 'Light theme' );
 	option.onClick( function () {
 
-		editor.setTheme( 'css/light.css' );
-		editor.config.setKey( 'theme', THEME_LIGHT );
+		editor.setTheme( THEME_LIGHT );
+		editor.config.setKey( 'theme', "THEME_LIGHT" );
 		editor.hide();
 
 	} );
@@ -22844,8 +22871,8 @@ Menubar.View = function ( editor ) {
 	option.setTextContent( 'Dark theme' );
 	option.onClick( function () {
 
-		editor.setTheme( 'css/dark.css' );
-		editor.config.setKey( 'theme', THEME_DARK );
+		editor.setTheme( THEME_DARK );
+		editor.config.setKey( 'theme', "THEME_DARK" );
 		editor.unhideAll();
 
 	} );
@@ -23043,8 +23070,11 @@ Menubar.Status = function ( editor ) {
 	title.setTextContent( 'Size: unknown' );
 
 	editor.storage.size( function (size){
-					title.setTextContent( "Size : " + size + "/100Mb");
-					// title.setWidth(size);
+
+				var _size = (size !== null) ? size : "0";
+
+				title.setTextContent( "Size : " + _size + "/50Mb");
+				// title.setWidth(size);
 
 		});
 
@@ -23061,17 +23091,8 @@ Menubar.Status = function ( editor ) {
 	saveButton.setTextContent( 'Save' );
 	saveButton.onClick( function() {
 
-		editor.storage.size( function (size){
-					title.setTextContent( "Size : " + size + "/100Mb");
-					// title.setWidth(size);
-
-		});
-
-		// console.log(editor.storage.dbSize);
-		// title.setTextContent( "Size : " + editor.storage.dbSize + "/100Mb");
-
 		editor.signals.saveProject.dispatch();
-		// console.log("savebutton");
+
 
 	} );
 	container.add(saveButton);
@@ -23082,8 +23103,11 @@ Menubar.Status = function ( editor ) {
 	// container.add( title );
 
 	editor.signals.unsaveProject.add( function () {
+		// e05e60 / saving : #333 / save : #2cbb84
 
-		saveButton.setBackgroundColor('crimson').setColor('white').setBorder('none');
+		saveButton.setBackgroundColor('#e05e60').setColor('white').setBorder('none');
+		// saveButton.setBackgroundColor('crimson').setColor('white').setBorder('none');
+
 		// saveButton.setColor('white');
 
 	} );
@@ -23091,7 +23115,7 @@ Menubar.Status = function ( editor ) {
 	editor.signals.savingStarted.add( function () {
 
 		// title.setTextDecoration( 'underline' );
-		saveButton.setBackgroundColor('lightgoldenrodyellow').setColor('darkslategrey');
+		saveButton.setBackgroundColor('#f2f2f2').setColor('darkslategrey');
 		//Create a "currently saving overlay"
 		// document.getElementById((saveOverlay).style.display = 'initial';
 
@@ -23099,10 +23123,12 @@ Menubar.Status = function ( editor ) {
 
 	editor.signals.savingFinished.add( function () {
 
-		saveButton.setBackgroundColor('lightgreen');
-		// 	title.setTextDecoration( 'none' );
-		// document.getElementById(saveOverlay).style.display = 'none';
+		saveButton.setBackgroundColor('#2cbb84');
+		
+		editor.storage.size( function (size){
+			title.setTextContent( "Size : " + size + "/50Mb");
 
+		});
 	} );
 
 	return container;
@@ -23167,7 +23193,7 @@ var Sidebar = function ( editor ) {
 	container.add( new Sidebar.Geometry( editor ) );
 	container.add( new Sidebar.Material( editor ) );
 	container.add( new Sidebar.Animation( editor ) );
-	container.add( new Sidebar.Script( editor ) );
+	// container.add( new Sidebar.Script( editor ) );
 
 	return container;
 
@@ -23252,18 +23278,18 @@ Sidebar.Project = function ( editor ) {
 
 	// VR
 
-	var vrRow = new UI.Panel();
-	var vr = new UI.Checkbox( editor.config.getKey( 'project/vr' ) ).setLeft( '100px' ).onChange( function () {
+	// var vrRow = new UI.Panel();
+	// var vr = new UI.Checkbox( editor.config.getKey( 'project/vr' ) ).setLeft( '100px' ).onChange( function () {
 
-		editor.config.setKey( 'project/vr', this.getValue() );
-		// updateRenderer();
+	// 	editor.config.setKey( 'project/vr', this.getValue() );
+	// 	// updateRenderer();
 
-	} );
+	// } );
 
-	vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
-	vrRow.add( vr );
+	// vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
+	// vrRow.add( vr );
 
-	container.add( vrRow );
+	// container.add( vrRow );
 
 	//
 
@@ -27321,7 +27347,7 @@ var Toolbar = function ( editor ) {
 	buttons.add( new UI.Text( 'Grid: ' ) );
 	buttons.add( grid );
 
-	var snap = new UI.Checkbox( false ).onChange( update );
+	var snap = new UI.Checkbox( true ).onChange( update );
 	buttons.add( snap );
 	buttons.add( new UI.Text( 'snap' ) );
 
@@ -27344,6 +27370,9 @@ var Toolbar = function ( editor ) {
 		signals.showGridChanged.dispatch( showGrid.getValue() );
 		signals.showManChanged.dispatch( showMan.getValue() );
 	}
+
+	signals.snapChanged.dispatch( snap.getValue() === true ? grid.getValue() : null );
+
 
 	return container;
 
@@ -27388,7 +27417,10 @@ var Viewport = function ( editor ) {
 		function ( geometry, materials ) {
 			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
 			sceneHelpers.add( vrHuman );
+
+			vrHuman.rotation.set(0,1.57,0);
 		}
+
 	);
 
 
@@ -28003,6 +28035,7 @@ var Viewport = function ( editor ) {
 		requestAnimationFrame( animate );
 
 		// animations
+		// console.log(snap)
 
 		// editor.storage.size();
 
@@ -28267,9 +28300,9 @@ EditorShortCuts.prototype = {
 		if( this.pressed(this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'left' );
 		if( this.pressed(this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'front' );
 
-		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/top' ))) this.editor.signals.cameraPositionSnap.dispatch( 'bottom' );
-		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
-		if( this.pressed("alt+"+this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
+		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/top' ))) this.editor.signals.cameraPositionSnap.dispatch( 'bottom' );
+		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
+		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
 
 	},
 
@@ -28612,7 +28645,7 @@ Menubar.Light = function ( editor ) {
 	option.setTextContent( 'AmbientLight' );
 	option.onClick( function() {
 
-		var color = 0x222222;
+		var color = 0xf2f2f2;
 
 		var light = new THREE.AmbientLight( color );
 		light.name = 'AmbientLight ' + ( ++ lightCount );

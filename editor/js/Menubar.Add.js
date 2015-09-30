@@ -259,8 +259,8 @@ Menubar.Add = function ( editor ) {
 
 		//Media Object
 		var radius = 120;
-		var widthSegments = 64;
-		var heightSegments = 64;
+		var widthSegments = 32;
+		var heightSegments = 32;
 		var phiStart = 0;
 		var phiLength = Math.PI * 2;
 		var thetaStart = 0;
@@ -269,35 +269,35 @@ Menubar.Add = function ( editor ) {
 		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
 		THREE.ImageUtils.crossOrigin = '';
 		var texture = THREE.ImageUtils.loadTexture('http://upload.wikimedia.org/wikipedia/commons/1/18/Rheingauer_Dom%2C_Geisenheim%2C_360_Panorama_%28Equirectangular_projection%29.jpg');
-		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial({map: texture, side: THREE.FrontSide, needsUpdate: true}) );
+		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({map: texture, side: THREE.BackSide, needsUpdate: true}) );
 
 		mediaObject.name = 'MediaSphere';
 
 
 		editor.addObject( mediaObject );
-		mediaObject.scale.set(-1,1,1);
+		mediaObject.scale.set(1,1,1);
 
-		//TargetObject
-		var radius = 15;
-		var widthSegments = 10;
-		var heightSegments = 10;
-		var phiStart = 0;
-		var phiLength = Math.PI * 2;
-		var thetaStart = 0;
-		var thetaLength = Math.PI;
+		// //TargetObject
+		// var radius = 15;
+		// var widthSegments = 10;
+		// var heightSegments = 10;
+		// var phiStart = 0;
+		// var phiLength = Math.PI * 2;
+		// var thetaStart = 0;
+		// var thetaLength = Math.PI;
 
-		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: true, depthWrite: true, needsUpdate: true}) );
-		// var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: false, depthWrite: false, needsUpdate: true}) );
+		// var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
+		// var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: true, depthWrite: true, needsUpdate: true}) );
+		// // var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: false, depthWrite: false, needsUpdate: true}) );
 
-		mesh.name = 'Target_name';
+		// mesh.name = 'Target_name';
 
-		editor.addObject( mesh );
-		mesh.scale.set(-1,1,1);
+		// editor.addObject( mesh );
+		// mesh.scale.set(-1,1,1);
 		
 		editor.select( mediaObject );
 
-		editor.moveObject(mesh, mediaObject);
+		// editor.moveObject(mesh, mediaObject);
 
 	} );
 	options.add( option );

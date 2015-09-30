@@ -38,6 +38,8 @@ Menubar.Edit = function ( editor ) {
 	} );
 	options.add( option );
 
+	options.add( new UI.HorizontalRule() );
+
 	//Translate
 	var option = new UI.Panel();
 	option.setClass( 'option' );
@@ -47,6 +49,7 @@ Menubar.Edit = function ( editor ) {
 		signals.transformModeChanged.dispatch( 'translate' );
 
 	} );
+	options.add( option );
 
 	//Scale
 	var option = new UI.Panel();
@@ -68,6 +71,9 @@ Menubar.Edit = function ( editor ) {
 		signals.transformModeChanged.dispatch( 'rotate' );
 
 	} );
+	options.add( option );
+
+	options.add( new UI.HorizontalRule() );
 
 	//TODO: Put the action to a different place
 	var option = new UI.Panel();

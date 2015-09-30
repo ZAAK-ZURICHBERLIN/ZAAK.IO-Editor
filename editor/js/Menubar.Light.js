@@ -136,7 +136,7 @@ Menubar.Light = function ( editor ) {
 	option.setTextContent( 'AmbientLight' );
 	option.onClick( function() {
 
-		var color = 0x222222;
+		var color = 0xf2f2f2;
 
 		var light = new THREE.AmbientLight( color );
 		light.name = 'AmbientLight ' + ( ++ lightCount );

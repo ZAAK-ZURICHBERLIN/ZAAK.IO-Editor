@@ -42,7 +42,7 @@ var Toolbar = function ( editor ) {
 	buttons.add( new UI.Text( 'Grid: ' ) );
 	buttons.add( grid );
 
-	var snap = new UI.Checkbox( false ).onChange( update );
+	var snap = new UI.Checkbox( true ).onChange( update );
 	buttons.add( snap );
 	buttons.add( new UI.Text( 'snap' ) );
 
@@ -65,6 +65,9 @@ var Toolbar = function ( editor ) {
 		signals.showGridChanged.dispatch( showGrid.getValue() );
 		signals.showManChanged.dispatch( showMan.getValue() );
 	}
+
+	signals.snapChanged.dispatch( snap.getValue() === true ? grid.getValue() : null );
+
 
 	return container;
 

@@ -35,7 +35,10 @@ var Viewport = function ( editor ) {
 		function ( geometry, materials ) {
 			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
 			sceneHelpers.add( vrHuman );
+
+			vrHuman.rotation.set(0,1.57,0);
 		}
+
 	);
 
 
@@ -650,6 +653,7 @@ var Viewport = function ( editor ) {
 		requestAnimationFrame( animate );
 
 		// animations
+		// console.log(snap)
 
 		// editor.storage.size();
 
