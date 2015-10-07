@@ -530,6 +530,8 @@ Editor.prototype = {
 
 		this.signals.editorCleared.dispatch();
 
+		this.signals.bgColorChanged.dispatch(0x333333);
+
 	},
 
 	play: function ( ) {
@@ -595,6 +597,10 @@ Editor.prototype = {
 		
 			console.log("BG Found");
 			this.signals.bgColorChanged.dispatch(json.project.background);
+		}else{
+
+			console.log("initiate with gray bg");
+			this.signals.bgColorChanged.dispatch(0x333333);
 		}
 
 		//Meh

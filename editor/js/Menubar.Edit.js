@@ -78,7 +78,7 @@ Menubar.Edit = function ( editor ) {
 	//TODO: Put the action to a different place
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Clone ( ' + editor.shortcuts.getKey( 'edit/cloneObject' ) +' )');
+	option.setTextContent( 'Clone ( ' + editor.shortcuts.getKey( 'edit/clone' ) +' )');
 	option.onClick( function () {
 
 		// var object = editor.selected;

@@ -20850,7 +20850,7 @@ var Storage = function () {
 		            	// console.log(size);
 		            	// dbSize = parseInt(size) / 1000000;
 		            	// console.log(dbSize);
-		            	size /= 1000000;
+		            	size /= 100000; // -2
 		            	size = parseInt(size);
 
 		            	callback(size,null);
@@ -21401,6 +21401,8 @@ Editor.prototype = {
 
 		this.signals.editorCleared.dispatch();
 
+		this.signals.bgColorChanged.dispatch(0x333333);
+
 	},
 
 	play: function ( ) {
@@ -21466,6 +21468,10 @@ Editor.prototype = {
 		
 			console.log("BG Found");
 			this.signals.bgColorChanged.dispatch(json.project.background);
+		}else{
+
+			console.log("initiate with gray bg");
+			this.signals.bgColorChanged.dispatch(0x333333);
 		}
 
 		//Meh
@@ -22406,7 +22412,7 @@ Menubar.Edit = function ( editor ) {
 	//TODO: Put the action to a different place
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Clone ( ' + editor.shortcuts.getKey( 'edit/cloneObject' ) +' )');
+	option.setTextContent( 'Clone ( ' + editor.shortcuts.getKey( 'edit/clone' ) +' )');
 	option.onClick( function () {
 
 		// var object = editor.selected;
@@ -23072,8 +23078,8 @@ Menubar.Status = function ( editor ) {
 	editor.storage.size( function (size){
 
 				var _size = (size !== null) ? size : "0";
-
-				title.setTextContent( "Size : " + _size + "/50Mb");
+				console.log(size);
+				title.setTextContent( "Size : " + _size/10 + "/50Mb");
 				// title.setWidth(size);
 
 		});
@@ -23126,7 +23132,7 @@ Menubar.Status = function ( editor ) {
 		saveButton.setBackgroundColor('#2cbb84');
 		
 		editor.storage.size( function (size){
-			title.setTextContent( "Size : " + size + "/50Mb");
+			title.setTextContent( "Size : " + size/10 + "/50Mb");
 
 		});
 	} );
@@ -27411,14 +27417,14 @@ var Viewport = function ( editor ) {
 	// load a resource
 	loader.load(
 		// resource URL
-		DUMMY,
-		// '3D/dummy.json',
+		// DUMMY,
+		'3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
 			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
 			sceneHelpers.add( vrHuman );
 
-			vrHuman.rotation.set(0,1.57,0);
+			vrHuman.rotation.set(0,3.14,0);
 		}
 
 	);

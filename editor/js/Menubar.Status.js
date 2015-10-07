@@ -30,8 +30,8 @@ Menubar.Status = function ( editor ) {
 	editor.storage.size( function (size){
 
 				var _size = (size !== null) ? size : "0";
-
-				title.setTextContent( "Size : " + _size + "/50Mb");
+				console.log(size);
+				title.setTextContent( "Size : " + _size/10 + "/50Mb");
 				// title.setWidth(size);
 
 		});
@@ -84,7 +84,7 @@ Menubar.Status = function ( editor ) {
 		saveButton.setBackgroundColor('#2cbb84');
 		
 		editor.storage.size( function (size){
-			title.setTextContent( "Size : " + size + "/50Mb");
+			title.setTextContent( "Size : " + size/10 + "/50Mb");
 
 		});
 	} );
