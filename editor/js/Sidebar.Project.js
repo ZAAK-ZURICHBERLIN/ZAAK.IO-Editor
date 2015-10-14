@@ -64,7 +64,7 @@ Sidebar.Project = function ( editor ) {
 	var rendererAntialias = new UI.Checkbox( editor.config.getKey( 'project/renderer/antialias' ) ).setLeft( '100px' ).onChange( function () {
 
 		editor.config.setKey( 'project/renderer/antialias', this.getValue() );
-		// updateRenderer();
+		updateRenderer();
 
 	} );
 
@@ -75,26 +75,41 @@ Sidebar.Project = function ( editor ) {
 
 	// VR
 
-	var vrRow = new UI.Panel();
-	var vr = new UI.Checkbox( editor.config.getKey( 'project/vr' ) ).setLeft( '100px' ).onChange( function () {
+	// var vrRow = new UI.Panel();
+	// var vr = new UI.Checkbox( editor.config.getKey( 'project/vr' ) ).setLeft( '100px' ).onChange( function () {
 
-		editor.config.setKey( 'project/vr', this.getValue() );
-		// updateRenderer();
+	// 	editor.config.setKey( 'project/vr', this.getValue() );
+	// 	// updateRenderer();
 
-	} );
+	// } );
 
-	vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
-	vrRow.add( vr );
+	// vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
+	// vrRow.add( vr );
 
-	container.add( vrRow );
+	// container.add( vrRow );
 
 	//
 
 	function updateRenderer() {
 
-		signals.rendererChanged.dispatch( rendererType.getValue(), rendererAntialias.getValue() );
+		createRenderer( rendererType.getValue(), rendererAntialias.getValue() );
 
 	}
+
+	function createRenderer( type, antialias ) {
+
+		if ( type === 'WebGLRenderer' && System.support.webgl === false ) {
+
+			type = 'CanvasRenderer';
+
+		}
+
+		var renderer = new rendererTypes[ type ]( { antialias: antialias } );
+		signals.rendererChanged.dispatch( renderer );
+
+	}
+
+	createRenderer( editor.config.getKey( 'project/renderer' ), editor.config.getKey( 'project/renderer/antialias' ) );
 
 	return container;
 

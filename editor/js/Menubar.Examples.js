@@ -19,10 +19,11 @@ Menubar.Examples = function ( editor ) {
 	// Examples
 
 	var items = [
-		{ title: 'Arkanoid', file: 'arkanoid.app.json' },
-		{ title: 'Camera', file: 'camera.app.json' },
-		{ title: 'Particles', file: 'particles.app.json' },
-		{ title: 'Pong', file: 'pong.app.json' }
+		{ title: 'Head Studies', file: 'arkanoid.app.json' },
+		{ title: 'Architecture Demo', file: 'camera.app.json' },
+		{ title: 'Photo Book', file: 'particles.app.json' },
+		{ title: 'Interactive Campaign Demo', file: 'pong.app.json' },
+		{ title: 'Sam Default', file: 'scene.json' }
 	];
 
 	var loader = new THREE.XHRLoader();

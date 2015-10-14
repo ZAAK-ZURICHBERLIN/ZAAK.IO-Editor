@@ -8,14 +8,13 @@ var Config = function () {
 
 	var storage = {
 		'autosave': true,
-		'theme': 'css/light.css',
+		'theme': 'css/dark.css',
+
+		'backgroundColor': 0xcccccc,
 
 		'project/renderer': 'WebGLRenderer',
 		'project/renderer/antialias': true,
 		'project/vr': false,
-
-		'camera/position': [ 500, 250, 500 ],
-		'camera/target': [ 0, 0, 0 ],
 
 		'ui/sidebar/animation/collapsed': true,
 		'ui/sidebar/geometry/collapsed': true,

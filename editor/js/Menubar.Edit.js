@@ -7,7 +7,7 @@ Menubar.Edit = function ( editor ) {
 	var container = new UI.Panel();
 	container.setClass( 'menu' );
 
-	var title = new UI.Panel();
+	var title = new UI.Panel();	
 	title.setClass( 'title' );
 	title.setTextContent( 'Edit' );
 	container.add( title );
@@ -16,42 +16,105 @@ Menubar.Edit = function ( editor ) {
 	options.setClass( 'options' );
 	container.add( options );
 
-	// Clone
-
+	//Undo
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Clone' );
+	option.setTextContent( 'Undo ( ' + editor.shortcuts.getKey( 'history/undo' ) +' )' );
 	option.onClick( function () {
 
-		var object = editor.selected;
+		editor.history.undo();
 
-		if ( object.parent === undefined ) return; // avoid cloning the camera or scene
+	} );
+	options.add( option );	
 
-		object = object.clone();
+	//Redo
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Redo ( ' + editor.shortcuts.getKey( 'history/redo' ) +' )' );
+	option.onClick( function () {
 
-		editor.addObject( object );
-		editor.select( object );
+		editor.history.redo();
 
 	} );
 	options.add( option );
 
-	// Delete
+	options.add( new UI.HorizontalRule() );
 
+	//Translate
 	var option = new UI.Panel();
 	option.setClass( 'option' );
-	option.setTextContent( 'Delete' );
+	option.setTextContent( 'Translate ( ' + editor.shortcuts.getKey( 'transform/move' ) +' )' );
+	option.onClick( function () {
+
+		signals.transformModeChanged.dispatch( 'translate' );
+
+	} );
+	options.add( option );
+
+	//Scale
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Scale ( ' + editor.shortcuts.getKey( 'transform/scale' ) +' )' );
+		option.onClick( function () {
+
+		signals.transformModeChanged.dispatch( 'scale' );
+
+	} );
+	options.add( option );
+
+	//Rotate
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Rotate ( ' + editor.shortcuts.getKey( 'transform/rotate' ) +' )' );
+	option.onClick( function () {
+
+		signals.transformModeChanged.dispatch( 'rotate' );
+
+	} );
+	options.add( option );
+
+	options.add( new UI.HorizontalRule() );
+
+	//TODO: Put the action to a different place
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Clone ( ' + editor.shortcuts.getKey( 'edit/clone' ) +' )');
+	option.onClick( function () {
+
+		// var object = editor.selected;
+
+		// if ( object.parent === undefined ) return; // avoid cloning the camera or scene
+
+		// object = object.clone();
+
+		// editor.addObject( object );
+		// editor.select( object );
+		editor.cloneObject();
+
+	} );
+	options.add( option );
+
+	//TODO: Put the action to a different place
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Delete ( X )' );
 	option.onClick( function () {
 	
-		var object = editor.selected;
+		// var object = editor.selected;
 
-		if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
+		// if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
 
-		var parent = object.parent;
-		editor.removeObject( object );
-		editor.select( parent );
+		// var parent = object.parent;
+		// editor.removeObject( object );
+		// editor.select( parent );
+		editor.destoryCurrent();
 
 	} );
 	options.add( option );
+
+
+	options.add( option );
+	
 
 	return container;
 

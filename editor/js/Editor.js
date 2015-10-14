@@ -2,7 +2,7 @@
  * @author mrdoob / http://mrdoob.com/
  */
 
-var Editor = function () {
+var Editor = function (shortcuts) {
 
 	var SIGNALS = signals;
 
@@ -18,9 +18,6 @@ var Editor = function () {
 		stopPlayer: new SIGNALS.Signal(),
 
 		// actions
-
-		playAnimation: new SIGNALS.Signal(),
-		stopAnimation: new SIGNALS.Signal(),
 
 		// showDialog: new SIGNALS.Signal(),
 
@@ -65,16 +62,32 @@ var Editor = function () {
 		fogParametersChanged: new SIGNALS.Signal(),
 		windowResize: new SIGNALS.Signal(),
 
-		showGridChanged: new SIGNALS.Signal()
+		showGridChanged: new SIGNALS.Signal(),
 
+		// added by Sam
+		cameraPositionSnap: new SIGNALS.Signal(),
+		saveProject: new SIGNALS.Signal(),
+		unsaveProject: new SIGNALS.Signal(),
+		undo: new SIGNALS.Signal(),
+		redo: new SIGNALS.Signal(),
+		soundAdded: new SIGNALS.Signal(),
+		showManChanged: new SIGNALS.Signal(),
+		bgColorChanged: new SIGNALS.Signal()
 	};
 
 	this.config = new Config();
+	this.history = new History( this );
 	this.storage = new Storage();
 	this.loader = new Loader( this );
+	this.shortcuts = new EditorShortCutsList();
 
 	this.camera = new THREE.PerspectiveCamera( 50, 1, 1, 100000 );
+	this.camera.position.set( 500, 250, 500 );
+	this.camera.lookAt( new THREE.Vector3() );
 	this.camera.name = 'Camera';
+
+	this.listener = new THREE.AudioListener();
+	this.camera.add( this.listener );
 
 	this.scene = new THREE.Scene();
 	this.scene.name = 'Scene';
@@ -86,9 +99,14 @@ var Editor = function () {
 	this.materials = {};
 	this.textures = {};
 	this.scripts = {};
+	
+	this.soundCollection = new SoundCollection({cam:this.camera});
 
 	this.selected = null;
 	this.helpers = {};
+	this.nodes = {};
+
+	this.isolationMode = false;
 
 };
 
@@ -155,6 +173,34 @@ Editor.prototype = {
 
 	},
 
+	cloneObject: function(){
+
+		var object = this.selected;
+
+		if( object === null ) return;
+
+		if ( object.parent === undefined ) return; // avoid cloning the camera or scene
+
+		object = object.clone();
+
+		this.addObject( object );
+		this.select( object );
+	},
+
+	destoryCurrent: function(){
+
+		var object = this.selected;
+		console.log("hey");
+
+		if(object === null) return;
+
+		if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
+
+		var parent = object.parent;
+		this.removeObject( object );
+		this.select( null );
+	},
+
 	moveObject: function ( object, parent, before ) {
 
 		if ( parent === undefined ) {
@@ -188,7 +234,7 @@ Editor.prototype = {
 
 	removeObject: function ( object ) {
 
-		if ( object.parent === undefined ) return; // avoid deleting the camera or scene
+		if ( object.parent === null ) return; // avoid deleting the camera or scene
 
 		var scope = this;
 
@@ -238,15 +284,23 @@ Editor.prototype = {
 	},
 
 	//
+	addNode: function () {
+
+		console.log("NodeHelper")
+		pointerPos = object.position;
+		helper = new THREE.NodeHelper( new THREE.Vector3( 1, 0, 0 ), pointerPos, 10 );
+
+	},
 
 	addHelper: function () {
 
-		var geometry = new THREE.SphereGeometry( 20, 4, 2 );
-		var material = new THREE.MeshBasicMaterial( { color: 0xff0000 } );
+		var geometry = new THREE.SphereBufferGeometry( 20, 4, 2 );
+		var material = new THREE.MeshBasicMaterial( { color: 0xff0000, visible: false } );
 
 		return function ( object ) {
 
-			var helper;
+			var helper, nodes;
+			var pointerPos, targetPos = THREE.Vector3( 0, 0, 0 );
 
 			if ( object instanceof THREE.Camera ) {
 
@@ -271,19 +325,28 @@ Editor.prototype = {
 			} else if ( object instanceof THREE.SkinnedMesh ) {
 
 				helper = new THREE.SkeletonHelper( object );
+		
+			} else if( object.name == "Pointer_name"){
 
-			} else {
+			}else {
 
 				// no helper for this object type
 				return;
 
 			}
 
+
+
 			var picker = new THREE.Mesh( geometry, material );
 			picker.name = 'picker';
 			picker.userData.object = object;
-			picker.visible = false;
 			helper.add( picker );
+
+			// if(targetPos != null){
+			// 	console.log("ArrowHelper Yeah");
+			// 	helper = new THREE.ArrowHelper( targetPos-pointerPos, pointerPos, 10 );
+			// }
+			if(object.name == "Pointer_name" )
 
 			this.sceneHelpers.add( helper );
 			this.helpers[ object.id ] = helper;
@@ -409,7 +472,62 @@ Editor.prototype = {
 
 	},
 
+	hide: function(){
+
+		if(this.selected !== null){
+			this.selected.visible = false;
+			this.deselect();
+		}
+	},
+
+	unhideAll: function(){
+
+		this.scene.traverse( function ( child ) {
+
+			child.visible = true;
+
+		} );
+
+		this.signals.sceneGraphChanged.dispatch();
+	},
+
+	isolate: function(){
+
+		var mode = !this.isolationMode;
+		this.isolationMode = mode;
+
+		if(this.selected !== null){
+			this.scene.traverse( function ( child ) {
+
+				console.log(child.name);
+				if ( !(child instanceof THREE.Light )){ 
+					if(child.name !== "Scene" ){
+					
+					child.visible = mode;
+					}
+				}
+
+			} );
+
+			console.log(this.selected.name);
+			this.selected.visible = true;
+
+			// this.selected.traverse( function ( child2 ) { //Show all chilrden
+
+			// 	child2.visible = true;
+
+			// } );
+
+			//TODO: Add parent iteration so all parents of an object stay visible and don't hide the child
+
+			this.signals.sceneGraphChanged.dispatch();
+
+		}
+	},
+
 	clear: function () {
+
+		this.history.clear();
 
 		this.camera.position.set( 500, 250, 500 );
 		this.camera.lookAt( new THREE.Vector3() );
@@ -431,7 +549,38 @@ Editor.prototype = {
 
 		this.signals.editorCleared.dispatch();
 
+		this.signals.bgColorChanged.dispatch(0x333333);
+
 	},
+
+	play: function ( ) {
+	
+		this.scene.traverse( function ( child ) {
+		
+			if ( child.sounds ) {
+			
+				if ( child.sounds.constant ) {
+					editor.soundCollection.playAttachedSound( child.sounds.constant, child );
+				}
+			
+			}
+		
+		}.bind( this ) );
+		
+	},
+	
+	stop: function ( ) {
+	
+		this.scene.traverse( function ( child ) {
+			
+			if ( child.sounds ) {
+			
+				editor.soundCollection.stop( child.sounds.constant, true );
+				console.log(child.name);
+			}
+		
+		}.bind( this ) );
+	},	
 
 	//
 
@@ -439,14 +588,12 @@ Editor.prototype = {
 
 		var loader = new THREE.ObjectLoader();
 
+
 		// backwards
 
 		if ( json.scene === undefined ) {
 
-			var scene = loader.parse( json );
-
-			this.setScene( scene );
-
+			this.setScene( loader.parse( json ) );
 			return;
 
 		}
@@ -464,14 +611,35 @@ Editor.prototype = {
 		this.setScene( loader.parse( json.scene ) );
 		this.scripts = json.scripts;
 
+		// console.log(json.background);
+		if(json.project.background != undefined){
+		
+			console.log("BG Found");
+			this.signals.bgColorChanged.dispatch(json.project.background);
+		}else{
+
+			console.log("initiate with gray bg");
+			this.signals.bgColorChanged.dispatch(0x333333);
+		}
+
+		//Meh
+		this.signals.saveProject.dispatch();
+
+		// document.getElementById( "preloader" ).style.display = "none";
+
 	},
 
 	toJSON: function () {
 
+		// console.log(this.scene.toJSON())
+
 		return {
 
 			project: {
-				vr: this.config.getKey( 'project/vr' )
+						// editor.config.setKey( 'backgroundColor', bgColor);
+
+				background: this.config.getKey('backgroundColor')
+				// vr: this.config.getKey( 'project/vr' )
 			},
 			camera: this.camera.toJSON(),
 			scene: this.scene.toJSON(),
