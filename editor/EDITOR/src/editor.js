@@ -21163,6 +21163,7 @@ Editor.prototype = {
 		return function ( object ) {
 
 			var helper;
+			var pointerPos, targetPos = THREE.Vector3( 0, 0, 0 );
 
 			if ( object instanceof THREE.Camera ) {
 
@@ -21187,18 +21188,30 @@ Editor.prototype = {
 			} else if ( object instanceof THREE.SkinnedMesh ) {
 
 				helper = new THREE.SkeletonHelper( object );
+		
+			// } else if( object.name == "Pointer_name"){
+			// 	console.log("NodeHelper")
+			// 	pointerPos = object.position;
+			// 	helper = new THREE.NodeHelper( new THREE.Vector3( 1, 0, 0 ), pointerPos, 10 );
 
-			} else {
+			}else {
 
 				// no helper for this object type
 				return;
 
 			}
 
+
+
 			var picker = new THREE.Mesh( geometry, material );
 			picker.name = 'picker';
 			picker.userData.object = object;
 			helper.add( picker );
+
+			// if(targetPos != null){
+			// 	console.log("ArrowHelper Yeah");
+			// 	helper = new THREE.ArrowHelper( targetPos-pointerPos, pointerPos, 10 );
+			// }
 
 			this.sceneHelpers.add( helper );
 			this.helpers[ object.id ] = helper;
@@ -27417,8 +27430,8 @@ var Viewport = function ( editor ) {
 	// load a resource
 	loader.load(
 		// resource URL
-		DUMMY,
-		// '3D/dummy.json',
+		// DUMMY,
+		'3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
 			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );

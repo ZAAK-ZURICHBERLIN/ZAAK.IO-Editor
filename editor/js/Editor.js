@@ -104,6 +104,7 @@ var Editor = function (shortcuts) {
 
 	this.selected = null;
 	this.helpers = {};
+	this.nodes = {};
 
 	this.isolationMode = false;
 
@@ -283,6 +284,13 @@ Editor.prototype = {
 	},
 
 	//
+	addNode: function () {
+
+		console.log("NodeHelper")
+		pointerPos = object.position;
+		helper = new THREE.NodeHelper( new THREE.Vector3( 1, 0, 0 ), pointerPos, 10 );
+
+	},
 
 	addHelper: function () {
 
@@ -291,7 +299,8 @@ Editor.prototype = {
 
 		return function ( object ) {
 
-			var helper;
+			var helper, nodes;
+			var pointerPos, targetPos = THREE.Vector3( 0, 0, 0 );
 
 			if ( object instanceof THREE.Camera ) {
 
@@ -316,18 +325,28 @@ Editor.prototype = {
 			} else if ( object instanceof THREE.SkinnedMesh ) {
 
 				helper = new THREE.SkeletonHelper( object );
+		
+			} else if( object.name == "Pointer_name"){
 
-			} else {
+			}else {
 
 				// no helper for this object type
 				return;
 
 			}
 
+
+
 			var picker = new THREE.Mesh( geometry, material );
 			picker.name = 'picker';
 			picker.userData.object = object;
 			helper.add( picker );
+
+			// if(targetPos != null){
+			// 	console.log("ArrowHelper Yeah");
+			// 	helper = new THREE.ArrowHelper( targetPos-pointerPos, pointerPos, 10 );
+			// }
+			if(object.name == "Pointer_name" )
 
 			this.sceneHelpers.add( helper );
 			this.helpers[ object.id ] = helper;
