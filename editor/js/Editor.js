@@ -299,7 +299,7 @@ Editor.prototype = {
 
 		return function ( object ) {
 
-			var helper, nodes;
+			var helper;
 			var pointerPos, targetPos = THREE.Vector3( 0, 0, 0 );
 
 			if ( object instanceof THREE.Camera ) {
@@ -327,6 +327,10 @@ Editor.prototype = {
 				helper = new THREE.SkeletonHelper( object );
 		
 			} else if( object.name == "Pointer_name"){
+
+				var node = new THREE.NodeHelper();
+
+				this.nodes.add();
 
 			}else {
 

@@ -14,7 +14,7 @@
  *  headWidth - Number
  */
 
-THREE.ArrowHelper = ( function () {
+THREE.NodeHelper = ( function () {
 
 	var lineGeometry = new THREE.Geometry();
 	lineGeometry.vertices.push( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 1, 0 ) );
@@ -52,10 +52,10 @@ THREE.ArrowHelper = ( function () {
 
 }() );
 
-THREE.ArrowHelper.prototype = Object.create( THREE.Object3D.prototype );
-THREE.ArrowHelper.prototype.constructor = THREE.ArrowHelper;
+THREE.NodeHelper.prototype = Object.create( THREE.Object3D.prototype );
+THREE.NodeHelper.prototype.constructor = THREE.ArrowHelper;
 
-THREE.ArrowHelper.prototype.setDirection = ( function () {
+THREE.NodeHelper.prototype.setDirection = ( function () {
 
 	var axis = new THREE.Vector3();
 	var radians;
@@ -86,7 +86,7 @@ THREE.ArrowHelper.prototype.setDirection = ( function () {
 
 }() );
 
-THREE.ArrowHelper.prototype.setLength = function ( length, headLength, headWidth ) {
+THREE.NodeHelper.prototype.setLength = function ( length, headLength, headWidth ) {
 
 	if ( headLength === undefined ) headLength = 0.2 * length;
 	if ( headWidth === undefined ) headWidth = 0.2 * headLength;
@@ -102,7 +102,7 @@ THREE.ArrowHelper.prototype.setLength = function ( length, headLength, headWidth
 
 };
 
-THREE.ArrowHelper.prototype.setColor = function ( color ) {
+THREE.NodeHelper.prototype.setColor = function ( color ) {
 
 	if ( this.line !== undefined ) this.line.material.color.set( color );
 	this.cone.material.color.set( color );
@@ -110,7 +110,7 @@ THREE.ArrowHelper.prototype.setColor = function ( color ) {
 };
 
 //Look always as target
-THREE.ArrowHelper.prototype.update = function () {
+THREE.NodeHelper.prototype.update = function () {
 
 	this.box.setFromObject( this.object );
 
