@@ -12844,7 +12844,17 @@ THREE.Loader.prototype = {
 
 			}
 
+<<<<<<< HEAD
 			var material = new THREE[ mtype ]( mpars );
+=======
+		//@elephantatZAAK
+		//for PhongMaterial with map
+		if( json.map !== undefined) material.map = json.map;
+
+		// for PointCloudMaterial
+		if ( json.size !== undefined ) material.size = json.size;
+		if ( json.sizeAttenuation !== undefined ) material.sizeAttenuation = json.sizeAttenuation;
+>>>>>>> master
 
 			if ( m.DbgName !== undefined ) material.name = m.DbgName;
 
@@ -13044,7 +13054,14 @@ THREE.ImageLoader.prototype = {
 
 				onProgress( event );
 
+<<<<<<< HEAD
 			}, false );
+=======
+				
+
+
+			};
+>>>>>>> master
 
 		}
 
@@ -13058,9 +13075,17 @@ THREE.ImageLoader.prototype = {
 
 		if ( this.crossOrigin !== undefined ) image.crossOrigin = this.crossOrigin;
 
+<<<<<<< HEAD
 		scope.manager.itemStart( url );
 
 		image.src = url;
+=======
+					material.map = getTexture( data.map );
+					
+					//Load Texture from Main Folder (( Pretty UGLY ))
+					material.map = load(data.map);
+				}
+>>>>>>> master
 
 		return image;
 
@@ -13789,11 +13814,26 @@ THREE.MaterialLoader = function ( manager ) {
 
 };
 
+<<<<<<< HEAD
 THREE.MaterialLoader.prototype = {
+=======
+
+		if ( this.name !== "" ) output.name = this.name;
+>>>>>>> master
 
 	constructor: THREE.MaterialLoader,
 
+<<<<<<< HEAD
 	load: function ( url, onLoad, onProgress, onError ) {
+=======
+			output.color = this.color.getHex();
+			if ( this.vertexColors !== THREE.NoColors ) output.vertexColors = this.vertexColors;
+			if ( this.blending !== THREE.NormalBlending ) output.blending = this.blending;
+			if ( this.side !== THREE.FrontSide ) output.side = this.side;
+			
+
+			
+>>>>>>> master
 
 		var scope = this;
 
@@ -13805,7 +13845,18 @@ THREE.MaterialLoader.prototype = {
 
 		}, onProgress, onError );
 
+<<<<<<< HEAD
 	},
+=======
+			//@elephantatZAAK
+			//Add diffuseMap to json Export
+			if(this.map != null) {
+				//console.log(this.map.sourceFile);
+				output.map = this.map.sourceFile;
+			}
+
+		} else if ( this instanceof THREE.MeshNormalMaterial ) {
+>>>>>>> master
 
 	setCrossOrigin: function ( value ) {
 
