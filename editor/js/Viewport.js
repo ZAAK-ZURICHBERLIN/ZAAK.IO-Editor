@@ -517,9 +517,15 @@ var Viewport = function ( editor ) {
 
 	} );
 
+
+
 	signals.fogTypeChanged.add( function ( fogType ) {
 
+
 		if ( fogType !== oldFogType ) {
+
+			if(scene.fog !== null)
+				scene.fog.name = fogType;
 
 			if ( fogType === "None" ) {
 
@@ -543,6 +549,8 @@ var Viewport = function ( editor ) {
 
 		render();
 
+		// console.log(scene.fog);
+
 	} );
 
 	//@elephantatwork, changeable bgColor
@@ -557,8 +565,9 @@ var Viewport = function ( editor ) {
 
 	signals.fogColorChanged.add( function ( fogColor ) {
 
+		console.log(fogColor);
 		oldFogColor = fogColor;
-
+		editor.config.setKey( 'fogColor', fogColor);
 		updateFog( scene );
 
 		render();
@@ -568,8 +577,11 @@ var Viewport = function ( editor ) {
 	signals.fogParametersChanged.add( function ( near, far, density ) {
 
 		oldFogNear = near;
+		editor.config.setKey( 'fogNear', near);
 		oldFogFar = far;
+		editor.config.setKey( 'fogFar', far);
 		oldFogDensity = density;
+		editor.config.setKey( 'fogDensity', density);
 
 		updateFog( scene );
 
@@ -635,6 +647,8 @@ var Viewport = function ( editor ) {
 	}
 
 	function updateFog( root ) {
+
+
 
 		if ( root.fog ) {
 

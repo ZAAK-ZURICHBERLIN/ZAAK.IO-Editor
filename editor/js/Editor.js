@@ -616,14 +616,16 @@ Editor.prototype = {
 		this.scripts = json.scripts;
 
 		// console.log(json.background);
-		if(json.project.background != undefined){
-		
-			console.log("BG Found");
+		if(json.project.background != undefined)//if bg here
 			this.signals.bgColorChanged.dispatch(json.project.background);
-		}else{
-
-			console.log("initiate with gray bg");
-			this.signals.bgColorChanged.dispatch(0x333333);
+		else
+			this.signals.bgColorChanged.dispatch(0x333333); //Default gray bg
+		
+		// this.scene.fog = json.project.fog;
+		if(json.project.fog != undefined){
+			this.signals.fogTypeChanged.dispatch( json.project.fog.name );
+			this.signals.fogColorChanged.dispatch( json.project.fogColor);
+			this.signals.fogParametersChanged.dispatch( json.project.fog.near, json.project.fog.far, json.project.fog.density );
 		}
 
 		//Meh
@@ -635,19 +637,20 @@ Editor.prototype = {
 
 	toJSON: function () {
 
-		// console.log(this.scene.toJSON())
-
+		// console.log(this.scene.fog.color );
 		return {
 
 			project: {
 						// editor.config.setKey( 'backgroundColor', bgColor);
 
-				background: this.config.getKey('backgroundColor')
-				// vr: this.config.getKey( 'project/vr' )
+				background: this.config.getKey('backgroundColor'),
+				fog: this.scene.fog,
+				fogColor: this.config.getKey('fogColor')
+
 			},
-			camera: this.camera.toJSON(),
-			scene: this.scene.toJSON(),
-			scripts: this.scripts
+			// camera: this.camera.toJSON(),
+			scene: this.scene.toJSON()
+			// scripts: this.scripts
 
 		};
 

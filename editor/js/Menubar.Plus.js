@@ -12,7 +12,10 @@ Menubar.Plus = function ( editor ) {
 	title.setTextContent( 'Exit' );
 	title.onClick( function () {
 
-		window.open ('http://zaak.io','_self',false)
+		if ( confirm( 'Do you want to go back to the platform? Any unsaved data will be lost. Are you sure?' ) ) {
+
+			window.open ('http://zaak.io','_self',false)
+		}
 
 	} );
 	container.add( title );

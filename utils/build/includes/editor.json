@@ -1,4 +1,5 @@
 [
+	"editor/js/MainEditor.js",
 	"examples/js/libs/system.min.js",
 	"examples/js/controls/EditorControls.js",
 	"examples/js/controls/TransformControls.js",
@@ -81,7 +82,7 @@
 	"editor/fonts/helvetiker_bold.typeface.js",
 	"editor/fonts/gentilis_regular.typeface.js",
 	"editor/fonts/optimer_regular.typeface.js",
-	"editor/js/Sidebar.Geometry.TextGeometry.js",
-	"editor/js/MainEditor.js"
+	"editor/js/Sidebar.Geometry.TextGeometry.js"
+
 
 ]

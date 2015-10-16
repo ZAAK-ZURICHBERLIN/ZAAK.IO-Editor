@@ -70,7 +70,11 @@ EditorShortCuts.prototype = {
 			output = JSON.stringify( output, null, '\t' );
 			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-			this.exportString( output, 'scene.json' );;
+			// var details = this.editor.toJSON();
+			// details = JSON.stringify( details, null, '\t' );
+			// details = details.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+			this.exportString( output , 'scene.json' );;
 
 		}
 		

@@ -87,6 +87,34 @@ Menubar.Navigation = function ( editor ) {
 	} );
 	options.add( option );
 
+	//Plane Back home
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Home Button' );
+	option.onClick( function () {
+
+		var width = 100;
+		var height = 100;
+
+		var widthSegments = 1;
+		var heightSegments = 1;
+
+		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
+		var material = new THREE.MeshBasicMaterial({side: THREE.DoubleSide, transparent: true, depthTest: true, depthWrite: true, needsUpdate: true});
+		var mesh = new THREE.Mesh( geometry, material );
+		mesh.name = 'BackHome';
+
+		// var helper = new THREE.ArrowHelper( object, 10 );
+
+		editor.addObject( mesh );
+		editor.select( mesh );
+
+		mesh.position.set(0,-50,0);
+		mesh.rotation.set(-1.57,0,0);
+
+	} );
+	options.add( option );
+
 	// //Plane Target
 	// var option = new UI.Panel();
 	// option.setClass( 'option' );

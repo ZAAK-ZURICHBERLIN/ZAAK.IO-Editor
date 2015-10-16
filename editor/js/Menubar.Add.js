@@ -269,13 +269,13 @@ Menubar.Add = function ( editor ) {
 		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
 		THREE.ImageUtils.crossOrigin = '';
 		var texture = THREE.ImageUtils.loadTexture('http://upload.wikimedia.org/wikipedia/commons/1/18/Rheingauer_Dom%2C_Geisenheim%2C_360_Panorama_%28Equirectangular_projection%29.jpg');
-		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({map: texture, side: THREE.BackSide, needsUpdate: true}) );
+		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({map: texture, side: THREE.FrontSide, needsUpdate: true}) );
 
 		mediaObject.name = 'MediaSphere';
 
 
 		editor.addObject( mediaObject );
-		mediaObject.scale.set(1,1,1);
+		mediaObject.scale.set(-1,1,1);
 
 		// //TargetObject
 		// var radius = 15;

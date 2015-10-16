@@ -1,3 +1,217 @@
+// File:editor/js/MainEditor.js
+
+/**
+ * @author mrdoob / http://mrdoob.com/
+ */
+
+var MainEditor = function () {
+
+	this.init();
+}
+
+MainEditor.prototype = {
+
+
+	init: function(){
+
+			window.URL = window.URL || window.webkitURL;
+			window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
+
+			Number.prototype.format = function (){
+				return this.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
+			};
+
+            this.editor = new Editor();
+			var editor = this.editor;
+
+			var shortcuts = new EditorShortCuts(editor);
+
+			var viewport = new Viewport( editor );
+			document.body.appendChild( viewport.dom );
+
+			var player = new Player( editor );
+			document.body.appendChild( player.dom );
+
+			var script = new Script( editor );
+			document.body.appendChild( script.dom );
+
+			var toolbar = new Toolbar( editor );
+			document.body.appendChild( toolbar.dom );
+
+			var menubar = new Menubar( editor );
+			document.body.appendChild( menubar.dom );
+
+			var sidebar = new Sidebar( editor );
+			document.body.appendChild( sidebar.dom );
+
+			editor.config.setKey( 'autosave', false ); // Hacky
+			editor.setTheme( editor.config.getKey( 'theme' ) );
+
+			editor.storage.init( function () {
+
+				editor.storage.get( function ( state ) {
+
+					if ( state !== undefined ) {
+
+						editor.fromJSON( state );
+
+					}
+
+					var selected = editor.config.getKey( 'selected' );
+
+					if ( selected !== undefined ) {
+
+						editor.selectByUuid( selected );
+
+					}
+
+				} );
+
+				//
+
+				var timeout;
+
+				var sceneChanged = function(){
+
+					editor.signals.unsaveProject.dispatch();
+
+					if ( editor.config.getKey( 'autosave' ) === false ) return;
+
+					// else {
+
+					// 	saveState(1000);
+
+					// }
+
+				};
+
+				var manualSave = function () {
+
+					saveState(1000);
+					// console.log("manualSave");
+				};
+
+				// var saveState = function ( scene ) {
+				var saveState = function ( time ) {
+
+					console.log("h2");
+
+					clearTimeout( timeout );
+
+					timeout = setTimeout( function () {
+
+						editor.signals.savingStarted.dispatch();
+
+						timeout = setTimeout( function () {
+
+							editor.storage.set( editor.toJSON() );
+
+							editor.signals.savingFinished.dispatch();
+
+						}, 100 );
+
+					}, time );
+
+				};
+
+				var signals = editor.signals;
+
+				signals.editorCleared.add( sceneChanged );
+				signals.geometryChanged.add( sceneChanged );
+				signals.objectAdded.add( sceneChanged );
+				signals.objectChanged.add( sceneChanged );
+				signals.objectRemoved.add( sceneChanged );
+				signals.materialChanged.add( sceneChanged );
+				signals.sceneGraphChanged.add( sceneChanged );
+				// signals.scriptChanged.add( saveState );
+				signals.saveProject.add( manualSave );
+			} );
+
+			//
+
+			document.addEventListener( 'dragover', function ( event ) {
+
+				event.preventDefault();
+				event.dataTransfer.dropEffect = 'copy';
+
+			}, false );
+
+			document.addEventListener( 'drop', function ( event ) {
+
+				event.preventDefault();
+
+				if ( event.dataTransfer.files.length > 0 ) {
+
+					editor.loader.loadFile( event.dataTransfer.files[ 0 ] );
+
+				}
+
+			}, false );
+
+			document.addEventListener( 'keydown', function ( event ) {
+
+				switch ( event.keyCode ) {
+
+					case 8:
+						event.preventDefault(); // prevent browser back
+						break;
+
+					default:
+						shortcuts.keyCheck( event.keyCode );
+						break;
+				}
+
+			}, false );
+
+			var onWindowResize = function ( event ) {
+
+				editor.signals.windowResize.dispatch();
+
+			};
+
+			window.addEventListener( 'resize', onWindowResize, false );
+
+			onWindowResize();
+
+			//
+
+			// var file = null;
+			// var hash = window.location.hash;
+
+			// if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
+			// if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
+
+			// if ( file !== null ) {
+
+			// 	if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
+
+			// 		var loader = new THREE.XHRLoader();
+			// 		loader.crossOrigin = '';
+			// 		loader.load( file, function ( text ) {
+
+			// 			var json = JSON.parse( text );
+
+			// 			editor.clear();
+			// 			editor.fromJSON( json );
+
+			// 		} );
+
+			// 	}
+
+			// }
+
+			window.addEventListener( 'message', function ( event ) {
+
+				editor.clear();
+				editor.fromJSON( event.data );
+
+			}, false );
+
+
+
+	}
+}
+
 // File:examples/js/libs/system.min.js
 
 // system.js - http://github.com/mrdoob/system.js
@@ -20975,6 +21189,7 @@ var Editor = function (shortcuts) {
 
 	this.selected = null;
 	this.helpers = {};
+	this.nodes = {};
 
 	this.isolationMode = false;
 
@@ -21154,6 +21369,13 @@ Editor.prototype = {
 	},
 
 	//
+	addNode: function () {
+
+		console.log("NodeHelper")
+		pointerPos = object.position;
+		helper = new THREE.NodeHelper( new THREE.Vector3( 1, 0, 0 ), pointerPos, 10 );
+
+	},
 
 	addHelper: function () {
 
@@ -21189,10 +21411,11 @@ Editor.prototype = {
 
 				helper = new THREE.SkeletonHelper( object );
 		
-			// } else if( object.name == "Pointer_name"){
-			// 	console.log("NodeHelper")
-			// 	pointerPos = object.position;
-			// 	helper = new THREE.NodeHelper( new THREE.Vector3( 1, 0, 0 ), pointerPos, 10 );
+			} else if( object.name == "Pointer_name"){
+
+				var node = new THREE.NodeHelper();
+
+				this.nodes.add();
 
 			}else {
 
@@ -21212,6 +21435,7 @@ Editor.prototype = {
 			// 	console.log("ArrowHelper Yeah");
 			// 	helper = new THREE.ArrowHelper( targetPos-pointerPos, pointerPos, 10 );
 			// }
+			if(object.name == "Pointer_name" )
 
 			this.sceneHelpers.add( helper );
 			this.helpers[ object.id ] = helper;
@@ -21477,14 +21701,16 @@ Editor.prototype = {
 		this.scripts = json.scripts;
 
 		// console.log(json.background);
-		if(json.project.background != undefined){
-		
-			console.log("BG Found");
+		if(json.project.background != undefined)//if bg here
 			this.signals.bgColorChanged.dispatch(json.project.background);
-		}else{
-
-			console.log("initiate with gray bg");
-			this.signals.bgColorChanged.dispatch(0x333333);
+		else
+			this.signals.bgColorChanged.dispatch(0x333333); //Default gray bg
+		
+		// this.scene.fog = json.project.fog;
+		if(json.project.fog != undefined){
+			this.signals.fogTypeChanged.dispatch( json.project.fog.name );
+			this.signals.fogColorChanged.dispatch( json.project.fogColor);
+			this.signals.fogParametersChanged.dispatch( json.project.fog.near, json.project.fog.far, json.project.fog.density );
 		}
 
 		//Meh
@@ -21496,19 +21722,20 @@ Editor.prototype = {
 
 	toJSON: function () {
 
-		// console.log(this.scene.toJSON())
-
+		// console.log(this.scene.fog.color );
 		return {
 
 			project: {
 						// editor.config.setKey( 'backgroundColor', bgColor);
 
-				background: this.config.getKey('backgroundColor')
-				// vr: this.config.getKey( 'project/vr' )
+				background: this.config.getKey('backgroundColor'),
+				fog: this.scene.fog,
+				fogColor: this.config.getKey('fogColor')
+
 			},
-			camera: this.camera.toJSON(),
-			scene: this.scene.toJSON(),
-			scripts: this.scripts
+			// camera: this.camera.toJSON(),
+			scene: this.scene.toJSON()
+			// scripts: this.scripts
 
 		};
 
@@ -22740,13 +22967,13 @@ Menubar.Add = function ( editor ) {
 		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
 		THREE.ImageUtils.crossOrigin = '';
 		var texture = THREE.ImageUtils.loadTexture('http://upload.wikimedia.org/wikipedia/commons/1/18/Rheingauer_Dom%2C_Geisenheim%2C_360_Panorama_%28Equirectangular_projection%29.jpg');
-		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({map: texture, side: THREE.BackSide, needsUpdate: true}) );
+		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({map: texture, side: THREE.FrontSide, needsUpdate: true}) );
 
 		mediaObject.name = 'MediaSphere';
 
 
 		editor.addObject( mediaObject );
-		mediaObject.scale.set(1,1,1);
+		mediaObject.scale.set(-1,1,1);
 
 		// //TargetObject
 		// var radius = 15;
@@ -23170,7 +23397,10 @@ Menubar.Plus = function ( editor ) {
 	title.setTextContent( 'Exit' );
 	title.onClick( function () {
 
-		window.open ('http://zaak.io','_self',false)
+		if ( confirm( 'Do you want to go back to the platform? Any unsaved data will be lost. Are you sure?' ) ) {
+
+			window.open ('http://zaak.io','_self',false)
+		}
 
 	} );
 	container.add( title );
@@ -23403,8 +23633,11 @@ Sidebar.Scene = function ( editor ) {
 
 	};
 
+	var activeFogType = "Exponential";
+	// if(editor.scene.fog != undefined) activeFogType = editor.scene.fog.name;
+
 	var fogTypeRow = new UI.Panel();
-	var fogType = new UI.Select().setOptions( {
+	var fogType = new UI.Select(activeFogType).setOptions( {
 
 		'None': 'None',
 		'Fog': 'Linear',
@@ -27918,9 +28151,15 @@ var Viewport = function ( editor ) {
 
 	} );
 
+
+
 	signals.fogTypeChanged.add( function ( fogType ) {
 
+
 		if ( fogType !== oldFogType ) {
+
+			if(scene.fog !== null)
+				scene.fog.name = fogType;
 
 			if ( fogType === "None" ) {
 
@@ -27944,6 +28183,8 @@ var Viewport = function ( editor ) {
 
 		render();
 
+		// console.log(scene.fog);
+
 	} );
 
 	//@elephantatwork, changeable bgColor
@@ -27958,8 +28199,9 @@ var Viewport = function ( editor ) {
 
 	signals.fogColorChanged.add( function ( fogColor ) {
 
+		console.log(fogColor);
 		oldFogColor = fogColor;
-
+		editor.config.setKey( 'fogColor', fogColor);
 		updateFog( scene );
 
 		render();
@@ -27969,8 +28211,11 @@ var Viewport = function ( editor ) {
 	signals.fogParametersChanged.add( function ( near, far, density ) {
 
 		oldFogNear = near;
+		editor.config.setKey( 'fogNear', near);
 		oldFogFar = far;
+		editor.config.setKey( 'fogFar', far);
 		oldFogDensity = density;
+		editor.config.setKey( 'fogDensity', density);
 
 		updateFog( scene );
 
@@ -28036,6 +28281,8 @@ var Viewport = function ( editor ) {
 	}
 
 	function updateFog( root ) {
+
+
 
 		if ( root.fog ) {
 
@@ -28261,7 +28508,11 @@ EditorShortCuts.prototype = {
 			output = JSON.stringify( output, null, '\t' );
 			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-			this.exportString( output, 'scene.json' );;
+			// var details = this.editor.toJSON();
+			// details = JSON.stringify( details, null, '\t' );
+			// details = details.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+			this.exportString( output , 'scene.json' );;
 
 		}
 		
@@ -28765,6 +29016,34 @@ Menubar.Navigation = function ( editor ) {
 
 		editor.addObject( parent );
 		editor.select( parent );
+
+	} );
+	options.add( option );
+
+	//Plane Back home
+	var option = new UI.Panel();
+	option.setClass( 'option' );
+	option.setTextContent( 'Home Button' );
+	option.onClick( function () {
+
+		var width = 100;
+		var height = 100;
+
+		var widthSegments = 1;
+		var heightSegments = 1;
+
+		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
+		var material = new THREE.MeshBasicMaterial({side: THREE.DoubleSide, transparent: true, depthTest: true, depthWrite: true, needsUpdate: true});
+		var mesh = new THREE.Mesh( geometry, material );
+		mesh.name = 'BackHome';
+
+		// var helper = new THREE.ArrowHelper( object, 10 );
+
+		editor.addObject( mesh );
+		editor.select( mesh );
+
+		mesh.position.set(0,-50,0);
+		mesh.rotation.set(-1.57,0,0);
 
 	} );
 	options.add( option );
@@ -29326,219 +29605,5 @@ Sidebar.Geometry.TextGeometry = function ( signals, object ) {
 
 	return container;
 
-}
-
-// File:editor/js/MainEditor.js
-
-/**
- * @author mrdoob / http://mrdoob.com/
- */
-
-var MainEditor = function () {
-
-	this.init();
-}
-
-MainEditor.prototype = {
-
-
-	init: function(){
-
-			window.URL = window.URL || window.webkitURL;
-			window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
-
-			Number.prototype.format = function (){
-				return this.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
-			};
-
-            this.editor = new Editor();
-			var editor = this.editor;
-
-			var shortcuts = new EditorShortCuts(editor);
-
-			var viewport = new Viewport( editor );
-			document.body.appendChild( viewport.dom );
-
-			var player = new Player( editor );
-			document.body.appendChild( player.dom );
-
-			var script = new Script( editor );
-			document.body.appendChild( script.dom );
-
-			var toolbar = new Toolbar( editor );
-			document.body.appendChild( toolbar.dom );
-
-			var menubar = new Menubar( editor );
-			document.body.appendChild( menubar.dom );
-
-			var sidebar = new Sidebar( editor );
-			document.body.appendChild( sidebar.dom );
-
-			editor.config.setKey( 'autosave', false ); // Hacky
-			editor.setTheme( editor.config.getKey( 'theme' ) );
-
-			editor.storage.init( function () {
-
-				editor.storage.get( function ( state ) {
-
-					if ( state !== undefined ) {
-
-						editor.fromJSON( state );
-
-					}
-
-					var selected = editor.config.getKey( 'selected' );
-
-					if ( selected !== undefined ) {
-
-						editor.selectByUuid( selected );
-
-					}
-
-				} );
-
-				//
-
-				var timeout;
-
-				var sceneChanged = function(){
-
-					editor.signals.unsaveProject.dispatch();
-
-					if ( editor.config.getKey( 'autosave' ) === false ) return;
-
-					// else {
-
-					// 	saveState(1000);
-
-					// }
-
-				};
-
-				var manualSave = function () {
-
-					saveState(1000);
-					// console.log("manualSave");
-				};
-
-				// var saveState = function ( scene ) {
-				var saveState = function ( time ) {
-
-					console.log("h2");
-
-					clearTimeout( timeout );
-
-					timeout = setTimeout( function () {
-
-						editor.signals.savingStarted.dispatch();
-
-						timeout = setTimeout( function () {
-
-							editor.storage.set( editor.toJSON() );
-
-							editor.signals.savingFinished.dispatch();
-
-						}, 100 );
-
-					}, time );
-
-				};
-
-				var signals = editor.signals;
-
-				signals.editorCleared.add( sceneChanged );
-				signals.geometryChanged.add( sceneChanged );
-				signals.objectAdded.add( sceneChanged );
-				signals.objectChanged.add( sceneChanged );
-				signals.objectRemoved.add( sceneChanged );
-				signals.materialChanged.add( sceneChanged );
-				signals.sceneGraphChanged.add( sceneChanged );
-				// signals.scriptChanged.add( saveState );
-				signals.saveProject.add( manualSave );
-			} );
-
-			//
-
-			document.addEventListener( 'dragover', function ( event ) {
-
-				event.preventDefault();
-				event.dataTransfer.dropEffect = 'copy';
-
-			}, false );
-
-			document.addEventListener( 'drop', function ( event ) {
-
-				event.preventDefault();
-
-				if ( event.dataTransfer.files.length > 0 ) {
-
-					editor.loader.loadFile( event.dataTransfer.files[ 0 ] );
-
-				}
-
-			}, false );
-
-			document.addEventListener( 'keydown', function ( event ) {
-
-				switch ( event.keyCode ) {
-
-					case 8:
-						event.preventDefault(); // prevent browser back
-						break;
-
-					default:
-						shortcuts.keyCheck( event.keyCode );
-						break;
-				}
-
-			}, false );
-
-			var onWindowResize = function ( event ) {
-
-				editor.signals.windowResize.dispatch();
-
-			};
-
-			window.addEventListener( 'resize', onWindowResize, false );
-
-			onWindowResize();
-
-			//
-
-			// var file = null;
-			// var hash = window.location.hash;
-
-			// if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
-			// if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
-
-			// if ( file !== null ) {
-
-			// 	if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
-
-			// 		var loader = new THREE.XHRLoader();
-			// 		loader.crossOrigin = '';
-			// 		loader.load( file, function ( text ) {
-
-			// 			var json = JSON.parse( text );
-
-			// 			editor.clear();
-			// 			editor.fromJSON( json );
-
-			// 		} );
-
-			// 	}
-
-			// }
-
-			window.addEventListener( 'message', function ( event ) {
-
-				editor.clear();
-				editor.fromJSON( event.data );
-
-			}, false );
-
-
-
-	}
 }
 

@@ -62,8 +62,11 @@ Sidebar.Scene = function ( editor ) {
 
 	};
 
+	var activeFogType = "Exponential";
+	// if(editor.scene.fog != undefined) activeFogType = editor.scene.fog.name;
+
 	var fogTypeRow = new UI.Panel();
-	var fogType = new UI.Select().setOptions( {
+	var fogType = new UI.Select(activeFogType).setOptions( {
 
 		'None': 'None',
 		'Fog': 'Linear',
