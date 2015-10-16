@@ -140,8 +140,8 @@ var Loader = function ( editor ) {
 
 					var contents = event.target.result;
 
-					// document.getElementById( "preloader" ).style.display = "block";
-
+					document.getElementById( "preloader" ).style.display = "block";
+					console.log("preloaderStart");
 					// 2.0
 
 					if ( contents.indexOf( 'postMessage' ) !== -1 ) {
@@ -473,8 +473,9 @@ var Loader = function ( editor ) {
 
 		}
 		
-		// document.getElementById( "preloader" ).style.display = "none";
 
+		document.getElementById( "preloader" ).style.display = "none";
+		console.log("preLoaderDone");
 	};
 
 }

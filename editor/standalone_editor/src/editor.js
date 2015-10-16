@@ -21716,7 +21716,7 @@ Editor.prototype = {
 		//Meh
 		this.signals.saveProject.dispatch();
 
-		// document.getElementById( "preloader" ).style.display = "none";
+		document.getElementById( "preloader" ).style.display = "none";
 
 	},
 
@@ -21733,9 +21733,9 @@ Editor.prototype = {
 				fogColor: this.config.getKey('fogColor')
 
 			},
-			// camera: this.camera.toJSON(),
-			scene: this.scene.toJSON()
-			// scripts: this.scripts
+			camera: this.camera.toJSON(),
+			scene: this.scene.toJSON(),
+			scripts: this.scripts
 
 		};
 
@@ -22048,8 +22048,8 @@ var Loader = function ( editor ) {
 
 					var contents = event.target.result;
 
-					// document.getElementById( "preloader" ).style.display = "block";
-
+					document.getElementById( "preloader" ).style.display = "block";
+					console.log("preloaderStart");
 					// 2.0
 
 					if ( contents.indexOf( 'postMessage' ) !== -1 ) {
@@ -22381,8 +22381,9 @@ var Loader = function ( editor ) {
 
 		}
 		
-		// document.getElementById( "preloader" ).style.display = "none";
 
+		document.getElementById( "preloader" ).style.display = "none";
+		console.log("preLoaderDone");
 	};
 
 }
@@ -22966,7 +22967,7 @@ Menubar.Add = function ( editor ) {
 
 		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
 		THREE.ImageUtils.crossOrigin = '';
-		var texture = THREE.ImageUtils.loadTexture('http://upload.wikimedia.org/wikipedia/commons/1/18/Rheingauer_Dom%2C_Geisenheim%2C_360_Panorama_%28Equirectangular_projection%29.jpg');
+		var texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/VVvulRt.jpg');
 		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({map: texture, side: THREE.FrontSide, needsUpdate: true}) );
 
 		mediaObject.name = 'MediaSphere';
@@ -28512,7 +28513,7 @@ EditorShortCuts.prototype = {
 			// details = JSON.stringify( details, null, '\t' );
 			// details = details.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-			this.exportString( output , 'scene.json' );;
+			this.exportString( output, 'scene.json' );;
 
 		}
 		
@@ -29034,7 +29035,7 @@ Menubar.Navigation = function ( editor ) {
 
 		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
 		THREE.ImageUtils.crossOrigin = '';
-		var texture = THREE.ImageUtils.loadTexture('http://zaak.ch/plus/buttons/homebutton.png');
+		var texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/mDlwfJw.png');
 
 		var material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide, transparent: true, depthTest: true, depthWrite: true, needsUpdate: true});
 		var mesh = new THREE.Mesh( geometry, material );
@@ -29045,7 +29046,7 @@ Menubar.Navigation = function ( editor ) {
 		editor.addObject( mesh );
 		editor.select( mesh );
 
-		mesh.position.set(0,-50,0);
+		mesh.position.set(0,-250,0);
 		mesh.rotation.set(-1.57,0,0);
 
 	} );

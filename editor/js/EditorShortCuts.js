@@ -74,7 +74,7 @@ EditorShortCuts.prototype = {
 			// details = JSON.stringify( details, null, '\t' );
 			// details = details.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-			this.exportString( output , 'scene.json' );;
+			this.exportString( output, 'scene.json' );;
 
 		}
 		

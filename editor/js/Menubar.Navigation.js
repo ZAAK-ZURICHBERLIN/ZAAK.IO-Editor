@@ -101,7 +101,7 @@ Menubar.Navigation = function ( editor ) {
 
 		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
 		THREE.ImageUtils.crossOrigin = '';
-		var texture = THREE.ImageUtils.loadTexture('http://zaak.ch/plus/buttons/homebutton.png');
+		var texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/mDlwfJw.png');
 
 		var material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide, transparent: true, depthTest: true, depthWrite: true, needsUpdate: true});
 		var mesh = new THREE.Mesh( geometry, material );
@@ -112,7 +112,7 @@ Menubar.Navigation = function ( editor ) {
 		editor.addObject( mesh );
 		editor.select( mesh );
 
-		mesh.position.set(0,-50,0);
+		mesh.position.set(0,-250,0);
 		mesh.rotation.set(-1.57,0,0);
 
 	} );

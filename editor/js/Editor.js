@@ -631,7 +631,7 @@ Editor.prototype = {
 		//Meh
 		this.signals.saveProject.dispatch();
 
-		// document.getElementById( "preloader" ).style.display = "none";
+		document.getElementById( "preloader" ).style.display = "none";
 
 	},
 
@@ -648,9 +648,9 @@ Editor.prototype = {
 				fogColor: this.config.getKey('fogColor')
 
 			},
-			// camera: this.camera.toJSON(),
-			scene: this.scene.toJSON()
-			// scripts: this.scripts
+			camera: this.camera.toJSON(),
+			scene: this.scene.toJSON(),
+			scripts: this.scripts
 
 		};
 
