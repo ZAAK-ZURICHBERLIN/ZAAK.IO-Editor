@@ -29033,7 +29033,10 @@ Menubar.Navigation = function ( editor ) {
 		var heightSegments = 1;
 
 		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
-		var material = new THREE.MeshBasicMaterial({side: THREE.DoubleSide, transparent: true, depthTest: true, depthWrite: true, needsUpdate: true});
+		THREE.ImageUtils.crossOrigin = '';
+		var texture = THREE.ImageUtils.loadTexture('http://zaak.ch/plus/buttons/homebutton.png');
+
+		var material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide, transparent: true, depthTest: true, depthWrite: true, needsUpdate: true});
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = 'BackHome';
 
