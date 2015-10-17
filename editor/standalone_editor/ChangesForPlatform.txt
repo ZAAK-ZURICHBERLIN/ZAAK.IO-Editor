@@ -1,0 +1,13 @@
+Changes for Platform:
+
+js/editor:
+
+	Replace
+	//////////////////
+
+
+	'3D/dummy.json',
+
+	with
+
+	Dummy
