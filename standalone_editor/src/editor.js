@@ -21199,16 +21199,16 @@ Editor.prototype = {
 
 	setTheme: function ( value ) {
 
-		var theme;
+		// var theme;
 
-		if(value = 'THEME_DARK')
-			theme = THEME_DARK;
-		else
-			theme = THEME_LIGHT;
+		// if(value = 'THEME_DARK')
+		// 	theme = THEME_DARK;
+		// else
+		// 	theme = THEME_LIGHT;
 
-		document.getElementById( 'theme' ).href = theme;
+		// document.getElementById( 'theme' ).href = theme;
 
-		// document.getElementById( 'theme' ).href = value; 
+		document.getElementById( 'theme' ).href = value; 
 
 		this.signals.themeChanged.dispatch( value );
 
@@ -23113,10 +23113,10 @@ Menubar.View = function ( editor ) {
 	option.setTextContent( 'Light theme' );
 	option.onClick( function () {
 
-		editor.setTheme( 'THEME_LIGHT' );
-		editor.config.setKey( 'theme', "THEME_LIGHT" );
-		// editor.setTheme( 'css/light.css' );
-		// editor.config.setKey( 'theme', 'css/light.css' );
+		// editor.setTheme( 'THEME_LIGHT' );
+		// editor.config.setKey( 'theme', "THEME_LIGHT" );
+		editor.setTheme( 'css/light.css' );
+		editor.config.setKey( 'theme', 'css/light.css' );
 		editor.hide();
 
 	} );
@@ -23129,10 +23129,10 @@ Menubar.View = function ( editor ) {
 	option.setTextContent( 'Dark theme' );
 	option.onClick( function () {
 
-		editor.setTheme( 'THEME_DARK' );
-		editor.config.setKey( 'theme', "THEME_DARK" );
-		// editor.setTheme( 'css/dark.css' );
-		// editor.config.setKey( 'theme', 'css/dark.css' );
+		// editor.setTheme( 'THEME_DARK' );
+		// editor.config.setKey( 'theme', "THEME_DARK" );
+		editor.setTheme( 'css/dark.css' );
+		editor.config.setKey( 'theme', 'css/dark.css' );
 		editor.unhideAll();
 
 	} );
@@ -27677,8 +27677,8 @@ var Viewport = function ( editor ) {
 	// load a resource
 	loader.load(
 		// resource URL
-		DUMMY,
-		// '3D/dummy.json',
+		// DUMMY,
+		'3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
 			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
@@ -27926,14 +27926,14 @@ var Viewport = function ( editor ) {
 
 		switch ( value ) {
 
-			case 'THEME_LIGHT':
-				grid.setColors( 0x444444, 0x888888 );
-				clearColor = 0xaaaaaa;
-				break;
-			case 'THEME_DARK':
-				grid.setColors( 0xbbbbbb, 0x888888 );
-				clearColor = 0x333333;
-				break;
+			// case 'THEME_LIGHT':
+			// 	grid.setColors( 0x444444, 0x888888 );
+			// 	clearColor = 0xaaaaaa;
+			// 	break;
+			// case 'THEME_DARK':
+			// 	grid.setColors( 0xbbbbbb, 0x888888 );
+			// 	clearColor = 0x333333;
+			// 	break;
 
 			case 'css/light.css':
 				grid.setColors( 0x444444, 0x888888 );

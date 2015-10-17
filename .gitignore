@@ -2,3 +2,7 @@
 *.swp
 .project
 node_modules
+
+editor/standalone_editor/3D/dummy.js
+
+editor/standalone_editor/3D/dummy.json
