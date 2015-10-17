@@ -54,8 +54,10 @@ Menubar.View = function ( editor ) {
 	option.setTextContent( 'Light theme' );
 	option.onClick( function () {
 
-		editor.setTheme( THEME_LIGHT );
-		editor.config.setKey( 'theme', "THEME_LIGHT" );
+		// editor.setTheme( 'THEME_LIGHT' );
+		// editor.config.setKey( 'theme', "THEME_LIGHT" );
+		editor.setTheme( 'css/light.css' );
+		editor.config.setKey( 'theme', 'css/light.css' );
 		editor.hide();
 
 	} );
@@ -68,8 +70,10 @@ Menubar.View = function ( editor ) {
 	option.setTextContent( 'Dark theme' );
 	option.onClick( function () {
 
-		editor.setTheme( THEME_DARK );
-		editor.config.setKey( 'theme', "THEME_DARK" );
+		// editor.setTheme( 'THEME_DARK' );
+		// editor.config.setKey( 'theme', "THEME_DARK" );
+		editor.setTheme( 'css/dark.css' );
+		editor.config.setKey( 'theme', 'css/dark.css' );
 		editor.unhideAll();
 
 	} );

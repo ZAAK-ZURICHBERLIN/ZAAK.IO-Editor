@@ -114,6 +114,13 @@ Editor.prototype = {
 
 	setTheme: function ( value ) {
 
+		// var theme;
+
+		// if(value = 'THEME_DARK')
+		// 	theme = THEME_DARK;
+		// else
+		// 	theme = THEME_LIGHT;
+
 		document.getElementById( 'theme' ).href = value;
 
 		this.signals.themeChanged.dispatch( value );

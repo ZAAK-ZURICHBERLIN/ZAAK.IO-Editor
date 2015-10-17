@@ -1,0 +1,49 @@
+Changes for Platform:
+
+js/editor:
+
+	Replace
+	//////////////////
+
+
+	'3D/dummy.json',
+
+	with
+
+	Dummy
+
+	//
+
+	document.getElementById( 'theme' ).href = value; 
+
+	with
+
+	var theme;
+
+	if(value = 'THEME_DARK')
+		theme = THEME_DARK;
+	else
+	 	theme = THEME_LIGHT;
+
+	document.getElementById( 'theme' ).href = theme;
+
+	// 
+
+	editor.setTheme( 'css/dark.css' );
+	editor.config.setKey( 'theme', 'css/dark.css' );
+
+	with
+
+	editor.setTheme( 'THEME_DARK' );
+	editor.config.setKey( 'theme', "THEME_DARK" );
+
+	//
+
+	editor.setTheme( 'css/light.css' );
+	editor.config.setKey( 'theme', 'css/light.css' );
+
+	with
+
+	editor.setTheme( 'THEME_LIGHT' );
+	editor.config.setKey( 'theme', "THEME_LIGHT" );
+		

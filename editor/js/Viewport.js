@@ -278,6 +278,15 @@ var Viewport = function ( editor ) {
 
 		switch ( value ) {
 
+			// case 'THEME_LIGHT':
+			// 	grid.setColors( 0x444444, 0x888888 );
+			// 	clearColor = 0xaaaaaa;
+			// 	break;
+			// case 'THEME_DARK':
+			// 	grid.setColors( 0xbbbbbb, 0x888888 );
+			// 	clearColor = 0x333333;
+			// 	break;
+
 			case 'css/light.css':
 				grid.setColors( 0x444444, 0x888888 );
 				clearColor = 0xaaaaaa;
