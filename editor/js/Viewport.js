@@ -29,8 +29,8 @@ var Viewport = function ( editor ) {
 	// load a resource
 	loader.load(
 		// resource URL
-		// DUMMY,
-		'3D/dummy.json',
+		DUMMY,
+		// '3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
 			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
@@ -287,11 +287,11 @@ var Viewport = function ( editor ) {
 			// 	clearColor = 0x333333;
 			// 	break;
 
-			case 'css/light.css':
+			case 'THEME_LIGHT':
 				grid.setColors( 0x444444, 0x888888 );
 				clearColor = 0xaaaaaa;
 				break;
-			case 'css/dark.css':
+			case 'THEME_DARK':
 				grid.setColors( 0xbbbbbb, 0x888888 );
 				clearColor = 0x333333;
 				break;
