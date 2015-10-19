@@ -16,6 +16,7 @@ var Menubar = function ( editor ) {
 	// container.add( new Menubar.Play( editor ) );
 	container.add( new Menubar.Plus( editor ) );
 
+    container.add( new Menubar.Preview( editor ) );
 	container.add( new Menubar.Status( editor ) );
 
 	return container;
