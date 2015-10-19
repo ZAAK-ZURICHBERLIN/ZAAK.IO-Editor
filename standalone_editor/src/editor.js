@@ -55,6 +55,9 @@ MainEditor.prototype = {
 
 						editor.fromJSON( state );
 
+					}else{
+
+						document.getElementById( "preloader" ).style.display = "none";
 					}
 
 					var selected = editor.config.getKey( 'selected' );
@@ -21206,9 +21209,7 @@ Editor.prototype = {
 		// else
 		// 	theme = THEME_LIGHT;
 
-		// document.getElementById( 'theme' ).href = theme;
-
-		document.getElementById( 'theme' ).href = value; 
+		document.getElementById( 'theme' ).href = value;
 
 		this.signals.themeChanged.dispatch( value );
 
@@ -21420,13 +21421,15 @@ Editor.prototype = {
 
 				helper = new THREE.SkeletonHelper( object );
 		
-			} else if( object.name == "Pointer_name"){
+			} 
+			// else if( object.name == "Pointer_name"){
 
-				var node = new THREE.NodeHelper();
+				// var node = new THREE.NodeHelper();
 
-				this.nodes.add();
+				// this.nodes.add();
 
-			}else {
+			// }
+			else {
 
 				// no helper for this object type
 				return;
@@ -21444,7 +21447,7 @@ Editor.prototype = {
 			// 	console.log("ArrowHelper Yeah");
 			// 	helper = new THREE.ArrowHelper( targetPos-pointerPos, pointerPos, 10 );
 			// }
-			if(object.name == "Pointer_name" )
+			// if(object.name == "Pointer_name" )
 
 			this.sceneHelpers.add( helper );
 			this.helpers[ object.id ] = helper;
@@ -27677,8 +27680,8 @@ var Viewport = function ( editor ) {
 	// load a resource
 	loader.load(
 		// resource URL
-		// DUMMY,
-		'3D/dummy.json',
+		DUMMY,
+		// '3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
 			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
@@ -27935,11 +27938,11 @@ var Viewport = function ( editor ) {
 			// 	clearColor = 0x333333;
 			// 	break;
 
-			case 'css/light.css':
+			case 'THEME_LIGHT':
 				grid.setColors( 0x444444, 0x888888 );
 				clearColor = 0xaaaaaa;
 				break;
-			case 'css/dark.css':
+			case 'THEME_DARK':
 				grid.setColors( 0xbbbbbb, 0x888888 );
 				clearColor = 0x333333;
 				break;
