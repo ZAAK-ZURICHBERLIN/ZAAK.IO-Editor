@@ -333,13 +333,15 @@ Editor.prototype = {
 
 				helper = new THREE.SkeletonHelper( object );
 		
-			} else if( object.name == "Pointer_name"){
+			} 
+			// else if( object.name == "Pointer_name"){
 
-				var node = new THREE.NodeHelper();
+				// var node = new THREE.NodeHelper();
 
-				this.nodes.add();
+				// this.nodes.add();
 
-			}else {
+			// }
+			else {
 
 				// no helper for this object type
 				return;
@@ -357,7 +359,7 @@ Editor.prototype = {
 			// 	console.log("ArrowHelper Yeah");
 			// 	helper = new THREE.ArrowHelper( targetPos-pointerPos, pointerPos, 10 );
 			// }
-			if(object.name == "Pointer_name" )
+			// if(object.name == "Pointer_name" )
 
 			this.sceneHelpers.add( helper );
 			this.helpers[ object.id ] = helper;

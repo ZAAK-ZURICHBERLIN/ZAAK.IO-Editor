@@ -53,6 +53,9 @@ MainEditor.prototype = {
 
 						editor.fromJSON( state );
 
+					}else{
+
+						document.getElementById( "preloader" ).style.display = "none";
 					}
 
 					var selected = editor.config.getKey( 'selected' );
