@@ -16,49 +16,15 @@ Menubar.View = function ( editor ) {
 	options.setClass( 'options' );
 	container.add( options );
 
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Hide selected ( ' + editor.shortcuts.getKey( 'view/hide' ) +' )' );
-	option.onClick( function () {
-
-		editor.hide();
-
-	} );
-	options.add( option );
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Unhide All ( ' + editor.shortcuts.getKey( 'view/unhideAll' ) +' )');
-		option.onClick( function () {
-
-		editor.unhideAll();
-
-	} );
-	options.add( option );
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Isolation Mode ( ' + editor.shortcuts.getKey( 'view/isolate' ) +' )');
-	option.onClick( function () {
-
-		editor.isolate();
-
-	} );
-	options.add( option );
-
-	options.add( new UI.HorizontalRule() );
-
 	// Light theme
+
 	var option = new UI.Panel();
 	option.setClass( 'option' );
 	option.setTextContent( 'Light theme' );
 	option.onClick( function () {
 
-		// editor.setTheme( 'THEME_LIGHT' );
-		// editor.config.setKey( 'theme', "THEME_LIGHT" );
 		editor.setTheme( 'css/light.css' );
 		editor.config.setKey( 'theme', 'css/light.css' );
-		editor.hide();
 
 	} );
 	options.add( option );
@@ -70,11 +36,8 @@ Menubar.View = function ( editor ) {
 	option.setTextContent( 'Dark theme' );
 	option.onClick( function () {
 
-		// editor.setTheme( 'THEME_DARK' );
-		// editor.config.setKey( 'theme', "THEME_DARK" );
 		editor.setTheme( 'css/dark.css' );
 		editor.config.setKey( 'theme', 'css/dark.css' );
-		editor.unhideAll();
 
 	} );
 	options.add( option );
@@ -111,13 +74,8 @@ Menubar.View = function ( editor ) {
 		}
 
 	} );
-
-
 	options.add( option );
 
 	return container;
 
-	
 };
-
-

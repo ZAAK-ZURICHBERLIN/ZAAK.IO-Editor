@@ -47,12 +47,10 @@
 	"editor/js/Menubar.Examples.js",
 	"editor/js/Menubar.Help.js",
 	"editor/js/Menubar.Status.js",
-	"editor/js/Menubar.Plus.js",
     "editor/js/Menubar.Preview.js",
 	"editor/js/Sidebar.js",
 	"editor/js/Sidebar.Project.js",
 	"editor/js/Sidebar.Scene.js",
-	"editor/js/Sidebar.Object3D.js",
 	"editor/js/Sidebar.Animation.js",
 	"editor/js/Sidebar.Geometry.js",
 	"editor/js/Sidebar.Geometry.Geometry.js",
@@ -75,15 +73,10 @@
 	"editor/js/Viewport.Info.js",
 	"editor/js/EditorShortCuts.js",
 	"editor/js/EditorShortCutsList.js",
-	"editor/js/Menubar.Light.js",
-	"editor/js/Menubar.Navigation.js",
-	"editor/js/Sidebar.Sounds.js",
-	"editor/js/SoundCollection.js",
 	"editor/fonts/helvetiker_regular.typeface.js",
 	"editor/fonts/helvetiker_bold.typeface.js",
 	"editor/fonts/gentilis_regular.typeface.js",
-	"editor/fonts/optimer_regular.typeface.js",
-	"editor/js/Sidebar.Geometry.TextGeometry.js"
+	"editor/fonts/optimer_regular.typeface.js"
 
 
 ]

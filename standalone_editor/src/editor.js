@@ -440,7 +440,7 @@ THREE.EditorControls = function ( object, domElement ) {
 		domElement.removeEventListener( 'contextmenu', contextmenu, false );
 		domElement.removeEventListener( 'mousedown', onMouseDown, false );
 		domElement.removeEventListener( 'mousewheel', onMouseWheel, false );
-		domElement.removeEventListener( 'DOMMouseScroll', onMouseWheel, false ); // firefox
+		domElement.removeEventListener( 'MozMousePixelScroll', onMouseWheel, false ); // firefox
 
 		domElement.removeEventListener( 'mousemove', onMouseMove, false );
 		domElement.removeEventListener( 'mouseup', onMouseUp, false );
@@ -455,7 +455,7 @@ THREE.EditorControls = function ( object, domElement ) {
 	domElement.addEventListener( 'contextmenu', contextmenu, false );
 	domElement.addEventListener( 'mousedown', onMouseDown, false );
 	domElement.addEventListener( 'mousewheel', onMouseWheel, false );
-	domElement.addEventListener( 'DOMMouseScroll', onMouseWheel, false ); // firefox
+	domElement.addEventListener( 'MozMousePixelScroll', onMouseWheel, false ); // firefox
 
 	// touch
 
@@ -498,7 +498,7 @@ THREE.EditorControls = function ( object, domElement ) {
 		event.preventDefault();
 		event.stopPropagation();
 
-		var getClosest = function( touch, touches ) {
+		function getClosest( touch, touches ) {
 
 			var closest = touches[ 0 ];
 
@@ -510,7 +510,7 @@ THREE.EditorControls = function ( object, domElement ) {
 
 			return closest;
 
-		};
+		}
 
 		switch ( event.touches.length ) {
 
@@ -1294,6 +1294,12 @@ THREE.EditorControls.prototype.constructor = THREE.EditorControls;
 
 		};
 
+		this.getMode = function () {
+
+			return _mode;
+
+		};
+
 		this.setMode = function ( mode ) {
 
 			_mode = mode ? mode : _mode;
@@ -1701,25 +1707,18 @@ THREE.BabylonLoader = function ( manager ) {
 
 THREE.BabylonLoader.prototype = {
 
-	constructor: THREE.ObjectLoader,
+	constructor: THREE.BabylonLoader,
 
 	load: function ( url, onLoad, onProgress, onError ) {
 
 		var scope = this;
 
 		var loader = new THREE.XHRLoader( scope.manager );
-		loader.setCrossOrigin( this.crossOrigin );
 		loader.load( url, function ( text ) {
 
 			onLoad( scope.parse( JSON.parse( text ) ) );
 
 		}, onProgress, onError );
-
-	},
-
-	setCrossOrigin: function ( value ) {
-
-		this.crossOrigin = value;
 
 	},
 
@@ -1952,8 +1951,7 @@ THREE.BabylonLoader.prototype = {
 * @author Tony Parisi / http://www.tonyparisi.com/
 */
 
-
-( function() {
+THREE.ColladaLoader = function () {
 
 	var COLLADA = null;
 	var scene = null;
@@ -1983,10 +1981,6 @@ THREE.BabylonLoader.prototype = {
 	var flip_uv = true;
 	var preferredShading = THREE.SmoothShading;
 
-	var colladaUnit = 1.0;
-	var colladaUp = 'Y';
-	var upConversion = null;
-
 	var options = {
 		// Force Geometry to always be centered at the local origin of the
 		// containing Mesh.
@@ -2006,696 +2000,1415 @@ THREE.BabylonLoader.prototype = {
 
 	};
 
-	THREE.ColladaLoader = function ( manager ) {
+	var colladaUnit = 1.0;
+	var colladaUp = 'Y';
+	var upConversion = null;
 
-		this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
+	function load ( url, readyCallback, progressCallback, failCallback ) {
 
-		/*
+		var length = 0;
 
-		return {
+		if ( document.implementation && document.implementation.createDocument ) {
 
-			load: load,
-			parse: parse,
-			setPreferredShading: setPreferredShading,
-			applySkin: applySkin,
-			geometries : geometries,
-			options: options
+			var request = new XMLHttpRequest();
+
+			request.onreadystatechange = function() {
+
+				if ( request.readyState === 4 ) {
+
+					if ( request.status === 0 || request.status === 200 ) {
+
+						if ( request.response ) {
+
+							readyCallbackFunc = readyCallback;
+							parse( request.response, undefined, url );
+
+						} else {
+
+							if ( failCallback ) {
+
+								failCallback();
+
+							} else {
+
+								console.error( "ColladaLoader: Empty or non-existing file (" + url + ")" );
+
+							}
+
+						}
+
+					}
+
+				} else if ( request.readyState === 3 ) {
+
+					if ( progressCallback ) {
+
+						if ( length === 0 ) {
+
+							length = request.getResponseHeader( "Content-Length" );
+
+						}
+
+						progressCallback( { total: length, loaded: request.responseText.length } );
+
+					}
+
+				}
+
+			};
+
+			request.open( "GET", url, true );
+			request.send( null );
+
+		} else {
+
+			alert( "Don't know how to parse XML!" );
+
+		}
+
+	}
+
+	function parse( text, callBack, url ) {
+
+		COLLADA = new DOMParser().parseFromString( text, 'text/xml' );
+		callBack = callBack || readyCallbackFunc;
+
+		if ( url !== undefined ) {
+
+			var parts = url.split( '/' );
+			parts.pop();
+			baseUrl = ( parts.length < 1 ? '.' : parts.join( '/' ) ) + '/';
+
+		}
+
+		parseAsset();
+		setUpConversion();
+		images = parseLib( "library_images image", _Image, "image" );
+		materials = parseLib( "library_materials material", Material, "material" );
+		effects = parseLib( "library_effects effect", Effect, "effect" );
+		geometries = parseLib( "library_geometries geometry", Geometry, "geometry" );
+		cameras = parseLib( "library_cameras camera", Camera, "camera" );
+		lights = parseLib( "library_lights light", Light, "light" );
+		controllers = parseLib( "library_controllers controller", Controller, "controller" );
+		animations = parseLib( "library_animations animation", Animation, "animation" );
+		visualScenes = parseLib( "library_visual_scenes visual_scene", VisualScene, "visual_scene" );
+		kinematicsModels = parseLib( "library_kinematics_models kinematics_model", KinematicsModel, "kinematics_model" );
+
+		morphs = [];
+		skins = [];
+
+		visualScene = parseScene();
+		scene = new THREE.Group();
+
+		for ( var i = 0; i < visualScene.nodes.length; i ++ ) {
+
+			scene.add( createSceneGraph( visualScene.nodes[ i ] ) );
+
+		}
+
+		// unit conversion
+		scene.scale.multiplyScalar( colladaUnit );
+
+		createAnimations();
+
+		kinematicsModel = parseKinematicsModel();
+		createKinematics();
+
+		var result = {
+
+			scene: scene,
+			morphs: morphs,
+			skins: skins,
+			animations: animData,
+			kinematics: kinematics,
+			dae: {
+				images: images,
+				materials: materials,
+				cameras: cameras,
+				lights: lights,
+				effects: effects,
+				geometries: geometries,
+				controllers: controllers,
+				animations: animations,
+				visualScenes: visualScenes,
+				visualScene: visualScene,
+				scene: visualScene,
+				kinematicsModels: kinematicsModels,
+				kinematicsModel: kinematicsModel
+			}
 
 		};
 
-		*/
+		if ( callBack ) {
 
-	};
+			callBack( result );
 
-	THREE.ColladaLoader.prototype = {
+		}
 
-		constructor: THREE.ColladaLoader,
+		return result;
 
-		options: options, //hack
+	}
 
-		load: function ( url, onLoad, onProgress, onError ) {
+	function setPreferredShading ( shading ) {
 
-			var length = 0;
+		preferredShading = shading;
 
-			if ( document.implementation && document.implementation.createDocument ) {
+	}
 
-				var scope = this;
+	function parseAsset () {
 
-				var loader = new THREE.XHRLoader( this.manager );
-				loader.setCrossOrigin( this.crossOrigin );
-				loader.load( url, function ( text ) {
+		var elements = COLLADA.querySelectorAll('asset');
 
-					var parts = url.split( '/' );
-					parts.pop();
-					baseUrl = ( parts.length < 1 ? '.' : parts.join( '/' ) ) + '/';
+		var element = elements[0];
 
-					var xmlParser = new DOMParser();
-					var responseXML = xmlParser.parseFromString( text, "application/xml" );
-					onLoad( scope.parse( responseXML, url ) );
+		if ( element && element.childNodes ) {
 
-				}, onProgress, onError );
+			for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-			} else {
+				var child = element.childNodes[ i ];
 
-				alert( "Don't know how to parse XML!" );
+				switch ( child.nodeName ) {
 
-			}
+					case 'unit':
 
-		},
+						var meter = child.getAttribute( 'meter' );
 
-		setCrossOrigin: function ( value ) {
+						if ( meter ) {
 
-			this.crossOrigin = value;
+							colladaUnit = parseFloat( meter );
 
-		},
+						}
 
-		parse: function( doc ) {
+						break;
 
-			COLLADA = doc;
+					case 'up_axis':
 
-			this.parseAsset();
-			this.setUpConversion();
-			images = this.parseLib( "library_images image", _Image, "image" );
-			materials = this.parseLib( "library_materials material", Material, "material" );
-			effects = this.parseLib( "library_effects effect", Effect, "effect" );
-			geometries = this.parseLib( "library_geometries geometry", Geometry, "geometry" );
-			cameras = this.parseLib( "library_cameras camera", Camera, "camera" );
-			lights = this.parseLib( "library_lights light", Light, "light" );
-			controllers = this.parseLib( "library_controllers controller", Controller, "controller" );
-			animations = this.parseLib( "library_animations animation", Animation, "animation" );
-			visualScenes = this.parseLib( "library_visual_scenes visual_scene", VisualScene, "visual_scene" );
-			kinematicsModels = this.parseLib( "library_kinematics_models kinematics_model", KinematicsModel, "kinematics_model" );
+						colladaUp = child.textContent.charAt(0);
+						break;
 
-			morphs = [];
-			skins = [];
-
-			visualScene = this.parseScene();
-			scene = new THREE.Group();
-
-			for ( var i = 0; i < visualScene.nodes.length; i ++ ) {
-
-				scene.add( createSceneGraph( visualScene.nodes[ i ] ) );
-
-			}
-
-			// unit conversion
-			scene.scale.multiplyScalar( colladaUnit );
-
-			this.createAnimations();
-
-			kinematicsModel = this.parseKinematicsModel();
-			this.createKinematics();
-
-			var result = {
-				scene: scene,
-				morphs: morphs,
-				skins: skins,
-				animations: animData,
-				kinematics: kinematics,
-				dae: {
-					images: images,
-					materials: materials,
-					cameras: cameras,
-					lights: lights,
-					effects: effects,
-					geometries: geometries,
-					controllers: controllers,
-					animations: animations,
-					visualScenes: visualScenes,
-					visualScene: visualScene,
-					scene: visualScene,
-					kinematicsModels: kinematicsModels,
-					kinematicsModel: kinematicsModel
 				}
+
+			}
+
+		}
+
+	}
+
+	function parseLib ( q, classSpec, prefix ) {
+
+		var elements = COLLADA.querySelectorAll(q);
+
+		var lib = {};
+
+		var i = 0;
+
+		var elementsLength = elements.length;
+
+		for ( var j = 0; j < elementsLength; j ++ ) {
+
+			var element = elements[j];
+			var daeElement = ( new classSpec() ).parse( element );
+
+			if ( !daeElement.id || daeElement.id.length === 0 ) daeElement.id = prefix + ( i ++ );
+			lib[ daeElement.id ] = daeElement;
+
+		}
+
+		return lib;
+
+	}
+
+	function parseScene() {
+
+		var sceneElement = COLLADA.querySelectorAll('scene instance_visual_scene')[0];
+
+		if ( sceneElement ) {
+
+			var url = sceneElement.getAttribute( 'url' ).replace( /^#/, '' );
+			return visualScenes[ url.length > 0 ? url : 'visual_scene0' ];
+
+		} else {
+
+			return null;
+
+		}
+
+	}
+
+	function parseKinematicsModel() {
+
+		var kinematicsModelElement = COLLADA.querySelectorAll('instance_kinematics_model')[0];
+
+		if ( kinematicsModelElement ) {
+
+			var url = kinematicsModelElement.getAttribute( 'url' ).replace(/^#/, '');
+			return kinematicsModels[ url.length > 0 ? url : 'kinematics_model0' ];
+
+		} else {
+
+			return null;
+
+		}
+
+	}
+
+	function createAnimations() {
+
+		animData = [];
+
+		// fill in the keys
+		recurseHierarchy( scene );
+
+	}
+
+	function recurseHierarchy( node ) {
+
+		var n = visualScene.getChildById( node.colladaId, true ),
+			newData = null;
+
+		if ( n && n.keys ) {
+
+			newData = {
+				fps: 60,
+				hierarchy: [ {
+					node: n,
+					keys: n.keys,
+					sids: n.sids
+				} ],
+				node: node,
+				name: 'animation_' + node.name,
+				length: 0
 			};
 
-			return result;
+			animData.push(newData);
 
-		},
+			for ( var i = 0, il = n.keys.length; i < il; i ++ ) {
 
-		setPreferredShading: function ( shading ) {
-
-			preferredShading = shading;
-
-		},
-
-		parseAsset: function () {
-
-			var elements = COLLADA.querySelectorAll( 'asset' );
-
-			var element = elements[ 0 ];
-
-			if ( element && element.childNodes ) {
-
-				for ( var i = 0; i < element.childNodes.length; i ++ ) {
-
-					var child = element.childNodes[ i ];
-
-					switch ( child.nodeName ) {
-
-						case 'unit':
-
-							var meter = child.getAttribute( 'meter' );
-
-							if ( meter ) {
-
-								colladaUnit = parseFloat( meter );
-
-							}
-
-							break;
-
-						case 'up_axis':
-
-							colladaUp = child.textContent.charAt( 0 );
-							break;
-
-					}
-
-				}
+				newData.length = Math.max( newData.length, n.keys[i].time );
 
 			}
 
-		},
+		} else {
 
-		parseLib: function ( q, classSpec, prefix ) {
-
-			var elements = COLLADA.querySelectorAll( q );
-
-			var lib = {};
-
-			var i = 0;
-
-			var elementsLength = elements.length;
-
-			for ( var j = 0; j < elementsLength; j ++ ) {
-
-				var element = elements[ j ];
-				var daeElement = ( new classSpec() ).parse( element );
-
-				if ( ! daeElement.id || daeElement.id.length === 0 ) daeElement.id = prefix + ( i ++ );
-				lib[ daeElement.id ] = daeElement;
-
+			newData = {
+				hierarchy: [ {
+					keys: [],
+					sids: []
+				} ]
 			}
 
-			return lib;
+		}
 
-		},
+		for ( var i = 0, il = node.children.length; i < il; i ++ ) {
 
-		parseScene: function () {
+			var d = recurseHierarchy( node.children[i] );
 
-			var sceneElement = COLLADA.querySelectorAll( 'scene instance_visual_scene' )[ 0 ];
+			for ( var j = 0, jl = d.hierarchy.length; j < jl; j ++ ) {
 
-			if ( sceneElement ) {
-
-				var url = sceneElement.getAttribute( 'url' ).replace( /^#/, '' );
-				return visualScenes[ url.length > 0 ? url : 'visual_scene0' ];
-
-			} else {
-
-				return null;
-
-			}
-
-		},
-
-		parseKinematicsModel: function () {
-
-			var kinematicsModelElement = COLLADA.querySelectorAll( 'instance_kinematics_model' )[ 0 ];
-
-			if ( kinematicsModelElement ) {
-
-				var url = kinematicsModelElement.getAttribute( 'url' ).replace( /^#/, '' );
-				return kinematicsModels[ url.length > 0 ? url : 'kinematics_model0' ];
-
-			} else {
-
-				return null;
-
-			}
-
-		},
-
-		createAnimations: function () {
-
-			animData = [];
-
-			// fill in the keys
-			recurseHierarchy( scene );
-
-		},
-
-		recurseHierarchy: function ( node ) {
-
-			var n = visualScene.getChildById( node.colladaId, true ),
-				newData = null;
-
-			if ( n && n.keys ) {
-
-				newData = {
-					fps: 60,
-					hierarchy: [ {
-						node: n,
-						keys: n.keys,
-						sids: n.sids
-					} ],
-					node: node,
-					name: 'animation_' + node.name,
-					length: 0
-				};
-
-				animData.push( newData );
-
-				for ( var i = 0, il = n.keys.length; i < il; i ++ ) {
-
-					newData.length = Math.max( newData.length, n.keys[ i ].time );
-
-				}
-
-			} else {
-
-				newData = {
-					hierarchy: [ {
-						keys: [],
-						sids: []
-					} ]
-				}
-
-			}
-
-			for ( var i = 0, il = node.children.length; i < il; i ++ ) {
-
-				var d = recurseHierarchy( node.children[ i ] );
-
-				for ( var j = 0, jl = d.hierarchy.length; j < jl; j ++ ) {
-
-					newData.hierarchy.push( {
-						keys: [],
-						sids: []
-					} );
-
-				}
-
-			}
-
-			return newData;
-
-		},
-
-		createMorph: function ( geometry, ctrl ) {
-
-			var morphCtrl = ctrl instanceof InstanceController ? controllers[ ctrl.url ] : ctrl;
-
-			if ( ! morphCtrl || ! morphCtrl.morph ) {
-
-				console.log( "could not find morph controller!" );
-				return;
-
-			}
-
-			var morph = morphCtrl.morph;
-
-			for ( var i = 0; i < morph.targets.length; i ++ ) {
-
-				var target_id = morph.targets[ i ];
-				var daeGeometry = geometries[ target_id ];
-
-				if ( ! daeGeometry.mesh ||
-					 ! daeGeometry.mesh.primitives ||
-					 ! daeGeometry.mesh.primitives.length ) {
-
-					 continue;
-
-				}
-
-				var target = daeGeometry.mesh.primitives[ 0 ].geometry;
-
-				if ( target.vertices.length === geometry.vertices.length ) {
-
-					geometry.morphTargets.push( { name: "target_1", vertices: target.vertices } );
-
-				}
-
-			}
-
-			geometry.morphTargets.push( { name: "target_Z", vertices: geometry.vertices } );
-
-		},
-
-		createSkin: function ( geometry, ctrl, applyBindShape ) {
-
-			var skinCtrl = controllers[ ctrl.url ];
-
-			if ( ! skinCtrl || ! skinCtrl.skin ) {
-
-				console.log( "could not find skin controller!" );
-				return;
-
-			}
-
-			if ( ! ctrl.skeleton || ! ctrl.skeleton.length ) {
-
-				console.log( "could not find the skeleton for the skin!" );
-				return;
-
-			}
-
-			var skin = skinCtrl.skin;
-			var skeleton = visualScene.getChildById( ctrl.skeleton[ 0 ] );
-			var hierarchy = [];
-
-			applyBindShape = applyBindShape !== undefined ? applyBindShape : true;
-
-			var bones = [];
-			geometry.skinWeights = [];
-			geometry.skinIndices = [];
-
-			//createBones( geometry.bones, skin, hierarchy, skeleton, null, -1 );
-			//createWeights( skin, geometry.bones, geometry.skinIndices, geometry.skinWeights );
-
-			/*
-			geometry.animation = {
-				name: 'take_001',
-				fps: 30,
-				length: 2,
-				JIT: true,
-				hierarchy: hierarchy
-			};
-			*/
-
-			if ( applyBindShape ) {
-
-				for ( var i = 0; i < geometry.vertices.length; i ++ ) {
-
-					geometry.vertices[ i ].applyMatrix4( skin.bindShapeMatrix );
-
-				}
-
-			}
-
-		},
-
-		createKinematics: function () {
-
-			if ( kinematicsModel && kinematicsModel.joints.length === 0 ) {
-
-				kinematics = undefined;
-				return;
-
-			}
-
-			var jointMap = {};
-
-			var _addToMap = function( jointIndex, parentVisualElement ) {
-
-				var parentVisualElementId = parentVisualElement.getAttribute( 'id' );
-				var colladaNode = visualScene.getChildById( parentVisualElementId, true );
-				var joint = kinematicsModel.joints[ jointIndex ];
-
-				scene.traverse( function( node ) {
-
-					if ( node.colladaId == parentVisualElementId ) {
-
-						jointMap[ jointIndex ] = {
-							node: node,
-							transforms: colladaNode.transforms,
-							joint: joint,
-							position: joint.zeroPosition
-						};
-
-					}
-
+				newData.hierarchy.push( {
+					keys: [],
+					sids: []
 				} );
 
-			};
+			}
 
-			kinematics = {
+		}
 
-				joints: kinematicsModel && kinematicsModel.joints,
+		return newData;
 
-				getJointValue: function( jointIndex ) {
+	}
 
-					var jointData = jointMap[ jointIndex ];
+	function calcAnimationBounds () {
 
-					if ( jointData ) {
+		var start = 1000000;
+		var end = -start;
+		var frames = 0;
+		var ID;
+		for ( var id in animations ) {
 
-						return jointData.position;
+			var animation = animations[ id ];
+			ID = ID || animation.id;
+			for ( var i = 0; i < animation.sampler.length; i ++ ) {
+
+				var sampler = animation.sampler[ i ];
+
+				sampler.create();
+
+				start = Math.min( start, sampler.startTime );
+				end = Math.max( end, sampler.endTime );
+				frames = Math.max( frames, sampler.input.length );
+
+			}
+
+		}
+
+		return { start:start, end:end, frames:frames,ID:ID };
+
+	}
+
+	function createMorph ( geometry, ctrl ) {
+
+		var morphCtrl = ctrl instanceof InstanceController ? controllers[ ctrl.url ] : ctrl;
+
+		if ( !morphCtrl || !morphCtrl.morph ) {
+
+			console.log("could not find morph controller!");
+			return;
+
+		}
+
+		var morph = morphCtrl.morph;
+
+		for ( var i = 0; i < morph.targets.length; i ++ ) {
+
+			var target_id = morph.targets[ i ];
+			var daeGeometry = geometries[ target_id ];
+
+			if ( !daeGeometry.mesh ||
+				 !daeGeometry.mesh.primitives ||
+				 !daeGeometry.mesh.primitives.length ) {
+				 continue;
+			}
+
+			var target = daeGeometry.mesh.primitives[ 0 ].geometry;
+
+			if ( target.vertices.length === geometry.vertices.length ) {
+
+				geometry.morphTargets.push( { name: "target_1", vertices: target.vertices } );
+
+			}
+
+		}
+
+		geometry.morphTargets.push( { name: "target_Z", vertices: geometry.vertices } );
+
+	}
+
+	function createSkin ( geometry, ctrl, applyBindShape ) {
+
+		var skinCtrl = controllers[ ctrl.url ];
+
+		if ( !skinCtrl || !skinCtrl.skin ) {
+
+			console.log( "could not find skin controller!" );
+			return;
+
+		}
+
+		if ( !ctrl.skeleton || !ctrl.skeleton.length ) {
+
+			console.log( "could not find the skeleton for the skin!" );
+			return;
+
+		}
+
+		var skin = skinCtrl.skin;
+		var skeleton = visualScene.getChildById( ctrl.skeleton[ 0 ] );
+		var hierarchy = [];
+
+		applyBindShape = applyBindShape !== undefined ? applyBindShape : true;
+
+		var bones = [];
+		geometry.skinWeights = [];
+		geometry.skinIndices = [];
+
+		//createBones( geometry.bones, skin, hierarchy, skeleton, null, -1 );
+		//createWeights( skin, geometry.bones, geometry.skinIndices, geometry.skinWeights );
+
+		/*
+		geometry.animation = {
+			name: 'take_001',
+			fps: 30,
+			length: 2,
+			JIT: true,
+			hierarchy: hierarchy
+		};
+		*/
+
+		if ( applyBindShape ) {
+
+			for ( var i = 0; i < geometry.vertices.length; i ++ ) {
+
+				geometry.vertices[ i ].applyMatrix4( skin.bindShapeMatrix );
+
+			}
+
+		}
+
+	}
+
+	function setupSkeleton ( node, bones, frame, parent ) {
+
+		node.world = node.world || new THREE.Matrix4();
+		node.localworld = node.localworld || new THREE.Matrix4();
+		node.world.copy( node.matrix );
+		node.localworld.copy( node.matrix );
+
+		if ( node.channels && node.channels.length ) {
+
+			var channel = node.channels[ 0 ];
+			var m = channel.sampler.output[ frame ];
+
+			if ( m instanceof THREE.Matrix4 ) {
+
+				node.world.copy( m );
+				node.localworld.copy(m);
+				if (frame === 0)
+					node.matrix.copy(m);
+			}
+
+		}
+
+		if ( parent ) {
+
+			node.world.multiplyMatrices( parent, node.world );
+
+		}
+
+		bones.push( node );
+
+		for ( var i = 0; i < node.nodes.length; i ++ ) {
+
+			setupSkeleton( node.nodes[ i ], bones, frame, node.world );
+
+		}
+
+	}
+
+	function setupSkinningMatrices ( bones, skin ) {
+
+		// FIXME: this is dumb...
+
+		for ( var i = 0; i < bones.length; i ++ ) {
+
+			var bone = bones[ i ];
+			var found = -1;
+
+			if ( bone.type != 'JOINT' ) continue;
+
+			for ( var j = 0; j < skin.joints.length; j ++ ) {
+
+				if ( bone.sid === skin.joints[ j ] ) {
+
+					found = j;
+					break;
+
+				}
+
+			}
+
+			if ( found >= 0 ) {
+
+				var inv = skin.invBindMatrices[ found ];
+
+				bone.invBindMatrix = inv;
+				bone.skinningMatrix = new THREE.Matrix4();
+				bone.skinningMatrix.multiplyMatrices(bone.world, inv); // (IBMi * JMi)
+				bone.animatrix = new THREE.Matrix4();
+
+				bone.animatrix.copy(bone.localworld);
+				bone.weights = [];
+
+				for ( var j = 0; j < skin.weights.length; j ++ ) {
+
+					for (var k = 0; k < skin.weights[ j ].length; k ++ ) {
+
+						var w = skin.weights[ j ][ k ];
+
+						if ( w.joint === found ) {
+
+							bone.weights.push( w );
+
+						}
+
+					}
+
+				}
+
+			} else {
+
+				console.warn( "ColladaLoader: Could not find joint '" + bone.sid + "'." );
+
+				bone.skinningMatrix = new THREE.Matrix4();
+				bone.weights = [];
+
+			}
+		}
+
+	}
+
+	//Walk the Collada tree and flatten the bones into a list, extract the position, quat and scale from the matrix
+	function flattenSkeleton(skeleton) {
+
+		var list = [];
+		var walk = function(parentid, node, list) {
+
+			var bone = {};
+			bone.name = node.sid;
+			bone.parent = parentid;
+			bone.matrix = node.matrix;
+			var data = [ new THREE.Vector3(),new THREE.Quaternion(),new THREE.Vector3() ];
+			bone.matrix.decompose(data[0], data[1], data[2]);
+
+			bone.pos = [ data[0].x,data[0].y,data[0].z ];
+
+			bone.scl = [ data[2].x,data[2].y,data[2].z ];
+			bone.rotq = [ data[1].x,data[1].y,data[1].z,data[1].w ];
+			list.push(bone);
+
+			for (var i in node.nodes) {
+
+				walk(node.sid, node.nodes[i], list);
+
+			}
+
+		};
+
+		walk(-1, skeleton, list);
+		return list;
+
+	}
+
+	//Move the vertices into the pose that is proper for the start of the animation
+	function skinToBindPose(geometry,skeleton,skinController) {
+
+		var bones = [];
+		setupSkeleton( skeleton, bones, -1 );
+		setupSkinningMatrices( bones, skinController.skin );
+		var v = new THREE.Vector3();
+		var skinned = [];
+
+		for (var i = 0; i < geometry.vertices.length; i ++) {
+
+			skinned.push(new THREE.Vector3());
+
+		}
+
+		for ( i = 0; i < bones.length; i ++ ) {
+
+			if ( bones[ i ].type != 'JOINT' ) continue;
+
+			for ( var j = 0; j < bones[ i ].weights.length; j ++ ) {
+
+				var w = bones[ i ].weights[ j ];
+				var vidx = w.index;
+				var weight = w.weight;
+
+				var o = geometry.vertices[vidx];
+				var s = skinned[vidx];
+
+				v.x = o.x;
+				v.y = o.y;
+				v.z = o.z;
+
+				v.applyMatrix4( bones[i].skinningMatrix );
+
+				s.x += (v.x * weight);
+				s.y += (v.y * weight);
+				s.z += (v.z * weight);
+			}
+
+		}
+
+		for (var i = 0; i < geometry.vertices.length; i ++) {
+
+			geometry.vertices[i] = skinned[i];
+
+		}
+
+	}
+
+	function applySkin ( geometry, instanceCtrl, frame ) {
+
+		var skinController = controllers[ instanceCtrl.url ];
+
+		frame = frame !== undefined ? frame : 40;
+
+		if ( !skinController || !skinController.skin ) {
+
+			console.log( 'ColladaLoader: Could not find skin controller.' );
+			return;
+
+		}
+
+		if ( !instanceCtrl.skeleton || !instanceCtrl.skeleton.length ) {
+
+			console.log( 'ColladaLoader: Could not find the skeleton for the skin. ' );
+			return;
+
+		}
+
+		var animationBounds = calcAnimationBounds();
+		var skeleton = visualScene.getChildById( instanceCtrl.skeleton[0], true ) || visualScene.getChildBySid( instanceCtrl.skeleton[0], true );
+
+		//flatten the skeleton into a list of bones
+		var bonelist = flattenSkeleton(skeleton);
+		var joints = skinController.skin.joints;
+
+		//sort that list so that the order reflects the order in the joint list
+		var sortedbones = [];
+		for (var i = 0; i < joints.length; i ++) {
+
+			for (var j = 0; j < bonelist.length; j ++) {
+
+				if (bonelist[j].name === joints[i]) {
+
+					sortedbones[i] = bonelist[j];
+
+				}
+
+			}
+
+		}
+
+		//hook up the parents by index instead of name
+		for (var i = 0; i < sortedbones.length; i ++) {
+
+			for (var j = 0; j < sortedbones.length; j ++) {
+
+				if (sortedbones[i].parent === sortedbones[j].name) {
+
+					sortedbones[i].parent = j;
+
+				}
+
+			}
+
+		}
+
+
+		var i, j, w, vidx, weight;
+		var v = new THREE.Vector3(), o, s;
+
+		// move vertices to bind shape
+		for ( i = 0; i < geometry.vertices.length; i ++ ) {
+			geometry.vertices[i].applyMatrix4( skinController.skin.bindShapeMatrix );
+		}
+
+		var skinIndices = [];
+		var skinWeights = [];
+		var weights = skinController.skin.weights;
+
+		// hook up the skin weights
+		// TODO - this might be a good place to choose greatest 4 weights
+		for ( var i =0; i < weights.length; i ++ ) {
+
+			var indicies = new THREE.Vector4(weights[i][0] ? weights[i][0].joint : 0,weights[i][1] ? weights[i][1].joint : 0,weights[i][2] ? weights[i][2].joint : 0,weights[i][3] ? weights[i][3].joint : 0);
+			var weight = new THREE.Vector4(weights[i][0] ? weights[i][0].weight : 0,weights[i][1] ? weights[i][1].weight : 0,weights[i][2] ? weights[i][2].weight : 0,weights[i][3] ? weights[i][3].weight : 0);
+
+			skinIndices.push(indicies);
+			skinWeights.push(weight);
+
+		}
+
+		geometry.skinIndices = skinIndices;
+		geometry.skinWeights = skinWeights;
+		geometry.bones = sortedbones;
+		// process animation, or simply pose the rig if no animation
+
+		//create an animation for the animated bones
+		//NOTE: this has no effect when using morphtargets
+		var animationdata = { "name":animationBounds.ID,"fps":30,"length":animationBounds.frames / 30,"hierarchy":[] };
+
+		for (var j = 0; j < sortedbones.length; j ++) {
+
+			animationdata.hierarchy.push({ parent:sortedbones[j].parent, name:sortedbones[j].name, keys:[] });
+
+		}
+
+		console.log( 'ColladaLoader:', animationBounds.ID + ' has ' + sortedbones.length + ' bones.' );
+
+
+
+		skinToBindPose(geometry, skeleton, skinController);
+
+
+		for ( frame = 0; frame < animationBounds.frames; frame ++ ) {
+
+			var bones = [];
+			var skinned = [];
+			// process the frame and setup the rig with a fresh
+			// transform, possibly from the bone's animation channel(s)
+
+			setupSkeleton( skeleton, bones, frame );
+			setupSkinningMatrices( bones, skinController.skin );
+
+			for (var i = 0; i < bones.length; i ++) {
+
+				for (var j = 0; j < animationdata.hierarchy.length; j ++) {
+
+					if (animationdata.hierarchy[j].name === bones[i].sid) {
+
+						var key = {};
+						key.time = (frame / 30);
+						key.matrix = bones[i].animatrix;
+
+						if (frame === 0)
+							bones[i].matrix = key.matrix;
+
+						var data = [ new THREE.Vector3(),new THREE.Quaternion(),new THREE.Vector3() ];
+						key.matrix.decompose(data[0], data[1], data[2]);
+
+						key.pos = [ data[0].x,data[0].y,data[0].z ];
+
+						key.scl = [ data[2].x,data[2].y,data[2].z ];
+						key.rot = data[1];
+
+						animationdata.hierarchy[j].keys.push(key);
+
+					}
+
+				}
+
+			}
+
+			geometry.animation = animationdata;
+
+		}
+
+	}
+
+	function createKinematics() {
+
+		if ( kinematicsModel && kinematicsModel.joints.length === 0 ) {
+			kinematics = undefined;
+			return;
+		}
+
+		var jointMap = {};
+
+		var _addToMap = function( jointIndex, parentVisualElement ) {
+
+			var parentVisualElementId = parentVisualElement.getAttribute( 'id' );
+			var colladaNode = visualScene.getChildById( parentVisualElementId, true );
+			var joint = kinematicsModel.joints[ jointIndex ];
+
+			scene.traverse(function( node ) {
+
+				if ( node.colladaId == parentVisualElementId ) {
+
+					jointMap[ jointIndex ] = {
+						node: node,
+						transforms: colladaNode.transforms,
+						joint: joint,
+						position: joint.zeroPosition
+					};
+
+				}
+
+			});
+
+		};
+
+		kinematics = {
+
+			joints: kinematicsModel && kinematicsModel.joints,
+
+			getJointValue: function( jointIndex ) {
+
+				var jointData = jointMap[ jointIndex ];
+
+				if ( jointData ) {
+
+					return jointData.position;
+
+				} else {
+
+					console.log( 'getJointValue: joint ' + jointIndex + ' doesn\'t exist' );
+
+				}
+
+			},
+
+			setJointValue: function( jointIndex, value ) {
+
+				var jointData = jointMap[ jointIndex ];
+
+				if ( jointData ) {
+
+					var joint = jointData.joint;
+
+					if ( value > joint.limits.max || value < joint.limits.min ) {
+
+						console.log( 'setJointValue: joint ' + jointIndex + ' value ' + value + ' outside of limits (min: ' + joint.limits.min + ', max: ' + joint.limits.max + ')' );
+
+					} else if ( joint.static ) {
+
+						console.log( 'setJointValue: joint ' + jointIndex + ' is static' );
 
 					} else {
 
-						console.log( 'getJointValue: joint ' + jointIndex + ' doesn\'t exist' );
+						var threejsNode = jointData.node;
+						var axis = joint.axis;
+						var transforms = jointData.transforms;
 
-					}
+						var matrix = new THREE.Matrix4();
 
-				},
+						for (i = 0; i < transforms.length; i ++ ) {
 
-				setJointValue: function( jointIndex, value ) {
+							var transform = transforms[ i ];
 
-					var jointData = jointMap[ jointIndex ];
+							// kinda ghetto joint detection
+							if ( transform.sid && transform.sid.indexOf( 'joint' + jointIndex ) !== -1 ) {
 
-					if ( jointData ) {
+								// apply actual joint value here
+								switch ( joint.type ) {
 
-						var joint = jointData.joint;
+									case 'revolute':
 
-						if ( value > joint.limits.max || value < joint.limits.min ) {
+										matrix.multiply( m1.makeRotationAxis( axis, THREE.Math.degToRad(value) ) );
+										break;
 
-							console.log( 'setJointValue: joint ' + jointIndex + ' value ' + value + ' outside of limits (min: ' + joint.limits.min + ', max: ' + joint.limits.max + ')' );
+									case 'prismatic':
 
-						} else if ( joint.static ) {
+										matrix.multiply( m1.makeTranslation(axis.x * value, axis.y * value, axis.z * value ) );
+										break;
 
-							console.log( 'setJointValue: joint ' + jointIndex + ' is static' );
+									default:
 
-						} else {
-
-							var threejsNode = jointData.node;
-							var axis = joint.axis;
-							var transforms = jointData.transforms;
-
-							var matrix = new THREE.Matrix4();
-
-							for ( i = 0; i < transforms.length; i ++ ) {
-
-								var transform = transforms[ i ];
-
-								// kinda ghetto joint detection
-								if ( transform.sid && transform.sid.indexOf( 'joint' + jointIndex ) !== - 1 ) {
-
-									// apply actual joint value here
-									switch ( joint.type ) {
-
-										case 'revolute':
-
-											matrix.multiply( m1.makeRotationAxis( axis, THREE.Math.degToRad( value ) ) );
-											break;
-
-										case 'prismatic':
-
-											matrix.multiply( m1.makeTranslation( axis.x * value, axis.y * value, axis.z * value ) );
-											break;
-
-										default:
-
-											console.warn( 'setJointValue: unknown joint type: ' + joint.type );
-											break;
-
-									}
-
-								} else {
-
-									var m1 = new THREE.Matrix4();
-
-									switch ( transform.type ) {
-
-										case 'matrix':
-
-											matrix.multiply( transform.obj );
-
-											break;
-
-										case 'translate':
-
-											matrix.multiply( m1.makeTranslation( transform.obj.x, transform.obj.y, transform.obj.z ) );
-
-											break;
-
-										case 'rotate':
-
-											matrix.multiply( m1.makeRotationAxis( transform.obj, transform.angle ) );
-
-											break;
-
-									}
+										console.warn( 'setJointValue: unknown joint type: ' + joint.type );
+										break;
 
 								}
 
+							} else {
+
+								var m1 = new THREE.Matrix4();
+
+								switch ( transform.type ) {
+
+									case 'matrix':
+
+										matrix.multiply( transform.obj );
+
+										break;
+
+									case 'translate':
+
+										matrix.multiply( m1.makeTranslation( transform.obj.x, transform.obj.y, transform.obj.z ) );
+
+										break;
+
+									case 'rotate':
+
+										matrix.multiply( m1.makeRotationAxis( transform.obj, transform.angle ) );
+
+										break;
+
+								}
 							}
+						}
 
-							// apply the matrix to the threejs node
-							var elementsFloat32Arr = matrix.elements;
-							var elements = Array.prototype.slice.call( elementsFloat32Arr );
+						// apply the matrix to the threejs node
+						var elementsFloat32Arr = matrix.elements;
+						var elements = Array.prototype.slice.call( elementsFloat32Arr );
 
-							var elementsRowMajor = [
-								elements[ 0 ],
-								elements[ 4 ],
-								elements[ 8 ],
-								elements[ 12 ],
-								elements[ 1 ],
-								elements[ 5 ],
-								elements[ 9 ],
-								elements[ 13 ],
-								elements[ 2 ],
-								elements[ 6 ],
-								elements[ 10 ],
-								elements[ 14 ],
-								elements[ 3 ],
-								elements[ 7 ],
-								elements[ 11 ],
-								elements[ 15 ]
-							];
+						var elementsRowMajor = [
+							elements[ 0 ],
+							elements[ 4 ],
+							elements[ 8 ],
+							elements[ 12 ],
+							elements[ 1 ],
+							elements[ 5 ],
+							elements[ 9 ],
+							elements[ 13 ],
+							elements[ 2 ],
+							elements[ 6 ],
+							elements[ 10 ],
+							elements[ 14 ],
+							elements[ 3 ],
+							elements[ 7 ],
+							elements[ 11 ],
+							elements[ 15 ]
+						];
 
-							threejsNode.matrix.set.apply( threejsNode.matrix, elementsRowMajor );
-							threejsNode.matrix.decompose( threejsNode.position, threejsNode.quaternion, threejsNode.scale );
+						threejsNode.matrix.set.apply( threejsNode.matrix, elementsRowMajor );
+						threejsNode.matrix.decompose( threejsNode.position, threejsNode.quaternion, threejsNode.scale );
+					}
+
+				} else {
+
+					console.log( 'setJointValue: joint ' + jointIndex + ' doesn\'t exist' );
+
+				}
+
+			}
+
+		};
+
+		var element = COLLADA.querySelector('scene instance_kinematics_scene');
+
+		if ( element ) {
+
+			for ( var i = 0; i < element.childNodes.length; i ++ ) {
+
+				var child = element.childNodes[ i ];
+
+				if ( child.nodeType != 1 ) continue;
+
+				switch ( child.nodeName ) {
+
+					case 'bind_joint_axis':
+
+						var visualTarget = child.getAttribute( 'target' ).split( '/' ).pop();
+						var axis = child.querySelector('axis param').textContent;
+						var jointIndex = parseInt( axis.split( 'joint' ).pop().split( '.' )[0] );
+						var visualTargetElement = COLLADA.querySelector( '[sid="' + visualTarget + '"]' );
+
+						if ( visualTargetElement ) {
+							var parentVisualElement = visualTargetElement.parentElement;
+							_addToMap(jointIndex, parentVisualElement);
+						}
+
+						break;
+
+					default:
+
+						break;
+
+				}
+
+			}
+		}
+
+	}
+
+	function createSceneGraph ( node, parent ) {
+
+		var obj = new THREE.Object3D();
+		var skinned = false;
+		var skinController;
+		var morphController;
+		var i, j;
+
+		// FIXME: controllers
+
+		for ( i = 0; i < node.controllers.length; i ++ ) {
+
+			var controller = controllers[ node.controllers[ i ].url ];
+
+			switch ( controller.type ) {
+
+				case 'skin':
+
+					if ( geometries[ controller.skin.source ] ) {
+
+						var inst_geom = new InstanceGeometry();
+
+						inst_geom.url = controller.skin.source;
+						inst_geom.instance_material = node.controllers[ i ].instance_material;
+
+						node.geometries.push( inst_geom );
+						skinned = true;
+						skinController = node.controllers[ i ];
+
+					} else if ( controllers[ controller.skin.source ] ) {
+
+						// urgh: controller can be chained
+						// handle the most basic case...
+
+						var second = controllers[ controller.skin.source ];
+						morphController = second;
+					//	skinController = node.controllers[i];
+
+						if ( second.morph && geometries[ second.morph.source ] ) {
+
+							var inst_geom = new InstanceGeometry();
+
+							inst_geom.url = second.morph.source;
+							inst_geom.instance_material = node.controllers[ i ].instance_material;
+
+							node.geometries.push( inst_geom );
 
 						}
+
+					}
+
+					break;
+
+				case 'morph':
+
+					if ( geometries[ controller.morph.source ] ) {
+
+						var inst_geom = new InstanceGeometry();
+
+						inst_geom.url = controller.morph.source;
+						inst_geom.instance_material = node.controllers[ i ].instance_material;
+
+						node.geometries.push( inst_geom );
+						morphController = node.controllers[ i ];
+
+					}
+
+					console.log( 'ColladaLoader: Morph-controller partially supported.' );
+
+				default:
+					break;
+
+			}
+
+		}
+
+		// geometries
+
+		var double_sided_materials = {};
+
+		for ( i = 0; i < node.geometries.length; i ++ ) {
+
+			var instance_geometry = node.geometries[i];
+			var instance_materials = instance_geometry.instance_material;
+			var geometry = geometries[ instance_geometry.url ];
+			var used_materials = {};
+			var used_materials_array = [];
+			var num_materials = 0;
+			var first_material;
+
+			if ( geometry ) {
+
+				if ( !geometry.mesh || !geometry.mesh.primitives )
+					continue;
+
+				if ( obj.name.length === 0 ) {
+
+					obj.name = geometry.id;
+
+				}
+
+				// collect used fx for this geometry-instance
+
+				if ( instance_materials ) {
+
+					for ( j = 0; j < instance_materials.length; j ++ ) {
+
+						var instance_material = instance_materials[ j ];
+						var mat = materials[ instance_material.target ];
+						var effect_id = mat.instance_effect.url;
+						var shader = effects[ effect_id ].shader;
+						var material3js = shader.material;
+
+						if ( geometry.doubleSided ) {
+
+							if ( !( instance_material.symbol in double_sided_materials ) ) {
+
+								var _copied_material = material3js.clone();
+								_copied_material.side = THREE.DoubleSide;
+								double_sided_materials[ instance_material.symbol ] = _copied_material;
+
+							}
+
+							material3js = double_sided_materials[ instance_material.symbol ];
+
+						}
+
+						material3js.opacity = !material3js.opacity ? 1 : material3js.opacity;
+						used_materials[ instance_material.symbol ] = num_materials;
+						used_materials_array.push( material3js );
+						first_material = material3js;
+						first_material.name = mat.name === null || mat.name === '' ? mat.id : mat.name;
+						num_materials ++;
+
+					}
+
+				}
+
+				var mesh;
+				var material = first_material || new THREE.MeshLambertMaterial( { color: 0xdddddd, side: geometry.doubleSided ? THREE.DoubleSide : THREE.FrontSide } );
+				var geom = geometry.mesh.geometry3js;
+
+				if ( num_materials > 1 ) {
+
+					material = new THREE.MeshFaceMaterial( used_materials_array );
+
+				}
+
+				if ( skinController !== undefined ) {
+
+
+					applySkin( geom, skinController );
+
+					if ( geom.morphTargets.length > 0 ) {
+
+						material.morphTargets = true;
+						material.skinning = false;
 
 					} else {
 
-						console.log( 'setJointValue: joint ' + jointIndex + ' doesn\'t exist' );
+						material.morphTargets = false;
+						material.skinning = true;
 
 					}
 
-				}
 
-			};
+					mesh = new THREE.SkinnedMesh( geom, material, false );
 
-			var element = COLLADA.querySelector( 'scene instance_kinematics_scene' );
 
-			if ( element ) {
+					//mesh.skeleton = skinController.skeleton;
+					//mesh.skinController = controllers[ skinController.url ];
+					//mesh.skinInstanceController = skinController;
+					mesh.name = 'skin_' + skins.length;
 
-				for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-					var child = element.childNodes[ i ];
 
-					if ( child.nodeType != 1 ) continue;
+					//mesh.animationHandle.setKey(0);
+					skins.push( mesh );
 
-					switch ( child.nodeName ) {
+				} else if ( morphController !== undefined ) {
 
-						case 'bind_joint_axis':
+					createMorph( geom, morphController );
 
-							var visualTarget = child.getAttribute( 'target' ).split( '/' ).pop();
-							var axis = child.querySelector( 'axis param' ).textContent;
-							var jointIndex = parseInt( axis.split( 'joint' ).pop().split( '.' )[ 0 ] );
-							var visualTargetElement = COLLADA.querySelector( '[sid="' + visualTarget + '"]' );
+					material.morphTargets = true;
 
-							if ( visualTargetElement ) {
+					mesh = new THREE.Mesh( geom, material );
+					mesh.name = 'morph_' + morphs.length;
 
-								var parentVisualElement = visualTargetElement.parentElement;
-								_addToMap( jointIndex, parentVisualElement );
+					morphs.push( mesh );
 
-							}
+				} else {
 
-							break;
+					if ( geom.isLineStrip === true ) {
 
-						default:
-
-							break;
-
-					}
-
-				}
-
-			}
-
-		},
-
-		getJointId: function ( skin, id ) {
-
-			for ( var i = 0; i < skin.joints.length; i ++ ) {
-
-				if ( skin.joints[ i ] === id ) {
-
-					return i;
-
-				}
-
-			}
-
-		},
-
-		calcFrameDuration: function ( node ) {
-
-			var minT = 10000000;
-
-			for ( var i = 0; i < node.channels.length; i ++ ) {
-
-				var sampler = node.channels[ i ].sampler;
-
-				for ( var j = 0; j < sampler.input.length - 1; j ++ ) {
-
-					var t0 = sampler.input[ j ];
-					var t1 = sampler.input[ j + 1 ];
-					minT = Math.min( minT, t1 - t0 );
-
-				}
-
-			}
-
-			return minT;
-
-		},
-
-		calcMatrixAt: function ( node, t ) {
-
-			var animated = {};
-
-			var i, j;
-
-			for ( i = 0; i < node.channels.length; i ++ ) {
-
-				var channel = node.channels[ i ];
-				animated[ channel.sid ] = channel;
-
-			}
-
-			var matrix = new THREE.Matrix4();
-
-			for ( i = 0; i < node.transforms.length; i ++ ) {
-
-				var transform = node.transforms[ i ];
-				var channel = animated[ transform.sid ];
-
-				if ( channel !== undefined ) {
-
-					var sampler = channel.sampler;
-					var value;
-
-					for ( j = 0; j < sampler.input.length - 1; j ++ ) {
-
-						if ( sampler.input[ j + 1 ] > t ) {
-
-							value = sampler.output[ j ];
-							//console.log(value.flatten)
-							break;
-
-						}
-
-					}
-
-					if ( value !== undefined ) {
-
-						if ( value instanceof THREE.Matrix4 ) {
-
-							matrix.multiplyMatrices( matrix, value );
-
-						} else {
-
-							// FIXME: handle other types
-
-							matrix.multiplyMatrices( matrix, transform.matrix );
-
-						}
+						mesh = new THREE.Line( geom );
 
 					} else {
+
+						mesh = new THREE.Mesh( geom, material );
+
+					}
+
+				}
+
+				obj.add(mesh);
+
+			}
+
+		}
+
+		for ( i = 0; i < node.cameras.length; i ++ ) {
+
+			var instance_camera = node.cameras[i];
+			var cparams = cameras[instance_camera.url];
+
+			var cam = new THREE.PerspectiveCamera(cparams.yfov, parseFloat(cparams.aspect_ratio),
+					parseFloat(cparams.znear), parseFloat(cparams.zfar));
+
+			obj.add(cam);
+		}
+
+		for ( i = 0; i < node.lights.length; i ++ ) {
+
+			var light = null;
+			var instance_light = node.lights[i];
+			var lparams = lights[instance_light.url];
+
+			if ( lparams && lparams.technique ) {
+
+				var color = lparams.color.getHex();
+				var intensity = lparams.intensity;
+				var distance = lparams.distance;
+				var angle = lparams.falloff_angle;
+				var exponent; // Intentionally undefined, don't know what this is yet
+
+				switch ( lparams.technique ) {
+
+					case 'directional':
+
+						light = new THREE.DirectionalLight( color, intensity, distance );
+						light.position.set(0, 0, 1);
+						break;
+
+					case 'point':
+
+						light = new THREE.PointLight( color, intensity, distance );
+						break;
+
+					case 'spot':
+
+						light = new THREE.SpotLight( color, intensity, distance, angle, exponent );
+						light.position.set(0, 0, 1);
+						break;
+
+					case 'ambient':
+
+						light = new THREE.AmbientLight( color );
+						break;
+
+				}
+
+			}
+
+			if (light) {
+				obj.add(light);
+			}
+		}
+
+		obj.name = node.name || node.id || "";
+		obj.colladaId = node.id || "";
+		obj.layer = node.layer || "";
+		obj.matrix = node.matrix;
+		obj.matrix.decompose( obj.position, obj.quaternion, obj.scale );
+
+		if ( options.centerGeometry && obj.geometry ) {
+
+			var delta = obj.geometry.center();
+			delta.multiply( obj.scale );
+			delta.applyQuaternion( obj.quaternion );
+
+			obj.position.sub( delta );
+
+		}
+
+		for ( i = 0; i < node.nodes.length; i ++ ) {
+
+			obj.add( createSceneGraph( node.nodes[i], node ) );
+
+		}
+
+		return obj;
+
+	}
+
+	function getJointId( skin, id ) {
+
+		for ( var i = 0; i < skin.joints.length; i ++ ) {
+
+			if ( skin.joints[ i ] === id ) {
+
+				return i;
+
+			}
+
+		}
+
+	}
+
+	function getLibraryNode( id ) {
+
+		var nodes = COLLADA.querySelectorAll('library_nodes node');
+
+		for ( var i = 0; i < nodes.length; i++ ) {
+
+			var attObj = nodes[i].attributes.getNamedItem('id');
+
+			if ( attObj && attObj.value === id ) {
+
+				return nodes[i];
+
+			}
+
+		}
+
+		return undefined;
+
+	}
+
+	function getChannelsForNode ( node ) {
+
+		var channels = [];
+		var startTime = 1000000;
+		var endTime = -1000000;
+
+		for ( var id in animations ) {
+
+			var animation = animations[id];
+
+			for ( var i = 0; i < animation.channel.length; i ++ ) {
+
+				var channel = animation.channel[i];
+				var sampler = animation.sampler[i];
+				var id = channel.target.split('/')[0];
+
+				if ( id == node.id ) {
+
+					sampler.create();
+					channel.sampler = sampler;
+					startTime = Math.min(startTime, sampler.startTime);
+					endTime = Math.max(endTime, sampler.endTime);
+					channels.push(channel);
+
+				}
+
+			}
+
+		}
+
+		if ( channels.length ) {
+
+			node.startTime = startTime;
+			node.endTime = endTime;
+
+		}
+
+		return channels;
+
+	}
+
+	function calcFrameDuration( node ) {
+
+		var minT = 10000000;
+
+		for ( var i = 0; i < node.channels.length; i ++ ) {
+
+			var sampler = node.channels[i].sampler;
+
+			for ( var j = 0; j < sampler.input.length - 1; j ++ ) {
+
+				var t0 = sampler.input[ j ];
+				var t1 = sampler.input[ j + 1 ];
+				minT = Math.min( minT, t1 - t0 );
+
+			}
+		}
+
+		return minT;
+
+	}
+
+	function calcMatrixAt( node, t ) {
+
+		var animated = {};
+
+		var i, j;
+
+		for ( i = 0; i < node.channels.length; i ++ ) {
+
+			var channel = node.channels[ i ];
+			animated[ channel.sid ] = channel;
+
+		}
+
+		var matrix = new THREE.Matrix4();
+
+		for ( i = 0; i < node.transforms.length; i ++ ) {
+
+			var transform = node.transforms[ i ];
+			var channel = animated[ transform.sid ];
+
+			if ( channel !== undefined ) {
+
+				var sampler = channel.sampler;
+				var value;
+
+				for ( j = 0; j < sampler.input.length - 1; j ++ ) {
+
+					if ( sampler.input[ j + 1 ] > t ) {
+
+						value = sampler.output[ j ];
+						//console.log(value.flatten)
+						break;
+
+					}
+
+				}
+
+				if ( value !== undefined ) {
+
+					if ( value instanceof THREE.Matrix4 ) {
+
+						matrix.multiplyMatrices( matrix, value );
+
+					} else {
+
+						// FIXME: handle other types
 
 						matrix.multiplyMatrices( matrix, transform.matrix );
 
@@ -2707,57 +3420,245 @@ THREE.BabylonLoader.prototype = {
 
 				}
 
-			}
-
-			return matrix;
-
-		},
-
-		// Up axis conversion
-		setUpConversion: function () {
-
-			if ( options.convertUpAxis !== true || colladaUp === options.upAxis ) {
-
-				upConversion = null;
-
 			} else {
 
-				switch ( colladaUp ) {
-
-					case 'X':
-
-						upConversion = options.upAxis === 'Y' ? 'XtoY' : 'XtoZ';
-						break;
-
-					case 'Y':
-
-						upConversion = options.upAxis === 'X' ? 'YtoX' : 'YtoZ';
-						break;
-
-					case 'Z':
-
-						upConversion = options.upAxis === 'X' ? 'ZtoX' : 'ZtoY';
-						break;
-
-				}
+				matrix.multiplyMatrices( matrix, transform.matrix );
 
 			}
 
 		}
 
+		return matrix;
 
-	};
+	}
+
+	function bakeAnimations ( node ) {
+
+		if ( node.channels && node.channels.length ) {
+
+			var keys = [],
+				sids = [];
+
+			for ( var i = 0, il = node.channels.length; i < il; i ++ ) {
+
+				var channel = node.channels[i],
+					fullSid = channel.fullSid,
+					sampler = channel.sampler,
+					input = sampler.input,
+					transform = node.getTransformBySid( channel.sid ),
+					member;
+
+				if ( channel.arrIndices ) {
+
+					member = [];
+
+					for ( var j = 0, jl = channel.arrIndices.length; j < jl; j ++ ) {
+
+						member[ j ] = getConvertedIndex( channel.arrIndices[ j ] );
+
+					}
+
+				} else {
+
+					member = getConvertedMember( channel.member );
+
+				}
+
+				if ( transform ) {
+
+					if ( sids.indexOf( fullSid ) === -1 ) {
+
+						sids.push( fullSid );
+
+					}
+
+					for ( var j = 0, jl = input.length; j < jl; j ++ ) {
+
+						var time = input[j],
+							data = sampler.getData( transform.type, j, member ),
+							key = findKey( keys, time );
+
+						if ( !key ) {
+
+							key = new Key( time );
+							var timeNdx = findTimeNdx( keys, time );
+							keys.splice( timeNdx === -1 ? keys.length : timeNdx, 0, key );
+
+						}
+
+						key.addTarget( fullSid, transform, member, data );
+
+					}
+
+				} else {
+
+					console.log( 'Could not find transform "' + channel.sid + '" in node ' + node.id );
+
+				}
+
+			}
+
+			// post process
+			for ( var i = 0; i < sids.length; i ++ ) {
+
+				var sid = sids[ i ];
+
+				for ( var j = 0; j < keys.length; j ++ ) {
+
+					var key = keys[ j ];
+
+					if ( !key.hasTarget( sid ) ) {
+
+						interpolateKeys( keys, key, j, sid );
+
+					}
+
+				}
+
+			}
+
+			node.keys = keys;
+			node.sids = sids;
+
+		}
+
+	}
+
+	function findKey ( keys, time) {
+
+		var retVal = null;
+
+		for ( var i = 0, il = keys.length; i < il && retVal === null; i ++ ) {
+
+			var key = keys[i];
+
+			if ( key.time === time ) {
+
+				retVal = key;
+
+			} else if ( key.time > time ) {
+
+				break;
+
+			}
+
+		}
+
+		return retVal;
+
+	}
+
+	function findTimeNdx ( keys, time) {
+
+		var ndx = -1;
+
+		for ( var i = 0, il = keys.length; i < il && ndx === -1; i ++ ) {
+
+			var key = keys[i];
+
+			if ( key.time >= time ) {
+
+				ndx = i;
+
+			}
+
+		}
+
+		return ndx;
+
+	}
+
+	function interpolateKeys ( keys, key, ndx, fullSid ) {
+
+		var prevKey = getPrevKeyWith( keys, fullSid, ndx ? ndx - 1 : 0 ),
+			nextKey = getNextKeyWith( keys, fullSid, ndx + 1 );
+
+		if ( prevKey && nextKey ) {
+
+			var scale = (key.time - prevKey.time) / (nextKey.time - prevKey.time),
+				prevTarget = prevKey.getTarget( fullSid ),
+				nextData = nextKey.getTarget( fullSid ).data,
+				prevData = prevTarget.data,
+				data;
+
+			if ( prevTarget.type === 'matrix' ) {
+
+				data = prevData;
+
+			} else if ( prevData.length ) {
+
+				data = [];
+
+				for ( var i = 0; i < prevData.length; ++ i ) {
+
+					data[ i ] = prevData[ i ] + ( nextData[ i ] - prevData[ i ] ) * scale;
+
+				}
+
+			} else {
+
+				data = prevData + ( nextData - prevData ) * scale;
+
+			}
+
+			key.addTarget( fullSid, prevTarget.transform, prevTarget.member, data );
+
+		}
+
+	}
+
+	// Get next key with given sid
+
+	function getNextKeyWith( keys, fullSid, ndx ) {
+
+		for ( ; ndx < keys.length; ndx ++ ) {
+
+			var key = keys[ ndx ];
+
+			if ( key.hasTarget( fullSid ) ) {
+
+				return key;
+
+			}
+
+		}
+
+		return null;
+
+	}
+
+	// Get previous key with given sid
+
+	function getPrevKeyWith( keys, fullSid, ndx ) {
+
+		ndx = ndx >= 0 ? ndx : ndx + keys.length;
+
+		for ( ; ndx >= 0; ndx -- ) {
+
+			var key = keys[ ndx ];
+
+			if ( key.hasTarget( fullSid ) ) {
+
+				return key;
+
+			}
+
+		}
+
+		return null;
+
+	}
 
 	function _Image() {
 
 		this.id = "";
 		this.init_from = "";
 
-	};
+	}
 
-	_Image.prototype.parse = function( element ) {
+	_Image.prototype.parse = function(element) {
 
-		this.id = element.getAttribute( 'id' );
+		this.id = element.getAttribute('id');
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
@@ -2783,12 +3684,12 @@ THREE.BabylonLoader.prototype = {
 		this.skin = null;
 		this.morph = null;
 
-	};
+	}
 
 	Controller.prototype.parse = function( element ) {
 
-		this.id = element.getAttribute( 'id' );
-		this.name = element.getAttribute( 'name' );
+		this.id = element.getAttribute('id');
+		this.name = element.getAttribute('name');
 		this.type = "none";
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
@@ -2799,13 +3700,13 @@ THREE.BabylonLoader.prototype = {
 
 				case 'skin':
 
-					this.skin = ( new Skin() ).parse( child );
+					this.skin = (new Skin()).parse(child);
 					this.type = child.nodeName;
 					break;
 
 				case 'morph':
 
-					this.morph = ( new Morph() ).parse( child );
+					this.morph = (new Morph()).parse(child);
 					this.type = child.nodeName;
 					break;
 
@@ -2813,7 +3714,6 @@ THREE.BabylonLoader.prototype = {
 					break;
 
 			}
-
 		}
 
 		return this;
@@ -2827,7 +3727,7 @@ THREE.BabylonLoader.prototype = {
 		this.targets = null;
 		this.weights = null;
 
-	};
+	}
 
 	Morph.prototype.parse = function( element ) {
 
@@ -2886,33 +3786,31 @@ THREE.BabylonLoader.prototype = {
 					break;
 
 			}
-
 		}
 
 		return this;
 
 	};
 
-	Morph.prototype.parseInputs = function( element ) {
+	Morph.prototype.parseInputs = function(element) {
 
 		var inputs = [];
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-			var child = element.childNodes[ i ];
-			if ( child.nodeType != 1 ) continue;
+			var child = element.childNodes[i];
+			if ( child.nodeType != 1) continue;
 
 			switch ( child.nodeName ) {
 
 				case 'input':
 
-					inputs.push( ( new Input() ).parse( child ) );
+					inputs.push( (new Input()).parse(child) );
 					break;
 
 				default:
 					break;
 			}
-
 		}
 
 		return inputs;
@@ -2927,7 +3825,7 @@ THREE.BabylonLoader.prototype = {
 		this.joints = [];
 		this.weights = [];
 
-	};
+	}
 
 	Skin.prototype.parse = function( element ) {
 
@@ -2941,20 +3839,20 @@ THREE.BabylonLoader.prototype = {
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-			var child = element.childNodes[ i ];
+			var child = element.childNodes[i];
 			if ( child.nodeType != 1 ) continue;
 
 			switch ( child.nodeName ) {
 
 				case 'bind_shape_matrix':
 
-					var f = _floats( child.textContent );
+					var f = _floats(child.textContent);
 					this.bindShapeMatrix = getConvertedMat4( f );
 					break;
 
 				case 'source':
 
-					var src = new Source().parse( child );
+					var src = new Source().parse(child);
 					sources[ src.id ] = src;
 					break;
 
@@ -2974,7 +3872,6 @@ THREE.BabylonLoader.prototype = {
 					break;
 
 			}
-
 		}
 
 		this.parseJoints( joints, sources );
@@ -3055,7 +3952,7 @@ THREE.BabylonLoader.prototype = {
 
 		for ( var i = 0; i < vcount.length; i ++ ) {
 
-			var numBones = vcount[ i ];
+			var numBones = vcount[i];
 			var vertex_weights = [];
 
 			for ( var j = 0; j < numBones; j ++ ) {
@@ -3088,7 +3985,6 @@ THREE.BabylonLoader.prototype = {
 
 				vertex_weights.push( influence );
 				index += inputs.length;
-
 			}
 
 			for ( var j = 0; j < vertex_weights.length; j ++ ) {
@@ -3110,7 +4006,7 @@ THREE.BabylonLoader.prototype = {
 		this.nodes = [];
 		this.scene = new THREE.Group();
 
-	};
+	}
 
 	VisualScene.prototype.getChildById = function( id, recursive ) {
 
@@ -3189,30 +4085,30 @@ THREE.BabylonLoader.prototype = {
 		this.channels = [];
 		this.matrix = new THREE.Matrix4();
 
-	};
+	}
 
 	Node.prototype.getChannelForTransform = function( transformSid ) {
 
 		for ( var i = 0; i < this.channels.length; i ++ ) {
 
-			var channel = this.channels[ i ];
-			var parts = channel.target.split( '/' );
+			var channel = this.channels[i];
+			var parts = channel.target.split('/');
 			var id = parts.shift();
 			var sid = parts.shift();
-			var dotSyntax = ( sid.indexOf( "." ) >= 0 );
-			var arrSyntax = ( sid.indexOf( "(" ) >= 0 );
+			var dotSyntax = (sid.indexOf(".") >= 0);
+			var arrSyntax = (sid.indexOf("(") >= 0);
 			var arrIndices;
 			var member;
 
 			if ( dotSyntax ) {
 
-				parts = sid.split( "." );
+				parts = sid.split(".");
 				sid = parts.shift();
 				member = parts.shift();
 
 			} else if ( arrSyntax ) {
 
-				arrIndices = sid.split( "(" );
+				arrIndices = sid.split("(");
 				sid = arrIndices.shift();
 
 				for ( var j = 0; j < arrIndices.length; j ++ ) {
@@ -3285,7 +4181,6 @@ THREE.BabylonLoader.prototype = {
 				}
 
 			}
-
 		}
 
 		return null;
@@ -3308,11 +4203,11 @@ THREE.BabylonLoader.prototype = {
 
 		var url;
 
-		this.id = element.getAttribute( 'id' );
-		this.sid = element.getAttribute( 'sid' );
-		this.name = element.getAttribute( 'name' );
-		this.type = element.getAttribute( 'type' );
-		this.layer = element.getAttribute( 'layer' );
+		this.id = element.getAttribute('id');
+		this.sid = element.getAttribute('sid');
+		this.name = element.getAttribute('name');
+		this.type = element.getAttribute('type');
+		this.layer = element.getAttribute('layer');
 
 		this.type = this.type === 'JOINT' ? this.type : 'NODE';
 
@@ -3363,7 +4258,7 @@ THREE.BabylonLoader.prototype = {
 
 					if ( iNode ) {
 
-						this.nodes.push( ( new Node() ).parse( iNode ) ) ;
+						this.nodes.push( ( new Node() ).parse( iNode )) ;
 
 					}
 
@@ -3419,7 +4314,7 @@ THREE.BabylonLoader.prototype = {
 		this.data = [];
 		this.obj = null;
 
-	};
+	}
 
 	Transform.prototype.parse = function ( element ) {
 
@@ -3443,11 +4338,11 @@ THREE.BabylonLoader.prototype = {
 
 			case 'rotate':
 
-				this.angle = THREE.Math.degToRad( this.data[ 3 ] );
+				this.angle = THREE.Math.degToRad( this.data[3] );
 
 			case 'translate':
 
-				fixCoords( this.data, - 1 );
+				fixCoords( this.data, -1 );
 				this.obj = new THREE.Vector3( this.data[ 0 ], this.data[ 1 ], this.data[ 2 ] );
 				break;
 
@@ -3564,7 +4459,7 @@ THREE.BabylonLoader.prototype = {
 
 				} else {
 
-					console.log( 'Incorrect addressing of matrix in transform.' );
+					console.log('Incorrect addressing of matrix in transform.');
 
 				}
 
@@ -3658,11 +4553,11 @@ THREE.BabylonLoader.prototype = {
 		this.skeleton = [];
 		this.instance_material = [];
 
-	};
+	}
 
 	InstanceController.prototype.parse = function ( element ) {
 
-		this.url = element.getAttribute( 'url' ).replace( /^#/, '' );
+		this.url = element.getAttribute('url').replace(/^#/, '');
 		this.skeleton = [];
 		this.instance_material = [];
 
@@ -3675,17 +4570,17 @@ THREE.BabylonLoader.prototype = {
 
 				case 'skeleton':
 
-					this.skeleton.push( child.textContent.replace( /^#/, '' ) );
+					this.skeleton.push( child.textContent.replace(/^#/, '') );
 					break;
 
 				case 'bind_material':
 
-					var instances = child.querySelectorAll( 'instance_material' );
+					var instances = child.querySelectorAll('instance_material');
 
 					for ( var j = 0; j < instances.length; j ++ ) {
 
-						var instance = instances[ j ];
-						this.instance_material.push( ( new InstanceMaterial() ).parse( instance ) );
+						var instance = instances[j];
+						this.instance_material.push( (new InstanceMaterial()).parse(instance) );
 
 					}
 
@@ -3699,7 +4594,6 @@ THREE.BabylonLoader.prototype = {
 					break;
 
 			}
-
 		}
 
 		return this;
@@ -3711,12 +4605,12 @@ THREE.BabylonLoader.prototype = {
 		this.symbol = "";
 		this.target = "";
 
-	};
+	}
 
 	InstanceMaterial.prototype.parse = function ( element ) {
 
-		this.symbol = element.getAttribute( 'symbol' );
-		this.target = element.getAttribute( 'target' ).replace( /^#/, '' );
+		this.symbol = element.getAttribute('symbol');
+		this.target = element.getAttribute('target').replace(/^#/, '');
 		return this;
 
 	};
@@ -3726,26 +4620,26 @@ THREE.BabylonLoader.prototype = {
 		this.url = "";
 		this.instance_material = [];
 
-	};
+	}
 
 	InstanceGeometry.prototype.parse = function ( element ) {
 
-		this.url = element.getAttribute( 'url' ).replace( /^#/, '' );
+		this.url = element.getAttribute('url').replace(/^#/, '');
 		this.instance_material = [];
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-			var child = element.childNodes[ i ];
+			var child = element.childNodes[i];
 			if ( child.nodeType != 1 ) continue;
 
 			if ( child.nodeName === 'bind_material' ) {
 
-				var instances = child.querySelectorAll( 'instance_material' );
+				var instances = child.querySelectorAll('instance_material');
 
 				for ( var j = 0; j < instances.length; j ++ ) {
 
-					var instance = instances[ j ];
-					this.instance_material.push( ( new InstanceMaterial() ).parse( instance ) );
+					var instance = instances[j];
+					this.instance_material.push( (new InstanceMaterial()).parse(instance) );
 
 				}
 
@@ -3764,23 +4658,23 @@ THREE.BabylonLoader.prototype = {
 		this.id = "";
 		this.mesh = null;
 
-	};
+	}
 
 	Geometry.prototype.parse = function ( element ) {
 
-		this.id = element.getAttribute( 'id' );
+		this.id = element.getAttribute('id');
 
 		extractDoubleSided( this, element );
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-			var child = element.childNodes[ i ];
+			var child = element.childNodes[i];
 
 			switch ( child.nodeName ) {
 
 				case 'mesh':
 
-					this.mesh = ( new Mesh( this ) ).parse( child );
+					this.mesh = (new Mesh(this)).parse(child);
 					break;
 
 				case 'extra':
@@ -3791,7 +4685,6 @@ THREE.BabylonLoader.prototype = {
 				default:
 					break;
 			}
-
 		}
 
 		return this;
@@ -3805,7 +4698,7 @@ THREE.BabylonLoader.prototype = {
 		this.vertices = null;
 		this.geometry3js = null;
 
-	};
+	}
 
 	Mesh.prototype.parse = function ( element ) {
 
@@ -3864,7 +4757,7 @@ THREE.BabylonLoader.prototype = {
 
 		}
 
-		var vertexData = sources[ this.vertices.input[ 'POSITION' ].source ].data;
+		var vertexData = sources[ this.vertices.input['POSITION'].source ].data;
 
 		for ( var i = 0; i < vertexData.length; i += 3 ) {
 
@@ -3913,7 +4806,7 @@ THREE.BabylonLoader.prototype = {
 			input = inputs[ j ];
 
 			var offset = input.offset + 1;
-			maxOffset = ( maxOffset < offset ) ? offset : maxOffset;
+			maxOffset = (maxOffset < offset) ? offset : maxOffset;
 
 			switch ( input.semantic ) {
 
@@ -4021,7 +4914,7 @@ THREE.BabylonLoader.prototype = {
 
 				}
 
-				if ( ! ts ) {
+				if ( !ts ) {
 
 					ts = { };
 					// check the vertices inputs
@@ -4071,13 +4964,13 @@ THREE.BabylonLoader.prototype = {
 
 				if ( vcount === 3 ) {
 
-					faces.push( new THREE.Face3( vs[ 0 ], vs[ 1 ], vs[ 2 ], ns, cs.length ? cs : new THREE.Color() ) );
+					faces.push( new THREE.Face3( vs[0], vs[1], vs[2], ns, cs.length ? cs : new THREE.Color() ) );
 
 				} else if ( vcount === 4 ) {
 
-					faces.push( new THREE.Face3( vs[ 0 ], vs[ 1 ], vs[ 3 ], [ ns[ 0 ].clone(), ns[ 1 ].clone(), ns[ 3 ].clone() ], cs.length ? [ cs[ 0 ], cs[ 1 ], cs[ 3 ]] : new THREE.Color() ) );
+					faces.push( new THREE.Face3( vs[0], vs[1], vs[3], [ ns[0].clone(), ns[1].clone(), ns[3].clone() ], cs.length ? [ cs[0], cs[1], cs[3] ] : new THREE.Color() ) );
 
-					faces.push( new THREE.Face3( vs[ 1 ], vs[ 2 ], vs[ 3 ], [ ns[ 1 ].clone(), ns[ 2 ].clone(), ns[ 3 ].clone() ], cs.length ? [ cs[ 1 ], cs[ 2 ], cs[ 3 ]] : new THREE.Color() ) );
+					faces.push( new THREE.Face3( vs[1], vs[2], vs[3], [ ns[1].clone(), ns[2].clone(), ns[3].clone() ], cs.length ? [ cs[1], cs[2], cs[3] ] : new THREE.Color() ) );
 
 				} else if ( vcount > 4 && options.subdivideFaces ) {
 
@@ -4088,9 +4981,7 @@ THREE.BabylonLoader.prototype = {
 
 					for ( k = 1; k < vcount - 1; ) {
 
-						// FIXME: normals don't seem to be quite right
-
-						faces.push( new THREE.Face3( vs[ 0 ], vs[ k ], vs[ k + 1 ], [ ns[ 0 ].clone(), ns[ k ++ ].clone(), ns[ k ].clone() ],  clr ) );
+						faces.push( new THREE.Face3( vs[0], vs[k], vs[k + 1], [ ns[0].clone(), ns[k ++].clone(), ns[k].clone() ], clr ) );
 
 					}
 
@@ -4100,44 +4991,44 @@ THREE.BabylonLoader.prototype = {
 
 					for ( var ndx = 0, len = faces.length; ndx < len; ndx ++ ) {
 
-						face = faces[ ndx ];
+						face = faces[ndx];
 						face.daeMaterial = primitive.material;
 						geom.faces.push( face );
 
 						for ( k = 0; k < texture_sets.length; k ++ ) {
 
-							uv = ts[ texture_sets[ k ] ];
+							uv = ts[ texture_sets[k] ];
 
 							if ( vcount > 4 ) {
 
 								// Grab the right UVs for the vertices in this face
-								uvArr = [ uv[ 0 ], uv[ ndx + 1 ], uv[ ndx + 2 ] ];
+								uvArr = [ uv[0], uv[ndx + 1], uv[ndx + 2] ];
 
 							} else if ( vcount === 4 ) {
 
 								if ( ndx === 0 ) {
 
-									uvArr = [ uv[ 0 ], uv[ 1 ], uv[ 3 ] ];
+									uvArr = [ uv[0], uv[1], uv[3] ];
 
 								} else {
 
-									uvArr = [ uv[ 1 ].clone(), uv[ 2 ], uv[ 3 ].clone() ];
+									uvArr = [ uv[1].clone(), uv[2], uv[3].clone() ];
 
 								}
 
 							} else {
 
-								uvArr = [ uv[ 0 ], uv[ 1 ], uv[ 2 ] ];
+								uvArr = [ uv[0], uv[1], uv[2] ];
 
 							}
 
-							if ( geom.faceVertexUvs[ k ] === undefined ) {
+							if ( geom.faceVertexUvs[k] === undefined ) {
 
-								geom.faceVertexUvs[ k ] = [];
+								geom.faceVertexUvs[k] = [];
 
 							}
 
-							geom.faceVertexUvs[ k ].push( uvArr );
+							geom.faceVertexUvs[k].push( uvArr );
 
 						}
 
@@ -4166,7 +5057,7 @@ THREE.BabylonLoader.prototype = {
 		this.p = [];
 		this.geometry = new THREE.Geometry();
 
-	};
+	}
 
 	Polygons.prototype.setVertices = function ( vertices ) {
 
@@ -4230,7 +5121,7 @@ THREE.BabylonLoader.prototype = {
 
 		this.vcount = [];
 
-	};
+	}
 
 	Polylist.prototype = Object.create( Polygons.prototype );
 	Polylist.prototype.constructor = Polylist;
@@ -4241,7 +5132,7 @@ THREE.BabylonLoader.prototype = {
 
 		this.vcount = 1;
 
-	};
+	}
 
 	LineStrips.prototype = Object.create( Polygons.prototype );
 	LineStrips.prototype.constructor = LineStrips;
@@ -4252,7 +5143,7 @@ THREE.BabylonLoader.prototype = {
 
 		this.vcount = 3;
 
-	};
+	}
 
 	Triangles.prototype = Object.create( Polygons.prototype );
 	Triangles.prototype.constructor = Triangles;
@@ -4264,7 +5155,7 @@ THREE.BabylonLoader.prototype = {
 		this.stride = 0;
 		this.params = [];
 
-	};
+	}
 
 	Accessor.prototype.parse = function ( element ) {
 
@@ -4296,15 +5187,15 @@ THREE.BabylonLoader.prototype = {
 
 		this.input = {};
 
-	};
+	}
 
 	Vertices.prototype.parse = function ( element ) {
 
-		this.id = element.getAttribute( 'id' );
+		this.id = element.getAttribute('id');
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-			if ( element.childNodes[ i ].nodeName === 'input' ) {
+			if ( element.childNodes[i].nodeName === 'input' ) {
 
 				var input = ( new Input() ).parse( element.childNodes[ i ] );
 				this.input[ input.semantic ] = input;
@@ -4324,14 +5215,14 @@ THREE.BabylonLoader.prototype = {
 		this.source = "";
 		this.set = 0;
 
-	};
+	}
 
 	Input.prototype.parse = function ( element ) {
 
-		this.semantic = element.getAttribute( 'semantic' );
-		this.source = element.getAttribute( 'source' ).replace( /^#/, '' );
-		this.set = _attr_as_int( element, 'set', - 1 );
-		this.offset = _attr_as_int( element, 'offset', 0 );
+		this.semantic = element.getAttribute('semantic');
+		this.source = element.getAttribute('source').replace(/^#/, '');
+		this.set = _attr_as_int(element, 'set', -1);
+		this.offset = _attr_as_int(element, 'offset', 0);
 
 		if ( this.semantic === 'TEXCOORD' && this.set < 0 ) {
 
@@ -4348,7 +5239,7 @@ THREE.BabylonLoader.prototype = {
 		this.id = id;
 		this.type = null;
 
-	};
+	}
 
 	Source.prototype.parse = function ( element ) {
 
@@ -4356,7 +5247,7 @@ THREE.BabylonLoader.prototype = {
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-			var child = element.childNodes[ i ];
+			var child = element.childNodes[i];
 
 			switch ( child.nodeName ) {
 
@@ -4395,7 +5286,6 @@ THREE.BabylonLoader.prototype = {
 							break;
 
 						}
-
 					}
 					break;
 
@@ -4419,7 +5309,7 @@ THREE.BabylonLoader.prototype = {
 
 		var param = this.accessor.params[ 0 ];
 
-		//console.log(param.name + " " + param.type);
+			//console.log(param.name + " " + param.type);
 
 		switch ( param.type ) {
 
@@ -4436,7 +5326,6 @@ THREE.BabylonLoader.prototype = {
 					var s = this.data.slice( j, j + 16 );
 					var m = getConvertedMat4( s );
 					result.push( m );
-
 				}
 
 				break;
@@ -4460,7 +5349,7 @@ THREE.BabylonLoader.prototype = {
 		this.name = "";
 		this.instance_effect = null;
 
-	};
+	}
 
 	Material.prototype.parse = function ( element ) {
 
@@ -4492,7 +5381,7 @@ THREE.BabylonLoader.prototype = {
 		this.texcoord = null;
 		this.texOpts = null;
 
-	};
+	}
 
 	ColorOrTexture.prototype.isColor = function () {
 
@@ -4508,9 +5397,9 @@ THREE.BabylonLoader.prototype = {
 
 	ColorOrTexture.prototype.parse = function ( element ) {
 
-		if ( element.nodeName === 'transparent' ) {
+		if (element.nodeName === 'transparent') {
 
-			this.opaque = element.getAttribute( 'opaque' );
+			this.opaque = element.getAttribute('opaque');
 
 		}
 
@@ -4525,14 +5414,14 @@ THREE.BabylonLoader.prototype = {
 
 					var rgba = _floats( child.textContent );
 					this.color = new THREE.Color();
-					this.color.setRGB( rgba[ 0 ], rgba[ 1 ], rgba[ 2 ] );
-					this.color.a = rgba[ 3 ];
+					this.color.setRGB( rgba[0], rgba[1], rgba[2] );
+					this.color.a = rgba[3];
 					break;
 
 				case 'texture':
 
-					this.texture = child.getAttribute( 'texture' );
-					this.texcoord = child.getAttribute( 'texcoord' );
+					this.texture = child.getAttribute('texture');
+					this.texcoord = child.getAttribute('texcoord');
 					// Defaults from:
 					// https://collada.org/mediawiki/index.php/Maya_texture_placement_MAYA_extension
 					this.texOpts = {
@@ -4563,13 +5452,13 @@ THREE.BabylonLoader.prototype = {
 
 		// This should be supported by Maya, 3dsMax, and MotionBuilder
 
-		if ( element.childNodes[ 1 ] && element.childNodes[ 1 ].nodeName === 'extra' ) {
+		if ( element.childNodes[1] && element.childNodes[1].nodeName === 'extra' ) {
 
-			element = element.childNodes[ 1 ];
+			element = element.childNodes[1];
 
-			if ( element.childNodes[ 1 ] && element.childNodes[ 1 ].nodeName === 'technique' ) {
+			if ( element.childNodes[1] && element.childNodes[1].nodeName === 'technique' ) {
 
-				element = element.childNodes[ 1 ];
+				element = element.childNodes[1];
 
 			}
 
@@ -4626,7 +5515,7 @@ THREE.BabylonLoader.prototype = {
 		this.effect = effect;
 		this.material = null;
 
-	};
+	}
 
 	Shader.prototype.parse = function ( element ) {
 
@@ -4652,28 +5541,17 @@ THREE.BabylonLoader.prototype = {
 					// (Default to 'bump')
 					var bumpType = child.getAttribute( 'bumptype' );
 					if ( bumpType ) {
-
 						if ( bumpType.toLowerCase() === "heightfield" ) {
-
 							this[ 'bump' ] = ( new ColorOrTexture() ).parse( child );
-
 						} else if ( bumpType.toLowerCase() === "normalmap" ) {
-
 							this[ 'normal' ] = ( new ColorOrTexture() ).parse( child );
-
 						} else {
-
-							console.error( "Shader.prototype.parse: Invalid value for attribute 'bumptype' (" + bumpType +
-										   ") - valid bumptypes are 'HEIGHTFIELD' and 'NORMALMAP' - defaulting to 'HEIGHTFIELD'" );
+							console.error( "Shader.prototype.parse: Invalid value for attribute 'bumptype' (" + bumpType + ") - valid bumptypes are 'HEIGHTFIELD' and 'NORMALMAP' - defaulting to 'HEIGHTFIELD'" );
 							this[ 'bump' ] = ( new ColorOrTexture() ).parse( child );
-
 						}
-
 					} else {
-
 						console.warn( "Shader.prototype.parse: Attribute 'bumptype' missing from bump node - defaulting to 'HEIGHTFIELD'" );
 						this[ 'bump' ] = ( new ColorOrTexture() ).parse( child );
-
 					}
 
 					break;
@@ -4683,7 +5561,7 @@ THREE.BabylonLoader.prototype = {
 				case 'index_of_refraction':
 				case 'transparency':
 
-					var f = child.querySelectorAll( 'float' );
+					var f = child.querySelectorAll('float');
 
 					if ( f.length > 0 )
 						this[ child.nodeName ] = parseFloat( f[ 0 ].textContent );
@@ -4708,14 +5586,12 @@ THREE.BabylonLoader.prototype = {
 
 		var transparent = false;
 
-		if ( this[ 'transparency' ] !== undefined && this[ 'transparent' ] !== undefined ) {
-
+		if (this['transparency'] !== undefined && this['transparent'] !== undefined) {
 			// convert transparent color RBG to average value
-			var transparentColor = this[ 'transparent' ];
-			var transparencyLevel = ( this.transparent.color.r + this.transparent.color.g + this.transparent.color.b ) / 3 * this.transparency;
+			var transparentColor = this['transparent'];
+			var transparencyLevel = (this.transparent.color.r + this.transparent.color.g + this.transparent.color.b) / 3 * this.transparency;
 
-			if ( transparencyLevel > 0 ) {
-
+			if (transparencyLevel > 0) {
 				transparent = true;
 				props[ 'transparent' ] = true;
 				props[ 'opacity' ] = 1 - transparencyLevel;
@@ -4725,13 +5601,13 @@ THREE.BabylonLoader.prototype = {
 		}
 
 		var keys = {
-			'diffuse': 'map',
-			'ambient': 'lightMap',
-			'specular': 'specularMap',
-			'emission': 'emissionMap',
-			'bump': 'bumpMap',
-			'normal': 'normalMap'
-		};
+			'diffuse':'map',
+			'ambient':'lightMap',
+			'specular':'specularMap',
+			'emission':'emissionMap',
+			'bump':'bumpMap',
+			'normal':'normalMap'
+			};
 
 		for ( var prop in this ) {
 
@@ -4751,17 +5627,17 @@ THREE.BabylonLoader.prototype = {
 						if ( cot.isTexture() ) {
 
 							var samplerId = cot.texture;
-							var surfaceId = this.effect.sampler[ samplerId ];
+							var surfaceId = this.effect.sampler[samplerId];
 
 							if ( surfaceId !== undefined && surfaceId.source !== undefined ) {
 
-								var surface = this.effect.surface[ surfaceId.source ];
+								var surface = this.effect.surface[surfaceId.source];
 
 								if ( surface !== undefined ) {
 
 									var image = images[ surface.init_from ];
 
-									if ( image && baseUrl ) {
+									if ( image ) {
 
 										var url = baseUrl + image.init_from;
 
@@ -4786,10 +5662,10 @@ THREE.BabylonLoader.prototype = {
 										texture.offset.y = cot.texOpts.offsetV;
 										texture.repeat.x = cot.texOpts.repeatU;
 										texture.repeat.y = cot.texOpts.repeatV;
-										props[ keys[ prop ]] = texture;
+										props[keys[prop]] = texture;
 
 										// Texture with baked lighting?
-										if ( prop === 'emission' ) props[ 'emissive' ] = 0xffffff;
+										if (prop === 'emission') props['emissive'] = 0xffffff;
 
 									}
 
@@ -4797,7 +5673,7 @@ THREE.BabylonLoader.prototype = {
 
 							}
 
-						} else if ( prop === 'diffuse' || ! transparent ) {
+						} else if ( prop === 'diffuse' || !transparent ) {
 
 							if ( prop === 'emission' ) {
 
@@ -4823,14 +5699,14 @@ THREE.BabylonLoader.prototype = {
 				case 'reflectivity':
 
 					props[ prop ] = this[ prop ];
-					if ( props[ prop ] > 0.0 ) props[ 'envMap' ] = options.defaultEnvMap;
-					props[ 'combine' ] = THREE.MixOperation;	//mix regular shading with reflective component
+					if ( props[ prop ] > 0.0 ) props['envMap'] = options.defaultEnvMap;
+					props['combine'] = THREE.MixOperation;	//mix regular shading with reflective component
 					break;
 
 				case 'index_of_refraction':
 
 					props[ 'refractionRatio' ] = this[ prop ]; //TODO: "index_of_refraction" becomes "refractionRatio" in shader, but I'm not sure if the two are actually comparable
-					if ( this[ prop ] !== 1.0 ) props[ 'envMap' ] = options.defaultEnvMap;
+					if ( this[ prop ] !== 1.0 ) props['envMap'] = options.defaultEnvMap;
 					break;
 
 				case 'transparency':
@@ -4847,25 +5723,30 @@ THREE.BabylonLoader.prototype = {
 		props[ 'shading' ] = preferredShading;
 		props[ 'side' ] = this.effect.doubleSided ? THREE.DoubleSide : THREE.FrontSide;
 
+		if ( props.diffuse !== undefined ) {
+
+			props.color = props.diffuse;
+			delete props.diffuse;
+
+		}
+
 		switch ( this.type ) {
 
 			case 'constant':
 
-				if ( props.emissive != undefined ) props.color = props.emissive;
+				if (props.emissive != undefined) props.color = props.emissive;
 				this.material = new THREE.MeshBasicMaterial( props );
 				break;
 
 			case 'phong':
 			case 'blinn':
 
-				if ( props.diffuse != undefined ) props.color = props.diffuse;
 				this.material = new THREE.MeshPhongMaterial( props );
 				break;
 
 			case 'lambert':
 			default:
 
-				if ( props.diffuse != undefined ) props.color = props.diffuse;
 				this.material = new THREE.MeshLambertMaterial( props );
 				break;
 
@@ -4881,7 +5762,7 @@ THREE.BabylonLoader.prototype = {
 		this.init_from = null;
 		this.format = null;
 
-	};
+	}
 
 	Surface.prototype.parse = function ( element ) {
 
@@ -4925,7 +5806,7 @@ THREE.BabylonLoader.prototype = {
 		this.magfilter = null;
 		this.mipfilter = null;
 
-	};
+	}
 
 	Sampler2D.prototype.parse = function ( element ) {
 
@@ -4987,7 +5868,7 @@ THREE.BabylonLoader.prototype = {
 		this.surface = {};
 		this.sampler = {};
 
-	};
+	}
 
 	Effect.prototype.create = function () {
 
@@ -5044,12 +5925,12 @@ THREE.BabylonLoader.prototype = {
 
 				case 'surface':
 
-					this.surface[ sid ] = ( new Surface( this ) ).parse( child );
+					this.surface[sid] = ( new Surface( this ) ).parse( child );
 					break;
 
 				case 'sampler2D':
 
-					this.sampler[ sid ] = ( new Sampler2D( this ) ).parse( child );
+					this.sampler[sid] = ( new Sampler2D( this ) ).parse( child );
 					break;
 
 				case 'extra':
@@ -5120,7 +6001,7 @@ THREE.BabylonLoader.prototype = {
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-			var child = element.childNodes[ i ];
+			var child = element.childNodes[i];
 			if ( child.nodeType != 1 ) continue;
 
 			switch ( child.nodeName ) {
@@ -5133,7 +6014,7 @@ THREE.BabylonLoader.prototype = {
 					this.shader = ( new Shader( child.nodeName, this ) ).parse( child );
 					break;
 				case 'extra':
-					this.parseExtra( child );
+					this.parseExtra(child);
 					break;
 				default:
 					break;
@@ -5148,7 +6029,7 @@ THREE.BabylonLoader.prototype = {
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-			var child = element.childNodes[ i ];
+			var child = element.childNodes[i];
 			if ( child.nodeType != 1 ) continue;
 
 			switch ( child.nodeName ) {
@@ -5169,7 +6050,7 @@ THREE.BabylonLoader.prototype = {
 
 		for ( var i = 0; i < element.childNodes.length; i ++ ) {
 
-			var child = element.childNodes[ i ];
+			var child = element.childNodes[i];
 			if ( child.nodeType != 1 ) continue;
 
 			switch ( child.nodeName ) {
@@ -5190,7 +6071,7 @@ THREE.BabylonLoader.prototype = {
 
 		this.url = "";
 
-	};
+	}
 
 	InstanceEffect.prototype.parse = function ( element ) {
 
@@ -5207,7 +6088,7 @@ THREE.BabylonLoader.prototype = {
 		this.sampler = [];
 		this.channel = [];
 
-	};
+	}
 
 	Animation.prototype.parse = function ( element ) {
 
@@ -5281,7 +6162,7 @@ THREE.BabylonLoader.prototype = {
 		this.arrIndices = null;
 		this.member = null;
 
-	};
+	}
 
 	Channel.prototype.parse = function ( element ) {
 
@@ -5293,23 +6174,23 @@ THREE.BabylonLoader.prototype = {
 		var id = parts.shift();
 		var sid = parts.shift();
 
-		var dotSyntax = ( sid.indexOf( "." ) >= 0 );
-		var arrSyntax = ( sid.indexOf( "(" ) >= 0 );
+		var dotSyntax = ( sid.indexOf(".") >= 0 );
+		var arrSyntax = ( sid.indexOf("(") >= 0 );
 
 		if ( dotSyntax ) {
 
-			parts = sid.split( "." );
+			parts = sid.split(".");
 			this.sid = parts.shift();
 			this.member = parts.shift();
 
 		} else if ( arrSyntax ) {
 
-			var arrIndices = sid.split( "(" );
+			var arrIndices = sid.split("(");
 			this.sid = arrIndices.shift();
 
-			for ( var j = 0; j < arrIndices.length; j ++ ) {
+			for (var j = 0; j < arrIndices.length; j ++ ) {
 
-				arrIndices[ j ] = parseInt( arrIndices[ j ].replace( /\)/, '' ) );
+				arrIndices[j] = parseInt( arrIndices[j].replace(/\)/, '') );
 
 			}
 
@@ -5342,7 +6223,7 @@ THREE.BabylonLoader.prototype = {
 		this.endTime = null;
 		this.duration = 0;
 
-	};
+	}
 
 	Sampler.prototype.parse = function ( element ) {
 
@@ -5358,7 +6239,7 @@ THREE.BabylonLoader.prototype = {
 
 				case 'input':
 
-					this.inputs.push( ( new Input() ).parse( child ) );
+					this.inputs.push( (new Input()).parse( child ) );
 					break;
 
 				default:
@@ -5407,7 +6288,7 @@ THREE.BabylonLoader.prototype = {
 
 				default:
 
-					console.log( input.semantic );
+					console.log(input.semantic);
 					break;
 
 			}
@@ -5421,7 +6302,7 @@ THREE.BabylonLoader.prototype = {
 		if ( this.input.length ) {
 
 			this.startTime = 100000000;
-			this.endTime = - 100000000;
+			this.endTime = -100000000;
 
 			for ( var i = 0; i < this.input.length; i ++ ) {
 
@@ -5462,7 +6343,7 @@ THREE.BabylonLoader.prototype = {
 					case 'rotate':
 					case 'translate':
 
-						fixCoords( data, - 1 );
+						fixCoords( data, -1 );
 						break;
 
 					case 'scale':
@@ -5474,7 +6355,7 @@ THREE.BabylonLoader.prototype = {
 
 			} else if ( this.strideOut === 4 && type === 'matrix' ) {
 
-				fixCoords( data, - 1 );
+				fixCoords( data, -1 );
 
 			}
 
@@ -5483,9 +6364,7 @@ THREE.BabylonLoader.prototype = {
 			data = this.output[ ndx ];
 
 			if ( member && type === 'translate' ) {
-
 				data = getConvertedTranslation( member, data );
-
 			}
 
 		}
@@ -5499,7 +6378,7 @@ THREE.BabylonLoader.prototype = {
 		this.targets = [];
 		this.time = time;
 
-	};
+	}
 
 	Key.prototype.addTarget = function ( fullSid, transform, member, data ) {
 
@@ -5518,7 +6397,7 @@ THREE.BabylonLoader.prototype = {
 
 			var target = this.targets[ i ];
 
-			if ( ! opt_sid || target.sid === opt_sid ) {
+			if ( !opt_sid || target.sid === opt_sid ) {
 
 				target.transform.update( target.data, target.member );
 
@@ -5613,7 +6492,7 @@ THREE.BabylonLoader.prototype = {
 		this.name = "";
 		this.technique = "";
 
-	};
+	}
 
 	Camera.prototype.parse = function ( element ) {
 
@@ -5731,11 +6610,11 @@ THREE.BabylonLoader.prototype = {
 
 		this.url = "";
 
-	};
+	}
 
 	InstanceCamera.prototype.parse = function ( element ) {
 
-		this.url = element.getAttribute( 'url' ).replace( /^#/, '' );
+		this.url = element.getAttribute('url').replace(/^#/, '');
 
 		return this;
 
@@ -5749,7 +6628,7 @@ THREE.BabylonLoader.prototype = {
 		this.name = "";
 		this.technique = "";
 
-	};
+	}
 
 	Light.prototype.parse = function ( element ) {
 
@@ -5801,16 +6680,16 @@ THREE.BabylonLoader.prototype = {
 
 					for ( var j = 0; j < light.childNodes.length; j ++ ) {
 
-						var child = light.childNodes[ j ];
+						var child = light.childNodes[j];
 
 						switch ( child.nodeName ) {
 
 							case 'color':
 
 								var rgba = _floats( child.textContent );
-								this.color = new THREE.Color( 0 );
-								this.color.setRGB( rgba[ 0 ], rgba[ 1 ], rgba[ 2 ] );
-								this.color.a = rgba[ 3 ];
+								this.color = new THREE.Color(0);
+								this.color.setRGB( rgba[0], rgba[1], rgba[2] );
+								this.color.a = rgba[3];
 								break;
 
 							case 'falloff_angle':
@@ -5845,7 +6724,7 @@ THREE.BabylonLoader.prototype = {
 
 				case 'intensity':
 
-					this.intensity = parseFloat( child.textContent );
+					this.intensity = parseFloat(child.textContent);
 					break;
 
 			}
@@ -5860,11 +6739,11 @@ THREE.BabylonLoader.prototype = {
 
 		this.url = "";
 
-	};
+	}
 
 	InstanceLight.prototype.parse = function ( element ) {
 
-		this.url = element.getAttribute( 'url' ).replace( /^#/, '' );
+		this.url = element.getAttribute('url').replace(/^#/, '');
 
 		return this;
 
@@ -5881,12 +6760,12 @@ THREE.BabylonLoader.prototype = {
 
 	KinematicsModel.prototype.parse = function( element ) {
 
-		this.id = element.getAttribute( 'id' );
-		this.name = element.getAttribute( 'name' );
+		this.id = element.getAttribute('id');
+		this.name = element.getAttribute('name');
 		this.joints = [];
 		this.links = [];
 
-		for ( var i = 0; i < element.childNodes.length; i ++ ) {
+		for (var i = 0; i < element.childNodes.length; i ++ ) {
 
 			var child = element.childNodes[ i ];
 			if ( child.nodeType != 1 ) continue;
@@ -5895,7 +6774,7 @@ THREE.BabylonLoader.prototype = {
 
 				case 'technique_common':
 
-					this.parseCommon( child );
+					this.parseCommon(child);
 					break;
 
 				default:
@@ -5911,7 +6790,7 @@ THREE.BabylonLoader.prototype = {
 
 	KinematicsModel.prototype.parseCommon = function( element ) {
 
-		for ( var i = 0; i < element.childNodes.length; i ++ ) {
+		for (var i = 0; i < element.childNodes.length; i ++ ) {
 
 			var child = element.childNodes[ i ];
 			if ( child.nodeType != 1 ) continue;
@@ -5919,11 +6798,11 @@ THREE.BabylonLoader.prototype = {
 			switch ( element.childNodes[ i ].nodeName ) {
 
 				case 'joint':
-					this.joints.push( ( new Joint() ).parse( child ) );
+					this.joints.push( (new Joint()).parse(child) );
 					break;
 
 				case 'link':
-					this.links.push( ( new Link() ).parse( child ) );
+					this.links.push( (new Link()).parse(child) );
 					break;
 
 				default:
@@ -5955,8 +6834,8 @@ THREE.BabylonLoader.prototype = {
 
 	Joint.prototype.parse = function( element ) {
 
-		this.sid = element.getAttribute( 'sid' );
-		this.name = element.getAttribute( 'name' );
+		this.sid = element.getAttribute('sid');
+		this.name = element.getAttribute('name');
 		this.axis = new THREE.Vector3();
 		this.limits = {
 			min: 0,
@@ -5967,12 +6846,12 @@ THREE.BabylonLoader.prototype = {
 		this.zeroPosition = 0.0;
 		this.middlePosition = 0.0;
 
-		var axisElement = element.querySelector( 'axis' );
-		var _axis = _floats( axisElement.textContent );
-		this.axis = getConvertedVec3( _axis, 0 );
+		var axisElement = element.querySelector('axis');
+		var _axis = _floats(axisElement.textContent);
+		this.axis = getConvertedVec3(_axis, 0);
 
-		var min = element.querySelector( 'limits min' ) ? parseFloat( element.querySelector( 'limits min' ).textContent ) : - 360;
-		var max = element.querySelector( 'limits max' ) ? parseFloat( element.querySelector( 'limits max' ).textContent ) : 360;
+		var min = element.querySelector('limits min') ? parseFloat(element.querySelector('limits min').textContent) : -360;
+		var max = element.querySelector('limits max') ? parseFloat(element.querySelector('limits max').textContent) : 360;
 
 		this.limits = {
 			min: min,
@@ -5980,11 +6859,11 @@ THREE.BabylonLoader.prototype = {
 		};
 
 		var jointTypes = [ 'prismatic', 'revolute' ];
-		for ( var i = 0; i < jointTypes.length; i ++ ) {
+		for (var i = 0; i < jointTypes.length; i ++ ) {
 
 			var type = jointTypes[ i ];
 
-			var jointElement = element.querySelector( type );
+			var jointElement = element.querySelector(type);
 
 			if ( jointElement ) {
 
@@ -6001,7 +6880,7 @@ THREE.BabylonLoader.prototype = {
 
 		}
 
-		this.middlePosition = ( this.limits.min + this.limits.max ) / 2.0;
+		this.middlePosition = (this.limits.min + this.limits.max) / 2.0;
 		return this;
 
 	};
@@ -6017,12 +6896,12 @@ THREE.BabylonLoader.prototype = {
 
 	Link.prototype.parse = function( element ) {
 
-		this.sid = element.getAttribute( 'sid' );
-		this.name = element.getAttribute( 'name' );
+		this.sid = element.getAttribute('sid');
+		this.name = element.getAttribute('name');
 		this.transforms = [];
 		this.attachments = [];
 
-		for ( var i = 0; i < element.childNodes.length; i ++ ) {
+		for (var i = 0; i < element.childNodes.length; i ++ ) {
 
 			var child = element.childNodes[ i ];
 			if ( child.nodeType != 1 ) continue;
@@ -6030,14 +6909,14 @@ THREE.BabylonLoader.prototype = {
 			switch ( child.nodeName ) {
 
 				case 'attachment_full':
-					this.attachments.push( ( new Attachment() ).parse( child ) );
+					this.attachments.push( (new Attachment()).parse(child) );
 					break;
 
 				case 'rotate':
 				case 'translate':
 				case 'matrix':
 
-					this.transforms.push( ( new Transform() ).parse( child ) );
+					this.transforms.push( (new Transform()).parse(child) );
 					break;
 
 				default:
@@ -6062,10 +6941,10 @@ THREE.BabylonLoader.prototype = {
 
 	Attachment.prototype.parse = function( element ) {
 
-		this.joint = element.getAttribute( 'joint' ).split( '/' ).pop();
+		this.joint = element.getAttribute('joint').split('/').pop();
 		this.links = [];
 
-		for ( var i = 0; i < element.childNodes.length; i ++ ) {
+		for (var i = 0; i < element.childNodes.length; i ++ ) {
 
 			var child = element.childNodes[ i ];
 			if ( child.nodeType != 1 ) continue;
@@ -6073,14 +6952,14 @@ THREE.BabylonLoader.prototype = {
 			switch ( child.nodeName ) {
 
 				case 'link':
-					this.links.push( ( new Link() ).parse( child ) );
+					this.links.push( (new Link()).parse(child) );
 					break;
 
 				case 'rotate':
 				case 'translate':
 				case 'matrix':
 
-					this.transforms.push( ( new Transform() ).parse( child ) );
+					this.transforms.push( (new Transform()).parse(child) );
 					break;
 
 				default:
@@ -6105,10 +6984,10 @@ THREE.BabylonLoader.prototype = {
 
 		}
 
-		sources[ id ] = ( new Source( id ) ).parse( element );
+		sources[ id ] = ( new Source(id )).parse( element );
 		return sources[ id ];
 
-	};
+	}
 
 	function _nsResolver( nsPrefix ) {
 
@@ -6120,7 +6999,7 @@ THREE.BabylonLoader.prototype = {
 
 		return null;
 
-	};
+	}
 
 	function _bools( str ) {
 
@@ -6129,17 +7008,17 @@ THREE.BabylonLoader.prototype = {
 
 		for ( var i = 0, l = raw.length; i < l; i ++ ) {
 
-			data.push( ( raw[ i ] === 'true' || raw[ i ] === '1' ) ? true : false );
+			data.push( (raw[i] === 'true' || raw[i] === '1') ? true : false );
 
 		}
 
 		return data;
 
-	};
+	}
 
 	function _floats( str ) {
 
-		var raw = _strings( str );
+		var raw = _strings(str);
 		var data = [];
 
 		for ( var i = 0, l = raw.length; i < l; i ++ ) {
@@ -6150,7 +7029,7 @@ THREE.BabylonLoader.prototype = {
 
 		return data;
 
-	};
+	}
 
 	function _ints( str ) {
 
@@ -6165,19 +7044,19 @@ THREE.BabylonLoader.prototype = {
 
 		return data;
 
-	};
+	}
 
 	function _strings( str ) {
 
 		return ( str.length > 0 ) ? _trimString( str ).split( /\s+/ ) : [];
 
-	};
+	}
 
 	function _trimString( str ) {
 
 		return str.replace( /^\s+/, "" ).replace( /\s+$/, "" );
 
-	};
+	}
 
 	function _attr_as_float( element, name, defaultValue ) {
 
@@ -6191,13 +7070,13 @@ THREE.BabylonLoader.prototype = {
 
 		}
 
-	};
+	}
 
 	function _attr_as_int( element, name, defaultValue ) {
 
 		if ( element.hasAttribute( name ) ) {
 
-			return parseInt( element.getAttribute( name ), 10 ) ;
+			return parseInt( element.getAttribute( name ), 10) ;
 
 		} else {
 
@@ -6205,7 +7084,7 @@ THREE.BabylonLoader.prototype = {
 
 		}
 
-	};
+	}
 
 	function _attr_as_string( element, name, defaultValue ) {
 
@@ -6219,7 +7098,7 @@ THREE.BabylonLoader.prototype = {
 
 		}
 
-	};
+	}
 
 	function _format_float( f, num ) {
 
@@ -6250,7 +7129,7 @@ THREE.BabylonLoader.prototype = {
 
 		return parts.join( '.' );
 
-	};
+	}
 
 	function loadTextureImage ( texture, url ) {
 
@@ -6263,591 +7142,13 @@ THREE.BabylonLoader.prototype = {
 
 		} );
 
-	};
-
-	function applySkin ( geometry, instanceCtrl, frame ) {
-
-		var skinController = controllers[ instanceCtrl.url ];
-
-		frame = frame !== undefined ? frame : 40;
-
-		if ( ! skinController || ! skinController.skin ) {
-
-			console.log( 'ColladaLoader: Could not find skin controller.' );
-			return;
-
-		}
-
-		if ( ! instanceCtrl.skeleton || ! instanceCtrl.skeleton.length ) {
-
-			console.log( 'ColladaLoader: Could not find the skeleton for the skin. ' );
-			return;
-
-		}
-
-		var animationBounds = calcAnimationBounds();
-		var skeleton = visualScene.getChildById( instanceCtrl.skeleton[ 0 ], true ) ||
-					   visualScene.getChildBySid( instanceCtrl.skeleton[ 0 ], true );
-
-		//flatten the skeleton into a list of bones
-		var bonelist = flattenSkeleton( skeleton );
-		var joints = skinController.skin.joints;
-
-		//sort that list so that the order reflects the order in the joint list
-		var sortedbones = [];
-		for ( var i = 0; i < joints.length; i ++ ) {
-
-			for ( var j = 0; j < bonelist.length; j ++ ) {
-
-				if ( bonelist[ j ].name === joints[ i ] ) {
-
-					sortedbones[ i ] = bonelist[ j ];
-
-				}
-
-			}
-
-		}
-
-		//hook up the parents by index instead of name
-		for ( var i = 0; i < sortedbones.length; i ++ ) {
-
-			for ( var j = 0; j < sortedbones.length; j ++ ) {
-
-				if ( sortedbones[ i ].parent === sortedbones[ j ].name ) {
-
-					sortedbones[ i ].parent = j;
-
-				}
-
-			}
-
-		}
-
-
-		var i, j, w, vidx, weight;
-		var v = new THREE.Vector3(), o, s;
-
-		// move vertices to bind shape
-		for ( i = 0; i < geometry.vertices.length; i ++ ) {
-
-			geometry.vertices[ i ].applyMatrix4( skinController.skin.bindShapeMatrix );
-
-		}
-
-		var skinIndices = [];
-		var skinWeights = [];
-		var weights = skinController.skin.weights;
-
-		//hook up the skin weights
-		// TODO -  this might be a good place to choose greatest 4 weights
-		for ( var i = 0; i < weights.length; i ++ ) {
-
-			var indicies = new THREE.Vector4( weights[ i ][ 0 ] ? weights[ i ][ 0 ].joint : 0, weights[ i ][ 1 ] ? weights[ i ][ 1 ].joint : 0, weights[ i ][ 2 ] ? weights[ i ][ 2 ].joint : 0, weights[ i ][ 3 ] ? weights[ i ][ 3 ].joint : 0 );
-			var weight = new THREE.Vector4( weights[ i ][ 0 ] ? weights[ i ][ 0 ].weight : 0, weights[ i ][ 1 ] ? weights[ i ][ 1 ].weight : 0, weights[ i ][ 2 ] ? weights[ i ][ 2 ].weight : 0, weights[ i ][ 3 ] ? weights[ i ][ 3 ].weight : 0 );
-
-			skinIndices.push( indicies );
-			skinWeights.push( weight );
-
-		}
-
-		geometry.skinIndices = skinIndices;
-		geometry.skinWeights = skinWeights;
-		geometry.bones = sortedbones;
-		// process animation, or simply pose the rig if no animation
-
-		//create an animation for the animated bones
-		//NOTE: this has no effect when using morphtargets
-		var animationdata = { "name": animationBounds.ID, "fps": 30, "length": animationBounds.frames / 30, "hierarchy": [] };
-
-		for ( var j = 0; j < sortedbones.length; j ++ ) {
-
-			animationdata.hierarchy.push( { parent: sortedbones[ j ].parent, name: sortedbones[ j ].name, keys: [] } );
-
-		}
-
-		console.log( 'ColladaLoader:', animationBounds.ID + ' has ' + sortedbones.length + ' bones.' );
-
-
-
-		skinToBindPose( geometry, skeleton, skinController );
-
-
-		for ( frame = 0; frame < animationBounds.frames; frame ++ ) {
-
-			var bones = [];
-			var skinned = [];
-			// process the frame and setup the rig with a fresh
-			// transform, possibly from the bone's animation channel(s)
-
-			setupSkeleton( skeleton, bones, frame );
-			setupSkinningMatrices( bones, skinController.skin );
-
-			for ( var i = 0; i < bones.length; i ++ ) {
-
-				for ( var j = 0; j < animationdata.hierarchy.length; j ++ ) {
-
-					if ( animationdata.hierarchy[ j ].name === bones[ i ].sid ) {
-
-						var key = {};
-						key.time = ( frame / 30 );
-						key.matrix = bones[ i ].animatrix;
-
-						if ( frame === 0 )
-							bones[ i ].matrix = key.matrix;
-
-						var data = [ new THREE.Vector3(), new THREE.Quaternion(), new THREE.Vector3() ];
-						key.matrix.decompose( data[ 0 ], data[ 1 ], data[ 2 ] );
-
-						key.pos = [ data[ 0 ].x, data[ 0 ].y, data[ 0 ].z ];
-
-						key.scl = [ data[ 2 ].x, data[ 2 ].y, data[ 2 ].z ];
-						key.rot = data[ 1 ];
-
-						animationdata.hierarchy[ j ].keys.push( key );
-
-					}
-
-				}
-
-			}
-
-			geometry.animation = animationdata;
-
-		}
-
-	};
-
-	function calcAnimationBounds () {
-
-		var start = 1000000;
-		var end = - start;
-		var frames = 0;
-		var ID;
-		for ( var id in animations ) {
-
-			var animation = animations[ id ];
-			ID = ID || animation.id;
-			for ( var i = 0; i < animation.sampler.length; i ++ ) {
-
-				var sampler = animation.sampler[ i ];
-
-				sampler.create();
-
-				start = Math.min( start, sampler.startTime );
-				end = Math.max( end, sampler.endTime );
-				frames = Math.max( frames, sampler.input.length );
-
-			}
-
-		}
-
-		return { start: start, end: end, frames: frames, ID: ID };
-
-	};
-
-	function createSceneGraph ( node, parent ) {
-
-		var obj = new THREE.Object3D();
-		var skinned = false;
-		var skinController;
-		var morphController;
-		var i, j;
-
-		// FIXME: controllers
-
-		for ( i = 0; i < node.controllers.length; i ++ ) {
-
-			var controller = controllers[ node.controllers[ i ].url ];
-
-			switch ( controller.type ) {
-
-				case 'skin':
-
-					if ( geometries[ controller.skin.source ] ) {
-
-						var inst_geom = new InstanceGeometry();
-
-						inst_geom.url = controller.skin.source;
-						inst_geom.instance_material = node.controllers[ i ].instance_material;
-
-						node.geometries.push( inst_geom );
-						skinned = true;
-						skinController = node.controllers[ i ];
-
-					} else if ( controllers[ controller.skin.source ] ) {
-
-						// urgh: controller can be chained
-						// handle the most basic case...
-
-						var second = controllers[ controller.skin.source ];
-						morphController = second;
-						//	skinController = node.controllers[i];
-
-						if ( second.morph && geometries[ second.morph.source ] ) {
-
-							var inst_geom = new InstanceGeometry();
-
-							inst_geom.url = second.morph.source;
-							inst_geom.instance_material = node.controllers[ i ].instance_material;
-
-							node.geometries.push( inst_geom );
-
-						}
-
-					}
-
-					break;
-
-				case 'morph':
-
-					if ( geometries[ controller.morph.source ] ) {
-
-						var inst_geom = new InstanceGeometry();
-
-						inst_geom.url = controller.morph.source;
-						inst_geom.instance_material = node.controllers[ i ].instance_material;
-
-						node.geometries.push( inst_geom );
-						morphController = node.controllers[ i ];
-
-					}
-
-					console.log( 'ColladaLoader: Morph-controller partially supported.' );
-
-				default:
-					break;
-
-			}
-
-		}
-
-		// geometries
-
-		var double_sided_materials = {};
-
-		for ( i = 0; i < node.geometries.length; i ++ ) {
-
-			var instance_geometry = node.geometries[ i ];
-			var instance_materials = instance_geometry.instance_material;
-			var geometry = geometries[ instance_geometry.url ];
-			var used_materials = {};
-			var used_materials_array = [];
-			var num_materials = 0;
-			var first_material;
-
-			if ( geometry ) {
-
-				if ( ! geometry.mesh || ! geometry.mesh.primitives )
-					continue;
-
-				if ( obj.name.length === 0 ) {
-
-					obj.name = geometry.id;
-
-				}
-
-				// collect used fx for this geometry-instance
-
-				if ( instance_materials ) {
-
-					for ( j = 0; j < instance_materials.length; j ++ ) {
-
-						var instance_material = instance_materials[ j ];
-						var mat = materials[ instance_material.target ];
-						var effect_id = mat.instance_effect.url;
-						var shader = effects[ effect_id ].shader;
-						var material3js = shader.material;
-
-						if ( geometry.doubleSided ) {
-
-							if ( ! ( instance_material.symbol in double_sided_materials ) ) {
-
-								var _copied_material = material3js.clone();
-								_copied_material.side = THREE.DoubleSide;
-								double_sided_materials[ instance_material.symbol ] = _copied_material;
-
-							}
-
-							material3js = double_sided_materials[ instance_material.symbol ];
-
-						}
-
-						material3js.opacity = ! material3js.opacity ? 1 : material3js.opacity;
-						used_materials[ instance_material.symbol ] = num_materials;
-						used_materials_array.push( material3js );
-						first_material = material3js;
-						first_material.name = mat.name === null || mat.name === '' ? mat.id : mat.name;
-						num_materials ++;
-
-					}
-
-				}
-
-				var mesh;
-				var material = first_material || new THREE.MeshLambertMaterial( { color: 0xdddddd, side: geometry.doubleSided ? THREE.DoubleSide : THREE.FrontSide } );
-				var geom = geometry.mesh.geometry3js;
-
-				if ( num_materials > 1 ) {
-
-					material = new THREE.MeshFaceMaterial( used_materials_array );
-
-					for ( j = 0; j < geom.faces.length; j ++ ) {
-
-						var face = geom.faces[ j ];
-						face.materialIndex = used_materials[ face.daeMaterial ]
-
-					}
-
-				}
-
-				if ( skinController !== undefined ) {
-
-
-					applySkin( geom, skinController );
-
-					if ( geom.morphTargets.length > 0 ) {
-
-						material.morphTargets = true;
-						material.skinning = false;
-
-					} else {
-
-						material.morphTargets = false;
-						material.skinning = true;
-
-					}
-
-
-					mesh = new THREE.SkinnedMesh( geom, material, false );
-
-
-					//mesh.skeleton = skinController.skeleton;
-					//mesh.skinController = controllers[ skinController.url ];
-					//mesh.skinInstanceController = skinController;
-					mesh.name = 'skin_' + skins.length;
-
-
-
-					//mesh.animationHandle.setKey(0);
-					skins.push( mesh );
-
-				} else if ( morphController !== undefined ) {
-
-					createMorph( geom, morphController );
-
-					material.morphTargets = true;
-
-					mesh = new THREE.Mesh( geom, material );
-					mesh.name = 'morph_' + morphs.length;
-
-					morphs.push( mesh );
-
-				} else {
-
-					if ( geom.isLineStrip === true ) {
-
-						mesh = new THREE.Line( geom );
-
-					} else {
-
-						mesh = new THREE.Mesh( geom, material );
-
-					}
-
-				}
-
-				obj.add( mesh );
-
-			}
-
-		}
-
-		for ( i = 0; i < node.cameras.length; i ++ ) {
-
-			var instance_camera = node.cameras[ i ];
-			var cparams = cameras[ instance_camera.url ];
-
-			var cam = new THREE.PerspectiveCamera( cparams.yfov, parseFloat( cparams.aspect_ratio ),
-					parseFloat( cparams.znear ), parseFloat( cparams.zfar ) );
-
-			obj.add( cam );
-
-		}
-
-		for ( i = 0; i < node.lights.length; i ++ ) {
-
-			var light = null;
-			var instance_light = node.lights[ i ];
-			var lparams = lights[ instance_light.url ];
-
-			if ( lparams && lparams.technique ) {
-
-				var color = lparams.color.getHex();
-				var intensity = lparams.intensity;
-				var distance = lparams.distance;
-				var angle = lparams.falloff_angle;
-				var exponent; // Intentionally undefined, don't know what this is yet
-
-				switch ( lparams.technique ) {
-
-					case 'directional':
-
-						light = new THREE.DirectionalLight( color, intensity, distance );
-						light.position.set( 0, 0, 1 );
-						break;
-
-					case 'point':
-
-						light = new THREE.PointLight( color, intensity, distance );
-						break;
-
-					case 'spot':
-
-						light = new THREE.SpotLight( color, intensity, distance, angle, exponent );
-						light.position.set( 0, 0, 1 );
-						break;
-
-					case 'ambient':
-
-						light = new THREE.AmbientLight( color );
-						break;
-
-				}
-
-			}
-
-			if ( light ) {
-
-				obj.add( light );
-
-			}
-
-		}
-
-		obj.name = node.name || node.id || "";
-		obj.colladaId = node.id || "";
-		obj.layer = node.layer || "";
-		obj.matrix = node.matrix;
-		obj.matrix.decompose( obj.position, obj.quaternion, obj.scale );
-
-		if ( options.centerGeometry && obj.geometry ) {
-
-			var delta = obj.geometry.center();
-			delta.multiply( obj.scale );
-			delta.applyQuaternion( obj.quaternion );
-
-			obj.position.sub( delta );
-
-		}
-
-		for ( i = 0; i < node.nodes.length; i ++ ) {
-
-			obj.add( createSceneGraph( node.nodes[ i ], node ) );
-
-		}
-
-		return obj;
-
-	};
-
-	function bakeAnimations ( node ) {
-
-		if ( node.channels && node.channels.length ) {
-
-			var keys = [],
-				sids = [];
-
-			for ( var i = 0, il = node.channels.length; i < il; i ++ ) {
-
-				var channel = node.channels[ i ],
-					fullSid = channel.fullSid,
-					sampler = channel.sampler,
-					input = sampler.input,
-					transform = node.getTransformBySid( channel.sid ),
-					member;
-
-				if ( channel.arrIndices ) {
-
-					member = [];
-
-					for ( var j = 0, jl = channel.arrIndices.length; j < jl; j ++ ) {
-
-						member[ j ] = getConvertedIndex( channel.arrIndices[ j ] );
-
-					}
-
-				} else {
-
-					member = getConvertedMember( channel.member );
-
-				}
-
-				if ( transform ) {
-
-					if ( sids.indexOf( fullSid ) === - 1 ) {
-
-						sids.push( fullSid );
-
-					}
-
-					for ( var j = 0, jl = input.length; j < jl; j ++ ) {
-
-						var time = input[ j ],
-							data = sampler.getData( transform.type, j, member ),
-							key = findKey( keys, time );
-
-						if ( ! key ) {
-
-							key = new Key( time );
-							var timeNdx = findTimeNdx( keys, time );
-							keys.splice( timeNdx === - 1 ? keys.length : timeNdx, 0, key );
-
-						}
-
-						key.addTarget( fullSid, transform, member, data );
-
-					}
-
-				} else {
-
-					console.log( 'Could not find transform "' + channel.sid + '" in node ' + node.id );
-
-				}
-
-			}
-
-			// post process
-			for ( var i = 0; i < sids.length; i ++ ) {
-
-				var sid = sids[ i ];
-
-				for ( var j = 0; j < keys.length; j ++ ) {
-
-					var key = keys[ j ];
-
-					if ( ! key.hasTarget( sid ) ) {
-
-						interpolateKeys( keys, key, j, sid );
-
-					}
-
-				}
-
-			}
-
-			node.keys = keys;
-			node.sids = sids;
-
-		}
-
-	};
+	}
 
 	function extractDoubleSided( obj, element ) {
 
 		obj.doubleSided = false;
 
-		var node = element.querySelectorAll( 'extra double_sided' )[ 0 ];
+		var node = element.querySelectorAll('extra double_sided')[0];
 
 		if ( node ) {
 
@@ -6859,51 +7160,40 @@ THREE.BabylonLoader.prototype = {
 
 		}
 
-	};
+	}
 
-	function findKey ( keys, time ) {
+	// Up axis conversion
 
-		var retVal = null;
+	function setUpConversion() {
 
-		for ( var i = 0, il = keys.length; i < il && retVal === null; i ++ ) {
+		if ( options.convertUpAxis !== true || colladaUp === options.upAxis ) {
 
-			var key = keys[ i ];
+			upConversion = null;
 
-			if ( key.time === time ) {
+		} else {
 
-				retVal = key;
+			switch ( colladaUp ) {
 
-			} else if ( key.time > time ) {
+				case 'X':
 
-				break;
+					upConversion = options.upAxis === 'Y' ? 'XtoY' : 'XtoZ';
+					break;
 
-			}
+				case 'Y':
 
-		}
+					upConversion = options.upAxis === 'X' ? 'YtoX' : 'YtoZ';
+					break;
 
-		return retVal;
+				case 'Z':
 
-	};
-
-	function findTimeNdx ( keys, time ) {
-
-		var ndx = - 1;
-
-		for ( var i = 0, il = keys.length; i < il && ndx === - 1; i ++ ) {
-
-			var key = keys[ i ];
-
-			if ( key.time >= time ) {
-
-				ndx = i;
+					upConversion = options.upAxis === 'X' ? 'ZtoX' : 'ZtoY';
+					break;
 
 			}
 
 		}
 
-		return ndx;
-
-	};
+	}
 
 	function fixCoords( data, sign ) {
 
@@ -6961,39 +7251,7 @@ THREE.BabylonLoader.prototype = {
 
 		}
 
-	};
-
-	//Walk the Collada tree and flatten the bones into a list, extract the position, quat and scale from the matrix
-	function flattenSkeleton ( skeleton ) {
-
-		var list = [];
-		var walk = function( parentid, node, list ) {
-
-			var bone = {};
-			bone.name = node.sid;
-			bone.parent = parentid;
-			bone.matrix = node.matrix;
-			var data = [ new THREE.Vector3(), new THREE.Quaternion(), new THREE.Vector3() ];
-			bone.matrix.decompose( data[ 0 ], data[ 1 ], data[ 2 ] );
-
-			bone.pos = [ data[ 0 ].x, data[ 0 ].y, data[ 0 ].z ];
-
-			bone.scl = [ data[ 2 ].x, data[ 2 ].y, data[ 2 ].z ];
-			bone.rotq = [ data[ 1 ].x, data[ 1 ].y, data[ 1 ].z, data[ 1 ].w ];
-			list.push( bone );
-
-			for ( var i in node.nodes ) {
-
-				walk( node.sid, node.nodes[ i ], list );
-
-			}
-
-		};
-
-		walk( - 1, skeleton, list );
-		return list;
-
-	};
+	}
 
 	function getConvertedTranslation( axis, data ) {
 
@@ -7005,29 +7263,28 @@ THREE.BabylonLoader.prototype = {
 
 		switch ( axis ) {
 			case 'X':
-				data = upConversion === 'XtoY' ? data * - 1 : data;
+				data = upConversion === 'XtoY' ? data * -1 : data;
 				break;
 			case 'Y':
-				data = upConversion === 'YtoZ' || upConversion === 'YtoX' ? data * - 1 : data;
+				data = upConversion === 'YtoZ' || upConversion === 'YtoX' ? data * -1 : data;
 				break;
 			case 'Z':
-				data = upConversion === 'ZtoY' ? data * - 1 : data ;
+				data = upConversion === 'ZtoY' ? data * -1 : data ;
 				break;
 			default:
 				break;
 		}
 
 		return data;
-
-	};
+	}
 
 	function getConvertedVec3( data, offset ) {
 
 		var arr = [ data[ offset ], data[ offset + 1 ], data[ offset + 2 ] ];
-		fixCoords( arr, - 1 );
+		fixCoords( arr, -1 );
 		return new THREE.Vector3( arr[ 0 ], arr[ 1 ], arr[ 2 ] );
 
-	};
+	}
 
 	function getConvertedMat4( data ) {
 
@@ -7037,40 +7294,40 @@ THREE.BabylonLoader.prototype = {
 
 			// Columns first
 			var arr = [ data[ 0 ], data[ 4 ], data[ 8 ] ];
-			fixCoords( arr, - 1 );
+			fixCoords( arr, -1 );
 			data[ 0 ] = arr[ 0 ];
 			data[ 4 ] = arr[ 1 ];
 			data[ 8 ] = arr[ 2 ];
 			arr = [ data[ 1 ], data[ 5 ], data[ 9 ] ];
-			fixCoords( arr, - 1 );
+			fixCoords( arr, -1 );
 			data[ 1 ] = arr[ 0 ];
 			data[ 5 ] = arr[ 1 ];
 			data[ 9 ] = arr[ 2 ];
 			arr = [ data[ 2 ], data[ 6 ], data[ 10 ] ];
-			fixCoords( arr, - 1 );
+			fixCoords( arr, -1 );
 			data[ 2 ] = arr[ 0 ];
 			data[ 6 ] = arr[ 1 ];
 			data[ 10 ] = arr[ 2 ];
 			// Rows second
 			arr = [ data[ 0 ], data[ 1 ], data[ 2 ] ];
-			fixCoords( arr, - 1 );
+			fixCoords( arr, -1 );
 			data[ 0 ] = arr[ 0 ];
 			data[ 1 ] = arr[ 1 ];
 			data[ 2 ] = arr[ 2 ];
 			arr = [ data[ 4 ], data[ 5 ], data[ 6 ] ];
-			fixCoords( arr, - 1 );
+			fixCoords( arr, -1 );
 			data[ 4 ] = arr[ 0 ];
 			data[ 5 ] = arr[ 1 ];
 			data[ 6 ] = arr[ 2 ];
 			arr = [ data[ 8 ], data[ 9 ], data[ 10 ] ];
-			fixCoords( arr, - 1 );
+			fixCoords( arr, -1 );
 			data[ 8 ] = arr[ 0 ];
 			data[ 9 ] = arr[ 1 ];
 			data[ 10 ] = arr[ 2 ];
 
 			// Now fix translation
 			arr = [ data[ 3 ], data[ 7 ], data[ 11 ] ];
-			fixCoords( arr, - 1 );
+			fixCoords( arr, -1 );
 			data[ 3 ] = arr[ 0 ];
 			data[ 7 ] = arr[ 1 ];
 			data[ 11 ] = arr[ 2 ];
@@ -7078,17 +7335,17 @@ THREE.BabylonLoader.prototype = {
 		}
 
 		return new THREE.Matrix4().set(
-			data[ 0 ], data[ 1 ], data[ 2 ], data[ 3 ],
-			data[ 4 ], data[ 5 ], data[ 6 ], data[ 7 ],
-			data[ 8 ], data[ 9 ], data[ 10 ], data[ 11 ],
-			data[ 12 ], data[ 13 ], data[ 14 ], data[ 15 ]
+			data[0], data[1], data[2], data[3],
+			data[4], data[5], data[6], data[7],
+			data[8], data[9], data[10], data[11],
+			data[12], data[13], data[14], data[15]
 			);
 
-	};
+	}
 
 	function getConvertedIndex( index ) {
 
-		if ( index > - 1 && index < 3 ) {
+		if ( index > -1 && index < 3 ) {
 
 			var members = [ 'X', 'Y', 'Z' ],
 				indices = { X: 0, Y: 1, Z: 2 };
@@ -7100,48 +7357,7 @@ THREE.BabylonLoader.prototype = {
 
 		return index;
 
-	};
-
-	function getChannelsForNode ( node ) {
-
-		var channels = [];
-		var startTime = 1000000;
-		var endTime = - 1000000;
-
-		for ( var id in animations ) {
-
-			var animation = animations[ id ];
-
-			for ( var i = 0; i < animation.channel.length; i ++ ) {
-
-				var channel = animation.channel[ i ];
-				var sampler = animation.sampler[ i ];
-				var id = channel.target.split( '/' )[ 0 ];
-
-				if ( id == node.id ) {
-
-					sampler.create();
-					channel.sampler = sampler;
-					startTime = Math.min( startTime, sampler.startTime );
-					endTime = Math.max( endTime, sampler.endTime );
-					channels.push( channel );
-
-				}
-
-			}
-
-		}
-
-		if ( channels.length ) {
-
-			node.startTime = startTime;
-			node.endTime = endTime;
-
-		}
-
-		return channels;
-
-	};
+	}
 
 	function getConvertedMember( member ) {
 
@@ -7217,317 +7433,20 @@ THREE.BabylonLoader.prototype = {
 
 		return member;
 
-	};
+	}
 
-	function getLibraryNode ( id ) {
+	return {
 
-		var nodes = COLLADA.querySelectorAll( 'library_nodes node' );
-
-		for ( var i = 0; i < nodes.length; i ++ ) {
-
-			var attObj = nodes[ i ].attributes.getNamedItem( 'id' );
-			if ( attObj && attObj.value === id ) {
-
-				return nodes[ i ];
-
-			}
-
-		}
-
-		return undefined;
+		load: load,
+		parse: parse,
+		setPreferredShading: setPreferredShading,
+		applySkin: applySkin,
+		geometries : geometries,
+		options: options
 
 	};
 
-	// Get next key with given sid
-	function getNextKeyWith ( keys, fullSid, ndx ) {
-
-		for ( ; ndx < keys.length; ndx ++ ) {
-
-			var key = keys[ ndx ];
-
-			if ( key.hasTarget( fullSid ) ) {
-
-				return key;
-
-			}
-
-		}
-
-		return null;
-
-	};
-
-	// Get previous key with given sid
-	function getPrevKeyWith ( keys, fullSid, ndx ) {
-
-		ndx = ndx >= 0 ? ndx : ndx + keys.length;
-
-		for ( ; ndx >= 0; ndx -- ) {
-
-			var key = keys[ ndx ];
-
-			if ( key.hasTarget( fullSid ) ) {
-
-				return key;
-
-			}
-
-		}
-
-		return null;
-
-	};
-
-	function interpolateKeys ( keys, key, ndx, fullSid ) {
-
-		var prevKey = getPrevKeyWith( keys, fullSid, ndx ? ndx - 1 : 0 ),
-			nextKey = getNextKeyWith( keys, fullSid, ndx + 1 );
-
-		if ( prevKey && nextKey ) {
-
-			var scale = ( key.time - prevKey.time ) / ( nextKey.time - prevKey.time ),
-				prevTarget = prevKey.getTarget( fullSid ),
-				nextData = nextKey.getTarget( fullSid ).data,
-				prevData = prevTarget.data,
-				data;
-
-			if ( prevTarget.type === 'matrix' ) {
-
-				data = prevData;
-
-			} else if ( prevData.length ) {
-
-				data = [];
-
-				for ( var i = 0; i < prevData.length; ++ i ) {
-
-					data[ i ] = prevData[ i ] + ( nextData[ i ] - prevData[ i ] ) * scale;
-
-				}
-
-			} else {
-
-				data = prevData + ( nextData - prevData ) * scale;
-
-			}
-
-			key.addTarget( fullSid, prevTarget.transform, prevTarget.member, data );
-
-		}
-
-	};
-
-	function recurseHierarchy( node ) {
-
-		var n = visualScene.getChildById( node.colladaId, true ),
-			newData = null;
-
-		if ( n && n.keys ) {
-
-			newData = {
-				fps: 60,
-				hierarchy: [ {
-					node: n,
-					keys: n.keys,
-					sids: n.sids
-				} ],
-				node: node,
-				name: 'animation_' + node.name,
-				length: 0
-			};
-
-			animData.push( newData );
-
-			for ( var i = 0, il = n.keys.length; i < il; i ++ ) {
-
-				newData.length = Math.max( newData.length, n.keys[ i ].time );
-
-			}
-
-		} else {
-
-			newData = {
-				hierarchy: [ {
-					keys: [],
-					sids: []
-				} ]
-			}
-
-		}
-
-		for ( var i = 0, il = node.children.length; i < il; i ++ ) {
-
-			var d = recurseHierarchy( node.children[ i ] );
-
-			for ( var j = 0, jl = d.hierarchy.length; j < jl; j ++ ) {
-
-				newData.hierarchy.push( {
-					keys: [],
-					sids: []
-				} );
-
-			}
-
-		}
-
-		return newData;
-
-	};
-
-	function setupSkeleton ( node, bones, frame, parent ) {
-
-		node.world = node.world || new THREE.Matrix4();
-		node.localworld = node.localworld || new THREE.Matrix4();
-		node.world.copy( node.matrix );
-		node.localworld.copy( node.matrix );
-
-		if ( node.channels && node.channels.length ) {
-
-			var channel = node.channels[ 0 ];
-			var m = channel.sampler.output[ frame ];
-
-			if ( m instanceof THREE.Matrix4 ) {
-
-				node.world.copy( m );
-				node.localworld.copy( m );
-				if ( frame === 0 )
-					node.matrix.copy( m );
-
-			}
-
-		}
-
-		if ( parent ) {
-
-			node.world.multiplyMatrices( parent, node.world );
-
-		}
-
-		bones.push( node );
-
-		for ( var i = 0; i < node.nodes.length; i ++ ) {
-
-			setupSkeleton( node.nodes[ i ], bones, frame, node.world );
-
-		}
-
-	};
-
-	function setupSkinningMatrices ( bones, skin ) {
-
-		// FIXME: this is dumb...
-
-		for ( var i = 0; i < bones.length; i ++ ) {
-
-			var bone = bones[ i ];
-			var found = - 1;
-
-			if ( bone.type != 'JOINT' ) continue;
-
-			for ( var j = 0; j < skin.joints.length; j ++ ) {
-
-				if ( bone.sid === skin.joints[ j ] ) {
-
-					found = j;
-					break;
-
-				}
-
-			}
-
-			if ( found >= 0 ) {
-
-				var inv = skin.invBindMatrices[ found ];
-
-				bone.invBindMatrix = inv;
-				bone.skinningMatrix = new THREE.Matrix4();
-				bone.skinningMatrix.multiplyMatrices( bone.world, inv ); // (IBMi * JMi)
-				bone.animatrix = new THREE.Matrix4();
-
-				bone.animatrix.copy( bone.localworld );
-				bone.weights = [];
-
-				for ( var j = 0; j < skin.weights.length; j ++ ) {
-
-					for ( var k = 0; k < skin.weights[ j ].length; k ++ ) {
-
-						var w = skin.weights[ j ][ k ];
-
-						if ( w.joint === found ) {
-
-							bone.weights.push( w );
-
-						}
-
-					}
-
-				}
-
-			} else {
-
-				console.warn( "ColladaLoader: Could not find joint '" + bone.sid + "'." );
-
-				bone.skinningMatrix = new THREE.Matrix4();
-				bone.weights = [];
-
-			}
-
-		}
-
-	};
-
-	//Move the vertices into the pose that is proper for the start of the animation
-	function skinToBindPose ( geometry, skeleton, skinController ) {
-
-		var bones = [];
-		setupSkeleton( skeleton, bones, - 1 );
-		setupSkinningMatrices( bones, skinController.skin );
-		var v = new THREE.Vector3();
-		var skinned = [];
-
-		for ( var i = 0; i < geometry.vertices.length; i ++ ) {
-
-			skinned.push( new THREE.Vector3() );
-
-		}
-
-		for ( var i = 0; i < bones.length; i ++ ) {
-
-			if ( bones[ i ].type != 'JOINT' ) continue;
-
-			for ( var j = 0; j < bones[ i ].weights.length; j ++ ) {
-
-				var w = bones[ i ].weights[ j ];
-				var vidx = w.index;
-				var weight = w.weight;
-
-				var o = geometry.vertices[ vidx ];
-				var s = skinned[ vidx ];
-
-				v.x = o.x;
-				v.y = o.y;
-				v.z = o.z;
-
-				v.applyMatrix4( bones[ i ].skinningMatrix );
-
-				s.x += ( v.x * weight );
-				s.y += ( v.y * weight );
-				s.z += ( v.z * weight );
-
-			}
-
-		}
-
-		for ( var i = 0; i < geometry.vertices.length; i ++ ) {
-
-			geometry.vertices[ i ] = skinned[ i ];
-
-		}
-
-	};
-
-
-} )();
+};
 
 // File:examples/js/loaders/MD2Loader.js
 
@@ -7550,19 +7469,12 @@ THREE.MD2Loader.prototype = {
 		var scope = this;
 
 		var loader = new THREE.XHRLoader( scope.manager );
-		loader.setCrossOrigin( this.crossOrigin );
 		loader.setResponseType( 'arraybuffer' );
 		loader.load( url, function ( buffer ) {
 
 			onLoad( scope.parse( buffer ) );
 
 		}, onProgress, onError );
-
-	},
-
-	setCrossOrigin: function ( value ) {
-
-		this.crossOrigin = value;
 
 	},
 
@@ -7855,6 +7767,8 @@ THREE.OBJLoader = function ( manager ) {
 
 	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
 
+	this.materials = null;
+
 };
 
 THREE.OBJLoader.prototype = {
@@ -7866,7 +7780,7 @@ THREE.OBJLoader.prototype = {
 		var scope = this;
 
 		var loader = new THREE.XHRLoader( scope.manager );
-		loader.setCrossOrigin( this.crossOrigin );
+		loader.setPath( this.path );
 		loader.load( url, function ( text ) {
 
 			onLoad( scope.parse( text ) );
@@ -7875,9 +7789,15 @@ THREE.OBJLoader.prototype = {
 
 	},
 
-	setCrossOrigin: function ( value ) {
+	setPath: function ( value ) {
 
-		this.crossOrigin = value;
+		this.path = value;
+
+	},
+
+	setMaterials: function ( materials ) {
+
+		this.materials = materials;
 
 	},
 
@@ -7885,8 +7805,35 @@ THREE.OBJLoader.prototype = {
 
 		console.time( 'OBJLoader' );
 
-		var object, objects = [];
-		var geometry, material;
+		var objects = [];
+		var object;
+		var foundObjects = false;
+		var vertices = [];
+		var normals = [];
+		var uvs = [];
+
+		function addObject(name) {
+
+			var geometry = {
+				vertices: [],
+				normals: [],
+				uvs: []
+			};
+
+			var material = {
+				name: '',
+				smooth: true
+			};
+
+			object = {
+				name: name,
+				geometry: geometry,
+				material: material
+			};
+
+			objects.push( object );
+
+		}
 
 		function parseVertexIndex( value ) {
 
@@ -7914,7 +7861,7 @@ THREE.OBJLoader.prototype = {
 
 		function addVertex( a, b, c ) {
 
-			geometry.vertices.push(
+			object.geometry.vertices.push(
 				vertices[ a ], vertices[ a + 1 ], vertices[ a + 2 ],
 				vertices[ b ], vertices[ b + 1 ], vertices[ b + 2 ],
 				vertices[ c ], vertices[ c + 1 ], vertices[ c + 2 ]
@@ -7924,7 +7871,7 @@ THREE.OBJLoader.prototype = {
 
 		function addNormal( a, b, c ) {
 
-			geometry.normals.push(
+			object.geometry.normals.push(
 				normals[ a ], normals[ a + 1 ], normals[ a + 2 ],
 				normals[ b ], normals[ b + 1 ], normals[ b + 2 ],
 				normals[ c ], normals[ c + 1 ], normals[ c + 2 ]
@@ -7934,7 +7881,7 @@ THREE.OBJLoader.prototype = {
 
 		function addUV( a, b, c ) {
 
-			geometry.uvs.push(
+			object.geometry.uvs.push(
 				uvs[ a ], uvs[ a + 1 ],
 				uvs[ b ], uvs[ b + 1 ],
 				uvs[ c ], uvs[ c + 1 ]
@@ -8006,61 +7953,32 @@ THREE.OBJLoader.prototype = {
 
 		}
 
-		// create mesh if no objects in text
-
-		if ( /^o /gm.test( text ) === false ) {
-
-			geometry = {
-				vertices: [],
-				normals: [],
-				uvs: []
-			};
-
-			material = {
-				name: ''
-			};
-
-			object = {
-				name: '',
-				geometry: geometry,
-				material: material
-			};
-
-			objects.push( object );
-
-		}
-
-		var vertices = [];
-		var normals = [];
-		var uvs = [];
+		addObject("");
 
 		// v float float float
-
-		var vertex_pattern = /v( +[\d|\.|\+|\-|e|E]+)( +[\d|\.|\+|\-|e|E]+)( +[\d|\.|\+|\-|e|E]+)/;
+		var vertex_pattern = /^v\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)/;
 
 		// vn float float float
-
-		var normal_pattern = /vn( +[\d|\.|\+|\-|e|E]+)( +[\d|\.|\+|\-|e|E]+)( +[\d|\.|\+|\-|e|E]+)/;
+		var normal_pattern = /^vn\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)/;
 
 		// vt float float
-
-		var uv_pattern = /vt( +[\d|\.|\+|\-|e|E]+)( +[\d|\.|\+|\-|e|E]+)/;
+		var uv_pattern = /^vt\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)/;
 
 		// f vertex vertex vertex ...
-
-		var face_pattern1 = /f( +-?\d+)( +-?\d+)( +-?\d+)( +-?\d+)?/;
+		var face_pattern1 = /^f\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)(?:\s+(-?\d+))?/;
 
 		// f vertex/uv vertex/uv vertex/uv ...
-
-		var face_pattern2 = /f( +(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+))?/;
+		var face_pattern2 = /^f\s+((-?\d+)\/(-?\d+))\s+((-?\d+)\/(-?\d+))\s+((-?\d+)\/(-?\d+))(?:\s+((-?\d+)\/(-?\d+)))?/;
 
 		// f vertex/uv/normal vertex/uv/normal vertex/uv/normal ...
-
-		var face_pattern3 = /f( +(-?\d+)\/(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+)\/(-?\d+))( +(-?\d+)\/(-?\d+)\/(-?\d+))?/;
+		var face_pattern3 = /^f\s+((-?\d+)\/(-?\d+)\/(-?\d+))\s+((-?\d+)\/(-?\d+)\/(-?\d+))\s+((-?\d+)\/(-?\d+)\/(-?\d+))(?:\s+((-?\d+)\/(-?\d+)\/(-?\d+)))?/;
 
 		// f vertex//normal vertex//normal vertex//normal ...
+		var face_pattern4 = /^f\s+((-?\d+)\/\/(-?\d+))\s+((-?\d+)\/\/(-?\d+))\s+((-?\d+)\/\/(-?\d+))(?:\s+((-?\d+)\/\/(-?\d+)))?/;
 
-		var face_pattern4 = /f( +(-?\d+)\/\/(-?\d+))( +(-?\d+)\/\/(-?\d+))( +(-?\d+)\/\/(-?\d+))( +(-?\d+)\/\/(-?\d+))?/;
+		var object_pattern = /^[og]\s+(.+)/;
+
+		var smoothing_pattern = /^s\s+([01]|on|off)/;
 
 		//
 
@@ -8143,43 +8061,40 @@ THREE.OBJLoader.prototype = {
 					result[ 3 ], result[ 6 ], result[ 9 ], result[ 12 ]
 				);
 
-			} else if ( /^o /.test( line ) ) {
+			} else if ( ( result = object_pattern.exec( line ) ) !== null ) {
 
-				geometry = {
-					vertices: [],
-					normals: [],
-					uvs: []
-				};
+				// o object_name
+				// or
+				// g group_name
 
-				material = {
-					name: ''
-				};
+				var name = result[1].trim();
 
-				object = {
-					name: line.substring( 2 ).trim(),
-					geometry: geometry,
-					material: material
-				};
+				if ( foundObjects === false ) {
 
-				objects.push( object )
+					foundObjects = true;
+					object.name = name;
 
-			} else if ( /^g /.test( line ) ) {
+				} else {
 
-				// group
+					addObject(name);
+
+				}
 
 			} else if ( /^usemtl /.test( line ) ) {
 
 				// material
 
-				material.name = line.substring( 7 ).trim();
+				object.material.name = line.substring( 7 ).trim();
 
 			} else if ( /^mtllib /.test( line ) ) {
 
 				// mtl file
 
-			} else if ( /^s /.test( line ) ) {
+			} else if ( ( result = smoothing_pattern.exec( line ) ) !== null ) {
 
 				// smooth shading
+
+				object.material.smooth = result[ 1 ] === "1" || result[ 1 ] === "on";
 
 			} else {
 
@@ -8189,12 +8104,12 @@ THREE.OBJLoader.prototype = {
 
 		}
 
-		var container = new THREE.Object3D();
+		var container = new THREE.Group();
 
 		for ( var i = 0, l = objects.length; i < l; i ++ ) {
 
 			object = objects[ i ];
-			geometry = object.geometry;
+			var geometry = object.geometry;
 
 			var buffergeometry = new THREE.BufferGeometry();
 
@@ -8204,6 +8119,10 @@ THREE.OBJLoader.prototype = {
 
 				buffergeometry.addAttribute( 'normal', new THREE.BufferAttribute( new Float32Array( geometry.normals ), 3 ) );
 
+			} else {
+
+				buffergeometry.computeVertexNormals();
+
 			}
 
 			if ( geometry.uvs.length > 0 ) {
@@ -8212,8 +8131,22 @@ THREE.OBJLoader.prototype = {
 
 			}
 
-			material = new THREE.MeshLambertMaterial();
-			material.name = object.material.name;
+			var material;
+
+			if ( this.materials !== null ) {
+
+				material = this.materials.create( object.material.name );
+
+			}
+
+			if ( !material ) {
+
+				material = new THREE.MeshPhongMaterial();
+				material.name = object.material.name;
+
+			}
+
+			material.shading = object.material.smooth ? THREE.SmoothShading : THREE.FlatShading;
 
 			var mesh = new THREE.Mesh( buffergeometry, material );
 			mesh.name = object.name;
@@ -8278,19 +8211,12 @@ THREE.PLYLoader.prototype = {
 		var scope = this;
 
 		var loader = new THREE.XHRLoader( this.manager );
-		loader.setCrossOrigin( this.crossOrigin );
 		loader.setResponseType( 'arraybuffer' );
 		loader.load( url, function ( text ) {
 
 			onLoad( scope.parse( text ) );
 
 		}, onProgress, onError );
-
-	},
-
-	setCrossOrigin: function ( value ) {
-
-		this.crossOrigin = value;
 
 	},
 
@@ -8763,19 +8689,12 @@ THREE.STLLoader.prototype = {
 		var scope = this;
 
 		var loader = new THREE.XHRLoader( scope.manager );
-		loader.setCrossOrigin( this.crossOrigin );
 		loader.setResponseType( 'arraybuffer' );
 		loader.load( url, function ( text ) {
 
 			onLoad( scope.parse( text ) );
 
 		}, onProgress, onError );
-
-	},
-
-	setCrossOrigin: function ( value ) {
-
-		this.crossOrigin = value;
 
 	},
 
@@ -9261,8 +9180,6 @@ THREE.UTF8Loader.BufferGeometryCreator.prototype.create = function ( attribArray
 	var uvs = new Float32Array( ntris * 3 * 2 );
 
 	var i, j, offset;
-	var x, y, z;
-	var u, v;
 
 	var end = attribArray.length;
 	var stride = 8;
@@ -9274,13 +9191,9 @@ THREE.UTF8Loader.BufferGeometryCreator.prototype.create = function ( attribArray
 
 	for ( i = offset; i < end; i += stride ) {
 
-		x = attribArray[ i ];
-		y = attribArray[ i + 1 ];
-		z = attribArray[ i + 2 ];
-
-		positions[ j ++ ] = x;
-		positions[ j ++ ] = y;
-		positions[ j ++ ] = z;
+		positions[ j ++ ] = attribArray[ i     ];
+		positions[ j ++ ] = attribArray[ i + 1 ];
+		positions[ j ++ ] = attribArray[ i + 2 ];
 
 	}
 
@@ -9291,12 +9204,8 @@ THREE.UTF8Loader.BufferGeometryCreator.prototype.create = function ( attribArray
 
 	for ( i = offset; i < end; i += stride ) {
 
-		u = attribArray[ i ];
-		v = attribArray[ i + 1 ];
-
-		uvs[ j ++ ] = u;
-		uvs[ j ++ ] = v;
-
+		uvs[ j ++ ] = attribArray[ i     ];
+		uvs[ j ++ ] = attribArray[ i + 1 ];
 	}
 
 	// extract normals
@@ -9306,13 +9215,9 @@ THREE.UTF8Loader.BufferGeometryCreator.prototype.create = function ( attribArray
 
 	for ( i = offset; i < end; i += stride ) {
 
-		x = attribArray[ i ];
-		y = attribArray[ i + 1 ];
-		z = attribArray[ i + 2 ];
-
-		normals[ j ++ ] = x;
-		normals[ j ++ ] = y;
-		normals[ j ++ ] = z;
+		normals[ j ++ ] = attribArray[ i     ];
+		normals[ j ++ ] = attribArray[ i + 1 ];
+		normals[ j ++ ] = attribArray[ i + 2 ];
 
 	}
 
@@ -9768,7 +9673,7 @@ THREE.UTF8Loader.prototype.downloadMesh = function ( path, name, meshEntry, deco
 	var loader = this;
 	var idx = 0;
 
-	function onprogress( req, e ) {
+	function onprogress( data ) {
 
 		while ( idx < meshEntry.length ) {
 
@@ -9779,18 +9684,18 @@ THREE.UTF8Loader.prototype.downloadMesh = function ( path, name, meshEntry, deco
 
 				var meshEnd = indexRange[ 0 ] + 3 * indexRange[ 1 ];
 
-				if ( req.responseText.length < meshEnd ) break;
+				if ( data.length < meshEnd ) break;
 
-				loader.decompressMesh( req.responseText, meshParams, decodeParams, name, idx, callback );
+				loader.decompressMesh( data, meshParams, decodeParams, name, idx, callback );
 
 			} else {
 
 				var codeRange = meshParams.codeRange;
 				var meshEnd = codeRange[ 0 ] + codeRange[ 1 ];
 
-				if ( req.responseText.length < meshEnd ) break;
+				if ( data.length < meshEnd ) break;
 
-				loader.decompressMesh2( req.responseText, meshParams, decodeParams, name, idx, callback );
+				loader.decompressMesh2( data, meshParams, decodeParams, name, idx, callback );
 			}
 
 			++ idx;
@@ -9799,17 +9704,13 @@ THREE.UTF8Loader.prototype.downloadMesh = function ( path, name, meshEntry, deco
 
 	}
 
-	getHttpRequest( path, function( req, e ) {
+	getHttpRequest( path, function( data ) {
 
-		if ( req.status === 200 || req.status === 0 ) {
-
-			onprogress( req, e );
-
-		}
+		onprogress( data );
 
         // TODO: handle errors.
 
-	}, onprogress );
+	});
 
 };
 
@@ -9967,24 +9868,15 @@ THREE.UTF8Loader.prototype.downloadModelJson = function ( jsonUrl, callback, opt
 
 function getHttpRequest( url, onload, opt_onprogress ) {
 
-	var LISTENERS = {
+	var req = new THREE.XHRLoader();
+	req.load( url, onload, opt_onprogress );
 
-        load: function( e ) { onload( req, e ); },
-        progress: function( e ) { opt_onprogress( req, e ); }
-
-    };
-
-	var req = new XMLHttpRequest();
-	addListeners( req, LISTENERS );
-
-	req.open( 'GET', url, true );
-	req.send( null );
 }
 
 function getJsonRequest( url, onjson ) {
 
 	getHttpRequest( url,
-        function( e ) { onjson( JSON.parse( e.responseText ) ); },
+        function( e ) { onjson( JSON.parse( e ) ); },
         function() {} );
 
 }
@@ -10035,7 +9927,6 @@ THREE.VRMLLoader.prototype = {
 		var scope = this;
 
 		var loader = new THREE.XHRLoader( this.manager );
-		loader.setCrossOrigin( this.crossOrigin );
 		loader.load( url, function ( text ) {
 
 			onLoad( scope.parse( text ) );
@@ -10052,6 +9943,11 @@ THREE.VRMLLoader.prototype = {
 
 	parse: function ( data ) {
 
+		var texturePath = this.texturePath || '';
+
+		var textureLoader = new THREE.TextureLoader( this.manager );
+		textureLoader.setCrossOrigin( this.crossOrigin );
+
 		var parseV1 = function ( lines, scene ) {
 
 			console.warn( 'VRML V1.0 not supported yet' );
@@ -10062,6 +9958,7 @@ THREE.VRMLLoader.prototype = {
 
 			var defines = {};
 			var float_pattern = /(\b|\-|\+)([\d\.e]+)/;
+			var float2_pattern = /([\d\.\+\-e]+)\s+([\d\.\+\-e]+)/g;
 			var float3_pattern = /([\d\.\+\-e]+)\s+([\d\.\+\-e]+)\s+([\d\.\+\-e]+)/g;
 
 			/**
@@ -10243,10 +10140,10 @@ THREE.VRMLLoader.prototype = {
 						this.points = [];
 						break;
 					case 'coordIndex':
+					case 'texCoordIndex':
 						this.recordingFieldname = fieldName;
 						this.isRecordingFaces = true;
 						this.indexes = [];
-						break;
 				}
 
 				if ( this.isRecordingFaces ) {
@@ -10291,11 +10188,13 @@ THREE.VRMLLoader.prototype = {
 					if ( /]/.exec( line ) ) {
 
 						this.isRecordingFaces = false;
-						node.coordIndex = this.indexes;
+						node[this.recordingFieldname] = this.indexes;
 
 					}
 
 				} else if ( this.isRecordingPoints ) {
+
+					if ( node.nodeType == 'Coordinate' )
 
 					while ( null !== ( parts = float3_pattern.exec( line ) ) ) {
 
@@ -10303,6 +10202,19 @@ THREE.VRMLLoader.prototype = {
 							x: parseFloat( parts[ 1 ] ),
 							y: parseFloat( parts[ 2 ] ),
 							z: parseFloat( parts[ 3 ] )
+						};
+
+						this.points.push( point );
+
+					}
+
+					if ( node.nodeType == 'TextureCoordinate' )
+
+					while ( null !== ( parts = float2_pattern.exec( line ) ) ) {
+
+						point = {
+							x: parseFloat( parts[ 1 ] ),
+							y: parseFloat( parts[ 2 ] )
 						};
 
 						this.points.push( point );
@@ -10509,7 +10421,7 @@ THREE.VRMLLoader.prototype = {
 
 					}
 
-					if ( matches = /([^\s]*){1}\s?{/.exec( line ) ) {
+					if ( matches = /([^\s]*){1}(?:\s+)?{/.exec( line ) ) {
 
 						// first subpattern should match the Node name
 
@@ -10641,7 +10553,7 @@ THREE.VRMLLoader.prototype = {
 
 					if ( /DEF/.exec( data.string ) ) {
 
-						object.name = /DEF (\w+)/.exec( data.string )[ 1 ];
+						object.name = /DEF\s+(\w+)/.exec( data.string )[ 1 ];
 
 						defines[ object.name ] = object;
 
@@ -10714,7 +10626,7 @@ THREE.VRMLLoader.prototype = {
 
 						var geometry = new THREE.Geometry();
 
-						var indexes;
+						var indexes, uvIndexes, uvs;
 
 						for ( var i = 0, j = data.children.length; i < j; i ++ ) {
 
@@ -10722,19 +10634,43 @@ THREE.VRMLLoader.prototype = {
 
 							var vec;
 
+							if ( 'TextureCoordinate' === child.nodeType ) {
+
+								uvs = child.points;
+
+							}
+
+
 							if ( 'Coordinate' === child.nodeType ) {
 
-								for ( var k = 0, l = child.points.length; k < l; k ++ ) {
+								if ( child.points ) {
 
-									var point = child.points[ k ];
+									for ( var k = 0, l = child.points.length; k < l; k ++ ) {
 
-									vec = new THREE.Vector3( point.x, point.y, point.z );
+										var point = child.points[ k ];
 
-									geometry.vertices.push( vec );
+										vec = new THREE.Vector3( point.x, point.y, point.z );
+
+										geometry.vertices.push( vec );
+
+									}
 
 								}
 
-								break;
+								if ( child.string.indexOf ( 'DEF' ) > -1 ) {
+
+									var name = /DEF\s+(\w+)/.exec( child.string )[ 1 ];
+
+									defines[ name ] = geometry.vertices;
+
+								}
+
+								if ( child.string.indexOf ( 'USE' ) > -1 ) {
+
+									var defineKey = /USE\s+(\w+)/.exec( child.string )[ 1 ];
+
+									geometry.vertices = defines[ defineKey ];
+								}
 
 							}
 
@@ -10742,33 +10678,58 @@ THREE.VRMLLoader.prototype = {
 
 						var skip = 0;
 
-						// read this: http://math.hws.edu/eck/cs424/notes2013/16_Threejs_Advanced.html
-						for ( var i = 0, j = data.coordIndex.length; i < j; i ++ ) {
+						// some shapes only have vertices for use in other shapes
+						if ( data.coordIndex ) {
 
-							indexes = data.coordIndex[ i ];
+							// read this: http://math.hws.edu/eck/cs424/notes2013/16_Threejs_Advanced.html
+							for ( var i = 0, j = data.coordIndex.length; i < j; i ++ ) {
 
-							// vrml support multipoint indexed face sets (more then 3 vertices). You must calculate the composing triangles here
-							skip = 0;
+								indexes = data.coordIndex[ i ]; if ( data.texCoordIndex ) uvIndexes = data.texCoordIndex[ i ];
 
-							// todo: this is the time to check if the faces are ordered ccw or not (cw)
+								// vrml support multipoint indexed face sets (more then 3 vertices). You must calculate the composing triangles here
+								skip = 0;
 
-							// Face3 only works with triangles, but IndexedFaceSet allows shapes with more then three vertices, build them of triangles
-							while ( indexes.length >= 3 && skip < ( indexes.length - 2 ) ) {
+								// Face3 only works with triangles, but IndexedFaceSet allows shapes with more then three vertices, build them of triangles
+								while ( indexes.length >= 3 && skip < ( indexes.length - 2 ) ) {
 
-								var face = new THREE.Face3(
-									indexes[ 0 ],
-									indexes[ skip + 1 ],
-									indexes[ skip + 2 ],
-									null // normal, will be added later
-									// todo: pass in the color, if a color index is present
-								);
+									var face = new THREE.Face3(
+										indexes[ 0 ],
+										indexes[ skip + (data.ccw ? 1 : 2) ],
+										indexes[ skip + (data.ccw ? 2 : 1) ],
+										null // normal, will be added later
+										// todo: pass in the color, if a color index is present
+									);
 
-								skip ++;
+									if ( uvs && uvIndexes ) {
+										geometry.faceVertexUvs [0].push( [
+											new THREE.Vector2 (
+												uvs[ uvIndexes[ 0 ] ].x ,
+												uvs[ uvIndexes[ 0 ] ].y
+											) ,
+											new THREE.Vector2 (
+												uvs[ uvIndexes[ skip + (data.ccw ? 1 : 2) ] ].x ,
+												uvs[ uvIndexes[ skip + (data.ccw ? 1 : 2) ] ].y
+											) ,
+											new THREE.Vector2 (
+												uvs[ uvIndexes[ skip + (data.ccw ? 2 : 1) ] ].x ,
+												uvs[ uvIndexes[ skip + (data.ccw ? 2 : 1) ] ].y
+											)
+										] );
+									}
 
-								geometry.faces.push( face );
+									skip ++;
+
+									geometry.faces.push( face );
+
+								}
+
 
 							}
 
+						} else {
+
+							// do not add dummy mesh to the scene
+							parent.parent.remove( parent );
 
 						}
 
@@ -10854,8 +10815,19 @@ THREE.VRMLLoader.prototype = {
 
 							parent.material = material;
 
-							// material found, stop looping
-							break;
+						}
+
+						if ( 'ImageTexture' === child.nodeType ) {
+
+							var textureName = /"([^"]+)"/.exec(child.children[ 0 ]);
+
+							if (textureName) {
+
+								parent.material.name = textureName[ 1 ];
+
+								parent.material.map = textureLoader.load( texturePath + textureName[ 1 ] );
+
+							}
 
 						}
 
@@ -10883,6 +10855,40 @@ THREE.VRMLLoader.prototype = {
 
 		var lines = data.split( '\n' );
 
+		// some lines do not have breaks
+		for (var i = lines.length -1; i > -1; i--) {
+
+			// split lines with {..{ or {..[ - some have both
+			if (/{.*[{\[]/.test (lines[i])) {
+				var parts = lines[i].split ('{').join ('{\n').split ('\n');
+				parts.unshift(1);
+				parts.unshift(i);
+				lines.splice.apply(lines, parts);
+			} else
+
+			// split lines with ]..}
+			if (/\].*}/.test (lines[i])) {
+				var parts = lines[i].split (']').join (']\n').split ('\n');
+				parts.unshift(1);
+				parts.unshift(i);
+				lines.splice.apply(lines, parts);
+			}
+
+			// split lines with }..}
+			if (/}.*}/.test (lines[i])) {
+				var parts = lines[i].split ('}').join ('}\n').split ('\n');
+				parts.unshift(1);
+				parts.unshift(i);
+				lines.splice.apply(lines, parts);
+			}
+
+			// force the parser to create Coordinate node for empty coords
+			// coord USE something -> coord USE something Coordinate {}
+			if((lines[i].indexOf ('coord') > -1) && (lines[i].indexOf ('[') < 0) && (lines[i].indexOf ('{') < 0)) {
+				lines[i] += ' Coordinate {}';
+			}
+		}
+
 		var header = lines.shift();
 
 		if ( /V1.0/.exec( header ) ) {
@@ -10905,6 +10911,7 @@ THREE.VRMLLoader.prototype = {
 
 /**
  * @author mrdoob / http://mrdoob.com/
+ * @author Alex Pletzer
  */
 
 THREE.VTKLoader = function ( manager ) {
@@ -10919,95 +10926,259 @@ THREE.VTKLoader.prototype = {
 
 	load: function ( url, onLoad, onProgress, onError ) {
 
+		// Will we bump into trouble reading the whole file into memory?
 		var scope = this;
-
 		var loader = new THREE.XHRLoader( scope.manager );
-		loader.setCrossOrigin( this.crossOrigin );
 		loader.load( url, function ( text ) {
 
 			onLoad( scope.parse( text ) );
 
-		}, onProgress, onError );
+		},
 
-	},
-
-	setCrossOrigin: function ( value ) {
-
-		this.crossOrigin = value;
+		onProgress, onError );
 
 	},
 
 	parse: function ( data ) {
 
+		// connectivity of the triangles
 		var indices = [];
+
+		// triangles vertices
 		var positions = [];
+
+		// red, green, blue colors in the range 0 to 1
+		var colors = [];
+
+		// normal vector, one per vertex
+		var normals = [];
 
 		var result;
 
-		// float float float
+		// pattern for reading vertices, 3 floats or integers
+		var pat3Floats = /(\-?\d+\.?[\d\-\+e]*)\s+(\-?\d+\.?[\d\-\+e]*)\s+(\-?\d+\.?[\d\-\+e]*)/g;
 
-		var pat3Floats = /([\-]?[\d]+[\.]?[\d|\-|e]*)[ ]+([\-]?[\d]+[\.]?[\d|\-|e]*)[ ]+([\-]?[\d]+[\.]?[\d|\-|e]*)/g;
-		var patTriangle = /^3[ ]+([\d]+)[ ]+([\d]+)[ ]+([\d]+)/;
-		var patQuad = /^4[ ]+([\d]+)[ ]+([\d]+)[ ]+([\d]+)[ ]+([\d]+)/;
+		// pattern for connectivity, an integer followed by any number of ints
+		// the first integer is the number of polygon nodes
+		var patConnectivity = /^(\d+)\s+([\s\d]*)/;
+
+		// indicates start of vertex data section
 		var patPOINTS = /^POINTS /;
+
+		// indicates start of polygon connectivity section
 		var patPOLYGONS = /^POLYGONS /;
+
+		// POINT_DATA number_of_values
+		var patPOINT_DATA = /^POINT_DATA[ ]+(\d+)/;
+
+		// CELL_DATA number_of_polys
+		var patCELL_DATA = /^CELL_DATA[ ]+(\d+)/;
+
+		// Start of color section
+		var patCOLOR_SCALARS = /^COLOR_SCALARS[ ]+(\w+)[ ]+3/;
+
+		// NORMALS Normals float
+		var patNORMALS = /^NORMALS[ ]+(\w+)[ ]+(\w+)/;
+
 		var inPointsSection = false;
 		var inPolygonsSection = false;
+		var inPointDataSection = false;
+		var inCellDataSection = false;
+		var inColorSection = false;
+		var inNormalsSection = false;
 
-		var lines = data.split('\n');
-		for ( var i = 0; i < lines.length; ++i ) {
+		var lines = data.split( '\n' );
 
-			line = lines[i];
+		for ( var i in lines ) {
+
+			var line = lines[ i ];
 
 			if ( inPointsSection ) {
 
 				// get the vertices
-
 				while ( ( result = pat3Floats.exec( line ) ) !== null ) {
-					positions.push( parseFloat( result[ 1 ] ), parseFloat( result[ 2 ] ), parseFloat( result[ 3 ] ) );
+
+					var x = parseFloat( result[ 1 ] );
+					var y = parseFloat( result[ 2 ] );
+					var z = parseFloat( result[ 3 ] );
+					positions.push( x, y, z );
+
 				}
-			}
-			else if ( inPolygonsSection ) {
 
-				result = patTriangle.exec(line);
+			} else if ( inPolygonsSection ) {
 
-				if ( result !== null ) {
+				if ( ( result = patConnectivity.exec( line ) ) !== null ) {
 
-					// 3 int int int
-					// triangle
+					// numVertices i0 i1 i2 ...
+					var numVertices = parseInt( result[ 1 ] );
+					var inds = result[ 2 ].split( /\s+/ );
 
-					indices.push( parseInt( result[ 1 ] ), parseInt( result[ 2 ] ), parseInt( result[ 3 ] ) );
+					if ( numVertices >= 3 ) {
+
+						var i0 = parseInt( inds[ 0 ] );
+						var i1, i2;
+						var k = 1;
+						// split the polygon in numVertices - 2 triangles
+						for ( var j = 0; j < numVertices - 2; ++ j ) {
+
+							i1 = parseInt( inds[ k ] );
+							i2 = parseInt( inds[ k  + 1 ] );
+							indices.push( i0, i1, i2 );
+							k ++;
+
+						}
+
+					}
+
 				}
-				else {
 
-					result = patQuad.exec(line);
+			} else if ( inPointDataSection || inCellDataSection ) {
 
-					if ( result !== null ) {
+				if ( inColorSection ) {
 
-						// 4 int int int int
-						// break quad into two triangles
+					// Get the colors
 
-						indices.push( parseInt( result[ 1 ] ), parseInt( result[ 2 ] ), parseInt( result[ 4 ] ) );
-						indices.push( parseInt( result[ 2 ] ), parseInt( result[ 3 ] ), parseInt( result[ 4 ] ) );
+					while ( ( result = pat3Floats.exec( line ) ) !== null ) {
+
+						var r = parseFloat( result[ 1 ] );
+						var g = parseFloat( result[ 2 ] );
+						var b = parseFloat( result[ 3 ] );
+						colors.push( r, g, b );
+
+					}
+
+				} else if ( inNormalsSection ) {
+
+					// Get the normal vectors
+
+					while ( ( result = pat3Floats.exec( line ) ) !== null ) {
+
+						var nx = parseFloat( result[ 1 ] );
+						var ny = parseFloat( result[ 2 ] );
+						var nz = parseFloat( result[ 3 ] );
+						normals.push( nx, ny, nz );
+
 					}
 
 				}
 
 			}
 
-			if ( patPOLYGONS.exec(line) !== null ) {
-				inPointsSection = false;
+			if ( patPOLYGONS.exec( line ) !== null ) {
+
 				inPolygonsSection = true;
-			}
-			if ( patPOINTS.exec(line) !== null ) {
+				inPointsSection = false;
+
+			} else if ( patPOINTS.exec( line ) !== null ) {
+
 				inPolygonsSection = false;
 				inPointsSection = true;
+
+			} else if ( patPOINT_DATA.exec( line ) !== null ) {
+
+				inPointDataSection = true;
+				inPointsSection = false;
+				inPolygonsSection = false;
+
+			} else if ( patCELL_DATA.exec( line ) !== null ) {
+
+				inCellDataSection = true;
+				inPointsSection = false;
+				inPolygonsSection = false;
+
+			} else if ( patCOLOR_SCALARS.exec( line ) !== null ) {
+
+				inColorSection = true;
+				inNormalsSection = false;
+				inPointsSection = false;
+				inPolygonsSection = false;
+
+			} else if ( patNORMALS.exec( line ) !== null ) {
+
+				inNormalsSection = true;
+				inColorSection = false;
+				inPointsSection = false;
+				inPolygonsSection = false;
+
 			}
+
 		}
 
-		var geometry = new THREE.BufferGeometry();
-		geometry.setIndex( new THREE.BufferAttribute( new ( indices.length > 65535 ? Uint32Array : Uint16Array )( indices ), 1 ) );
-		geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( positions ), 3 ) );
+		var geometry;
+		var stagger = 'point';
+
+		if ( colors.length == indices.length ) {
+
+			stagger = 'cell';
+
+		}
+
+		if ( stagger == 'point' ) {
+
+			// Nodal. Use BufferGeometry
+			geometry = new THREE.BufferGeometry();
+			geometry.setIndex( new THREE.BufferAttribute( new ( indices.length > 65535 ? Uint32Array : Uint16Array )( indices ), 1 ) );
+			geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( positions ), 3 ) );
+
+			if ( colors.length == positions.length ) {
+
+				geometry.addAttribute( 'color', new THREE.BufferAttribute( new Float32Array( colors ), 3 ) );
+
+			}
+
+			if ( normals.length == positions.length ) {
+
+				geometry.addAttribute( 'normal', new THREE.BufferAttribute( new Float32Array( normals ), 3 ) );
+
+			}
+
+		} else {
+
+			// Cell centered colors. The only way to attach a solid color to each triangle
+			// is to use Geometry, which is less efficient than BufferGeometry
+			geometry = new THREE.Geometry();
+
+			var numTriangles = indices.length / 3;
+			var numPoints = positions.length / 3;
+			var va, vb, vc;
+			var face;
+			var ia, ib, ic;
+			var x, y, z;
+			var r, g, b;
+
+			for ( var j = 0; j < numPoints; ++ j ) {
+
+				x = positions[ 3 * j + 0 ];
+				y = positions[ 3 * j + 1 ];
+				z = positions[ 3 * j + 2 ];
+				geometry.vertices.push( new THREE.Vector3( x, y, z ) );
+
+			}
+
+			for ( var i = 0; i < numTriangles; ++ i ) {
+
+				ia = indices[ 3 * i + 0 ];
+				ib = indices[ 3 * i + 1 ];
+				ic = indices[ 3 * i + 2 ];
+				geometry.faces.push( new THREE.Face3( ia, ib, ic ) );
+
+			}
+
+			if ( colors.length == numTriangles * 3 ) {
+
+				for ( var i = 0; i < numTriangles; ++ i ) {
+
+					face = geometry.faces[ i ];
+					r = colors[ 3 * i + 0 ];
+					g = colors[ 3 * i + 1 ];
+					b = colors[ 3 * i + 2 ];
+					face.color = new THREE.Color().setRGB( r, g, b );
+
+				}
+
+			 }
+
+		}
 
 		return geometry;
 
@@ -12500,6 +12671,8 @@ THREE.OBJExporter.prototype = {
 		var indexVertexUvs = 0;
 		var indexNormals = 0;
 
+		var faceVertexKeys = [ "a", "b", "c" ];
+
 		var parseMesh = function ( mesh ) {
 
 			var nbVertex = 0;
@@ -12507,6 +12680,12 @@ THREE.OBJExporter.prototype = {
 			var nbNormals = 0;
 
 			var geometry = mesh.geometry;
+
+			if ( geometry instanceof THREE.BufferGeometry ) {
+
+				geometry = new THREE.Geometry().fromBufferGeometry( geometry );
+
+			}
 
 			if ( geometry instanceof THREE.Geometry ) {
 
@@ -12592,23 +12771,25 @@ THREE.OBJExporter.prototype = {
 				}
 
 				// faces
-
+				var indices = [];
 
 				for ( var i = 0, j = 1, l = faces.length; i < l; i ++, j += 3 ) {
 
 					var face = faces[ i ];
 
-					output += 'f ';
-					output += ( indexVertex + face.a + 1 ) + '/' + ( hasVertexUvs ? ( indexVertexUvs + j     ) : '' ) + '/' + ( indexNormals + j     ) + ' ';
-					output += ( indexVertex + face.b + 1 ) + '/' + ( hasVertexUvs ? ( indexVertexUvs + j + 1 ) : '' ) + '/' + ( indexNormals + j + 1 ) + ' ';
-					output += ( indexVertex + face.c + 1 ) + '/' + ( hasVertexUvs ? ( indexVertexUvs + j + 2 ) : '' ) + '/' + ( indexNormals + j + 2 ) + '\n';
+					for ( var m = 0; m < 3; m ++ ) {
+					
+					    indices[ m ] = ( indexVertex + face[ faceVertexKeys[ m ] ] + 1 ) + '/' + ( hasVertexUvs ? ( indexVertexUvs + j + m + 1 ) : '' ) + '/' + ( indexNormals + j + m + 1 );
+					
+					}
+					
+					output += 'f ' + indices.join( ' ' ) + "\n";
 
 				}
 
 			} else {
 
 				console.warn( 'THREE.OBJExporter.parseMesh(): geometry type unsupported', mesh );
-				// TODO: Support only BufferGeometry and use use setFromObject()
 
 			}
 
@@ -12742,18 +12923,11 @@ THREE.SceneLoader.prototype = {
 		var scope = this;
 
 		var loader = new THREE.XHRLoader( scope.manager );
-		loader.setCrossOrigin( this.crossOrigin );
 		loader.load( url, function ( text ) {
 
 			scope.parse( JSON.parse( text ), onLoad, url );
 
 		}, onProgress, onError );
-
-	},
-
-	setCrossOrigin: function ( value ) {
-
-		this.crossOrigin = value;
 
 	},
 
@@ -14015,7 +14189,7 @@ THREE.Projector = function () {
 
 		var normalMatrix = new THREE.Matrix3();
 
-		var setObject = function ( value ) {
+		function setObject( value ) {
 
 			object = value;
 			material = object.material;
@@ -14025,9 +14199,9 @@ THREE.Projector = function () {
 			normals.length = 0;
 			uvs.length = 0;
 
-		};
+		}
 
-		var projectVertex = function ( vertex ) {
+		function projectVertex( vertex ) {
 
 			var position = vertex.position;
 			var positionWorld = vertex.positionWorld;
@@ -14046,30 +14220,30 @@ THREE.Projector = function () {
 					 positionScreen.y >= - 1 && positionScreen.y <= 1 &&
 					 positionScreen.z >= - 1 && positionScreen.z <= 1;
 
-		};
+		}
 
-		var pushVertex = function ( x, y, z ) {
+		function pushVertex( x, y, z ) {
 
 			_vertex = getNextVertexInPool();
 			_vertex.position.set( x, y, z );
 
 			projectVertex( _vertex );
 
-		};
+		}
 
-		var pushNormal = function ( x, y, z ) {
+		function pushNormal( x, y, z ) {
 
 			normals.push( x, y, z );
 
-		};
+		}
 
-		var pushUv = function ( x, y ) {
+		function pushUv( x, y ) {
 
 			uvs.push( x, y );
 
-		};
+		}
 
-		var checkTriangleVisibility = function ( v1, v2, v3 ) {
+		function checkTriangleVisibility( v1, v2, v3 ) {
 
 			if ( v1.visible === true || v2.visible === true || v3.visible === true ) return true;
 
@@ -14077,20 +14251,20 @@ THREE.Projector = function () {
 			_points3[ 1 ] = v2.positionScreen;
 			_points3[ 2 ] = v3.positionScreen;
 
-			return _clipBox.isIntersectionBox( _boundingBox.setFromPoints( _points3 ) );
+			return _clipBox.intersectsBox( _boundingBox.setFromPoints( _points3 ) );
 
-		};
+		}
 
-		var checkBackfaceCulling = function ( v1, v2, v3 ) {
+		function checkBackfaceCulling( v1, v2, v3 ) {
 
 			return ( ( v3.positionScreen.x - v1.positionScreen.x ) *
 				    ( v2.positionScreen.y - v1.positionScreen.y ) -
 				    ( v3.positionScreen.y - v1.positionScreen.y ) *
 				    ( v2.positionScreen.x - v1.positionScreen.x ) ) < 0;
 
-		};
+		}
 
-		var pushLine = function ( a, b ) {
+		function pushLine( a, b ) {
 
 			var v1 = _vertexPool[ a ];
 			var v2 = _vertexPool[ b ];
@@ -14107,9 +14281,9 @@ THREE.Projector = function () {
 
 			_renderData.elements.push( _line );
 
-		};
+		}
 
-		var pushTriangle = function ( a, b, c ) {
+		function pushTriangle( a, b, c ) {
 
 			var v1 = _vertexPool[ a ];
 			var v2 = _vertexPool[ b ];
@@ -14152,7 +14326,7 @@ THREE.Projector = function () {
 
 			}
 
-		};
+		}
 
 		return {
 			setObject: setObject,
@@ -14814,8 +14988,6 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 	console.log( 'THREE.CanvasRenderer', THREE.REVISION );
 
-	var smoothstep = THREE.Math.smoothstep;
-
 	parameters = parameters || {};
 
 	var _this = this,
@@ -14892,11 +15064,18 @@ THREE.CanvasRenderer = function ( parameters ) {
 	_normal = new THREE.Vector3(),
 	_normalViewMatrix = new THREE.Matrix3();
 
+	/* TODO
+	_canvas.mozImageSmoothingEnabled = false;
+	_canvas.webkitImageSmoothingEnabled = false;
+	_canvas.msImageSmoothingEnabled = false;
+	_canvas.imageSmoothingEnabled = false;
+	*/
+
 	// dash+gap fallbacks for Firefox and everything else
 
 	if ( _context.setLineDash === undefined ) {
 
-		_context.setLineDash = function () {}
+		_context.setLineDash = function () {};
 
 	}
 
@@ -15143,7 +15322,7 @@ THREE.CanvasRenderer = function ( parameters ) {
 					_v2.positionScreen
 				] );
 
-				if ( _clipBox.isIntersectionBox( _elemBox ) === true ) {
+				if ( _clipBox.intersectsBox( _elemBox ) === true ) {
 
 					renderLine( _v1, _v2, element, material );
 
@@ -15175,7 +15354,7 @@ THREE.CanvasRenderer = function ( parameters ) {
 					_v3.positionScreen
 				] );
 
-				if ( _clipBox.isIntersectionBox( _elemBox ) === true ) {
+				if ( _clipBox.intersectsBox( _elemBox ) === true ) {
 
 					renderFace3( _v1, _v2, _v3, 0, 1, 2, element, material );
 
@@ -15538,14 +15717,6 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 			}
 
-		} else if ( material instanceof THREE.MeshDepthMaterial ) {
-
-			_color.r = _color.g = _color.b = 1 - smoothstep( v1.positionScreen.z * v1.positionScreen.w, _camera.near, _camera.far );
-
-			material.wireframe === true
-					 ? strokePath( _color, material.wireframeLinewidth, material.wireframeLinecap, material.wireframeLinejoin )
-					 : fillPath( _color );
-
 		} else if ( material instanceof THREE.MeshNormalMaterial ) {
 
 			_normal.copy( element.normalModel ).applyMatrix3( _normalViewMatrix );
@@ -15607,13 +15778,22 @@ THREE.CanvasRenderer = function ( parameters ) {
 			texture instanceof THREE.DataTexture ) {
 
 			return {
-					canvas: undefined,
-					version: texture.version
-				}
+				canvas: undefined,
+				version: texture.version
+			};
 
 		}
 
 		var image = texture.image;
+
+		if ( image.complete === false ) {
+
+			return {
+				canvas: undefined,
+				version: 0
+			};
+
+		}
 
 		var canvas = document.createElement( 'canvas' );
 		canvas.width = image.width;
@@ -15642,10 +15822,14 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 		}
 
+		var pattern = _context.createPattern( canvas, repeat );
+
+		if ( texture.onUpdate ) texture.onUpdate( texture );
+
 		return {
-			canvas: _context.createPattern( canvas, repeat ),
+			canvas: pattern,
 			version: texture.version
-		}
+		};
 
 	}
 
@@ -15884,8 +16068,11 @@ THREE.CanvasRenderer = function ( parameters ) {
 // File:examples/js/renderers/RaytracingRenderer.js
 
 /**
- * @author mrdoob / http://mrdoob.com/
- * @author alteredq / http://alteredqualia.com/
+ * RaytracingRenderer renders by raytracing it's scene. However, it does not
+ * compute the pixels itself but it hands off and coordinates the taks for workers.
+ * The workers compute the pixel values and this renderer simply paints it to the Canvas.
+ *
+ * @author zz85 / http://github.com/zz85
  */
 
 THREE.RaytracingRenderer = function ( parameters ) {
@@ -15895,6 +16082,8 @@ THREE.RaytracingRenderer = function ( parameters ) {
 	parameters = parameters || {};
 
 	var scope = this;
+	var pool = [];
+	var renderering = false;
 
 	var canvas = document.createElement( 'canvas' );
 	var context = canvas.getContext( '2d', {
@@ -15908,27 +16097,87 @@ THREE.RaytracingRenderer = function ( parameters ) {
 
 	var clearColor = new THREE.Color( 0x000000 );
 
-	var origin = new THREE.Vector3();
-	var direction = new THREE.Vector3();
-
-	var cameraPosition = new THREE.Vector3();
-
-	var raycaster = new THREE.Raycaster( origin, direction );
-	var raycasterLight = new THREE.Raycaster();
-
-	var perspective;
-	var modelViewMatrix = new THREE.Matrix4();
-	var cameraNormalMatrix = new THREE.Matrix3();
-
-	var objects;
-	var lights = [];
-	var cache = {};
-
-	var animationFrameId = null;
-
 	this.domElement = canvas;
 
 	this.autoClear = true;
+
+	var workers = parameters.workers;
+	var blockSize = parameters.blockSize || 64;
+	this.randomize = parameters.randomize;
+
+	var toRender = [], workerId = 0, sceneId = 0;
+
+	console.log( '%cSpinning off ' + workers + ' Workers ', 'font-size: 20px; background: black; color: white; font-family: monospace;' );
+
+	this.setWorkers = function( w ) {
+
+		workers = w || navigator.hardwareConcurrency || 4;
+
+		while ( pool.length < workers ) {
+			var worker = new Worker( parameters.workerPath );
+			worker.id = workerId++;
+
+			worker.onmessage = function( e ) {
+
+				var data = e.data;
+
+				if ( ! data ) return;
+
+				if ( data.blockSize && sceneId == data.sceneId ) { // we match sceneId here to be sure
+
+					var imagedata = new ImageData( new Uint8ClampedArray( data.data ), data.blockSize, data.blockSize );
+					context.putImageData( imagedata, data.blockX, data.blockY );
+
+					// completed
+
+					console.log( 'Worker ' + this.id, data.time / 1000, ( Date.now() - reallyThen ) / 1000 + ' s' );
+
+					if ( pool.length > workers ) {
+
+						pool.splice( pool.indexOf( this ), 1 );
+						return this.terminate();
+
+					}
+
+					renderNext( this );
+
+				}
+
+			}
+
+			worker.color = new THREE.Color().setHSL( Math.random() , 0.8, 0.8 ).getHexString();
+			pool.push( worker );
+
+			if ( renderering ) {
+
+				updateSettings( worker );
+
+				worker.postMessage( {
+					scene: sceneJSON,
+					camera: cameraJSON,
+					annex: materials,
+					sceneId: sceneId
+				} );
+
+				renderNext( worker );
+
+			}
+
+		}
+
+		if ( ! renderering ) {
+
+			while ( pool.length > workers ) {
+
+				pool.pop().terminate();
+
+			}
+
+		}
+
+	};
+
+	this.setWorkers( workers );
 
 	this.setClearColor = function ( color, alpha ) {
 
@@ -15951,6 +16200,8 @@ THREE.RaytracingRenderer = function ( parameters ) {
 
 		context.fillStyle = 'white';
 
+		pool.forEach( updateSettings );
+
 	};
 
 	this.setSize( canvas.width, canvas.height );
@@ -15961,416 +16212,85 @@ THREE.RaytracingRenderer = function ( parameters ) {
 
 	//
 
-	var spawnRay = ( function () {
+	var totalBlocks, xblocks, yblocks;
 
-		var diffuseColor = new THREE.Color();
-		var specularColor = new THREE.Color();
-		var lightColor = new THREE.Color();
-		var schlick = new THREE.Color();
+	function updateSettings( worker ) {
 
-		var lightContribution = new THREE.Color();
+		worker.postMessage( {
 
-		var eyeVector = new THREE.Vector3();
-		var lightVector = new THREE.Vector3();
-		var normalVector = new THREE.Vector3();
-		var halfVector = new THREE.Vector3();
-
-		var localPoint = new THREE.Vector3();
-		var reflectionVector = new THREE.Vector3();
-
-		var tmpVec = new THREE.Vector3();
-
-		var tmpColor = [];
-
-		for ( var i = 0; i < maxRecursionDepth; i ++ ) {
-
-			tmpColor[ i ] = new THREE.Color();
-
-		}
-
-		return function spawnRay( rayOrigin, rayDirection, outputColor, recursionDepth ) {
-
-			var ray = raycaster.ray;
-
-			ray.origin = rayOrigin;
-			ray.direction = rayDirection;
-
-			//
-
-			var rayLight = raycasterLight.ray;
-
-			//
-
-			outputColor.setRGB( 0, 0, 0 );
-
-			//
-
-			var intersections = raycaster.intersectObjects( objects, true );
-
-			// ray didn't find anything
-			// (here should come setting of background color?)
-
-			if ( intersections.length === 0 ) {
-
-				return;
-
-			}
-
-			// ray hit
-
-			var intersection = intersections[ 0 ];
-
-			var point = intersection.point;
-			var object = intersection.object;
-			var material = object.material;
-			var face = intersection.face;
-
-			var vertices = object.geometry.vertices;
-
-			//
-
-			var _object = cache[ object.id ];
-
-			localPoint.copy( point ).applyMatrix4( _object.inverseMatrix );
-			eyeVector.subVectors( raycaster.ray.origin, point ).normalize();
-
-			// resolve pixel diffuse color
-
-			if ( material instanceof THREE.MeshLambertMaterial ||
-				 material instanceof THREE.MeshPhongMaterial ||
-				 material instanceof THREE.MeshBasicMaterial ) {
-
-				diffuseColor.copyGammaToLinear( material.color );
-
-			} else {
-
-				diffuseColor.setRGB( 1, 1, 1 );
-
-			}
-
-			if ( material.vertexColors === THREE.FaceColors ) {
-
-				diffuseColor.multiply( face.color );
-
-			}
-
-			// compute light shading
-
-			rayLight.origin.copy( point );
-
-			if ( material instanceof THREE.MeshBasicMaterial ) {
-
-				for ( var i = 0, l = lights.length; i < l; i ++ ) {
-
-					var light = lights[ i ];
-
-					lightVector.setFromMatrixPosition( light.matrixWorld );
-					lightVector.sub( point );
-
-					rayLight.direction.copy( lightVector ).normalize();
-
-					var intersections = raycasterLight.intersectObjects( objects, true );
-
-					// point in shadow
-
-					if ( intersections.length > 0 ) continue;
-
-					// point visible
-
-					outputColor.add( diffuseColor );
-
-				}
-
-			} else if ( material instanceof THREE.MeshLambertMaterial ||
-						material instanceof THREE.MeshPhongMaterial ) {
-
-				var normalComputed = false;
-
-				for ( var i = 0, l = lights.length; i < l; i ++ ) {
-
-					var light = lights[ i ];
-
-					lightColor.copyGammaToLinear( light.color );
-
-					lightVector.setFromMatrixPosition( light.matrixWorld );
-					lightVector.sub( point );
-
-					rayLight.direction.copy( lightVector ).normalize();
-
-					var intersections = raycasterLight.intersectObjects( objects, true );
-
-					// point in shadow
-
-					if ( intersections.length > 0 ) continue;
-
-					// point lit
-
-					if ( normalComputed === false ) {
-
-						// the same normal can be reused for all lights
-						// (should be possible to cache even more)
-
-						computePixelNormal( normalVector, localPoint, material.shading, face, vertices );
-						normalVector.applyMatrix3( _object.normalMatrix ).normalize();
-
-						normalComputed = true;
-
-					}
-
-					// compute attenuation
-
-					var attenuation = 1.0;
-
-					if ( light.physicalAttenuation === true ) {
-
-						attenuation = lightVector.length();
-						attenuation = 1.0 / ( attenuation * attenuation );
-
-					}
-
-					lightVector.normalize();
-
-					// compute diffuse
-
-					var dot = Math.max( normalVector.dot( lightVector ), 0 );
-					var diffuseIntensity = dot * light.intensity;
-
-					lightContribution.copy( diffuseColor );
-					lightContribution.multiply( lightColor );
-					lightContribution.multiplyScalar( diffuseIntensity * attenuation );
-
-					outputColor.add( lightContribution );
-
-					// compute specular
-
-					if ( material instanceof THREE.MeshPhongMaterial ) {
-
-						halfVector.addVectors( lightVector, eyeVector ).normalize();
-
-						var dotNormalHalf = Math.max( normalVector.dot( halfVector ), 0.0 );
-						var specularIntensity = Math.max( Math.pow( dotNormalHalf, material.shininess ), 0.0 ) * diffuseIntensity;
-
-						var specularNormalization = ( material.shininess + 2.0 ) / 8.0;
-
-						specularColor.copyGammaToLinear( material.specular );
-
-						var alpha = Math.pow( Math.max( 1.0 - lightVector.dot( halfVector ), 0.0 ), 5.0 );
-
-						schlick.r = specularColor.r + ( 1.0 - specularColor.r ) * alpha;
-						schlick.g = specularColor.g + ( 1.0 - specularColor.g ) * alpha;
-						schlick.b = specularColor.b + ( 1.0 - specularColor.b ) * alpha;
-
-						lightContribution.copy( schlick );
-
-						lightContribution.multiply( lightColor );
-						lightContribution.multiplyScalar( specularNormalization * specularIntensity * attenuation );
-						outputColor.add( lightContribution );
-
-					}
-
-				}
-
-			}
-
-			// reflection / refraction
-
-			var reflectivity = material.reflectivity;
-
-			if ( ( material.mirror || material.glass ) && reflectivity > 0 && recursionDepth < maxRecursionDepth ) {
-
-				if ( material.mirror ) {
-
-					reflectionVector.copy( rayDirection );
-					reflectionVector.reflect( normalVector );
-
-				} else if ( material.glass ) {
-
-					var eta = material.refractionRatio;
-
-					var dotNI = rayDirection.dot( normalVector );
-					var k = 1.0 - eta * eta * ( 1.0 - dotNI * dotNI );
-
-					if ( k < 0.0 ) {
-
-						reflectionVector.set( 0, 0, 0 );
-
-					} else {
-
-						reflectionVector.copy( rayDirection );
-						reflectionVector.multiplyScalar( eta );
-
-						var alpha = eta * dotNI + Math.sqrt( k );
-						tmpVec.copy( normalVector );
-						tmpVec.multiplyScalar( alpha );
-						reflectionVector.sub( tmpVec );
-
-					}
-
-				}
-
-				var theta = Math.max( eyeVector.dot( normalVector ), 0.0 );
-				var rf0 = reflectivity;
-				var fresnel = rf0 + ( 1.0 - rf0 ) * Math.pow( ( 1.0 - theta ), 5.0 );
-
-				var weight = fresnel;
-
-				var zColor = tmpColor[ recursionDepth ];
-
-				spawnRay( point, reflectionVector, zColor, recursionDepth + 1 );
-
-				if ( material.specular !== undefined ) {
-
-					zColor.multiply( material.specular );
-
-				}
-
-				zColor.multiplyScalar( weight );
-				outputColor.multiplyScalar( 1 - weight );
-				outputColor.add( zColor );
-
-			}
-
-		};
-
-	}() );
-
-	var computePixelNormal = ( function () {
-
-		var tmpVec1 = new THREE.Vector3();
-		var tmpVec2 = new THREE.Vector3();
-		var tmpVec3 = new THREE.Vector3();
-
-		return function computePixelNormal( outputVector, point, shading, face, vertices ) {
-
-			var faceNormal = face.normal;
-			var vertexNormals = face.vertexNormals;
-
-			if ( shading === THREE.FlatShading ) {
-
-				outputVector.copy( faceNormal );
-
-			} else if ( shading === THREE.SmoothShading ) {
-
-				// compute barycentric coordinates
-
-				var vA = vertices[ face.a ];
-				var vB = vertices[ face.b ];
-				var vC = vertices[ face.c ];
-
-				tmpVec3.crossVectors( tmpVec1.subVectors( vB, vA ), tmpVec2.subVectors( vC, vA ) );
-				var areaABC = faceNormal.dot( tmpVec3 );
-
-				tmpVec3.crossVectors( tmpVec1.subVectors( vB, point ), tmpVec2.subVectors( vC, point ) );
-				var areaPBC = faceNormal.dot( tmpVec3 );
-				var a = areaPBC / areaABC;
-
-				tmpVec3.crossVectors( tmpVec1.subVectors( vC, point ), tmpVec2.subVectors( vA, point ) );
-				var areaPCA = faceNormal.dot( tmpVec3 );
-				var b = areaPCA / areaABC;
-
-				var c = 1.0 - a - b;
-
-				// compute interpolated vertex normal
-
-				tmpVec1.copy( vertexNormals[ 0 ] );
-				tmpVec1.multiplyScalar( a );
-
-				tmpVec2.copy( vertexNormals[ 1 ] );
-				tmpVec2.multiplyScalar( b );
-
-				tmpVec3.copy( vertexNormals[ 2 ] );
-				tmpVec3.multiplyScalar( c );
-
-				outputVector.addVectors( tmpVec1, tmpVec2 );
-				outputVector.add( tmpVec3 );
-
-			}
-
-		};
-
-	}() );
-
-	var renderBlock = ( function () {
-
-		var blockSize = 64;
-
-		var canvasBlock = document.createElement( 'canvas' );
-		canvasBlock.width = blockSize;
-		canvasBlock.height = blockSize;
-
-		var contextBlock = canvasBlock.getContext( '2d', {
-
-			alpha: parameters.alpha === true
+			init: [ canvasWidth, canvasHeight ],
+			worker: worker.id,
+			// workers: pool.length,
+			blockSize: blockSize
 
 		} );
 
-		var imagedata = contextBlock.getImageData( 0, 0, blockSize, blockSize );
-		var data = imagedata.data;
+	}
 
-		var pixelColor = new THREE.Color();
+	function renderNext( worker ) {
+		if ( ! toRender.length ) {
 
-		return function renderBlock( blockX, blockY ) {
+			renderering = false;
+			return scope.dispatchEvent( { type: "complete" } );
 
-			var index = 0;
+		}
 
-			for ( var y = 0; y < blockSize; y ++ ) {
+		var current = toRender.pop();
 
-				for ( var x = 0; x < blockSize; x ++, index += 4 ) {
+		var blockX = ( current % xblocks ) * blockSize;
+		var blockY = ( current / xblocks | 0 ) * blockSize;
 
-					// spawn primary ray at pixel position
+		worker.postMessage( {
+			render: true,
+			x: blockX,
+			y: blockY,
+			sceneId: sceneId
+		} );
 
-					origin.copy( cameraPosition );
+		context.fillStyle = '#' + worker.color;
 
-					direction.set( x + blockX - canvasWidthHalf, - ( y + blockY - canvasHeightHalf ), - perspective );
-					direction.applyMatrix3( cameraNormalMatrix ).normalize();
+		context.fillRect( blockX, blockY, blockSize, blockSize );
 
-					spawnRay( origin, direction, pixelColor, 0 );
+	}
 
-					// convert from linear to gamma
+	var materials = {};
 
-					data[ index ]     = Math.sqrt( pixelColor.r ) * 255;
-					data[ index + 1 ] = Math.sqrt( pixelColor.g ) * 255;
-					data[ index + 2 ] = Math.sqrt( pixelColor.b ) * 255;
+	var sceneJSON, cameraJSON, reallyThen;
 
-				}
+	// additional properties that were not serialize automatically
+
+	var _annex = {
+
+		mirror: 1,
+		reflectivity: 1,
+		refractionRatio: 1,
+		glass: 1,
+
+	};
+
+	function serializeObject( o ) {
+
+		var mat = o.material;
+
+		if ( ! mat || mat.uuid in materials ) return;
+
+		var props = {};
+		for ( var m in _annex ) {
+
+			if ( mat[ m ] !== undefined ) {
+
+				props[ m ] = mat[ m ];
 
 			}
 
-			context.putImageData( imagedata, blockX, blockY );
+		}
 
-			blockX += blockSize;
-
-			if ( blockX >= canvasWidth ) {
-
-				blockX = 0;
-				blockY += blockSize;
-
-				if ( blockY >= canvasHeight ) {
-
-					scope.dispatchEvent( { type: "complete" } );
-					return;
-
-				}
-
-			}
-
-			context.fillRect( blockX, blockY, blockSize, blockSize );
-
-			animationFrameId = requestAnimationFrame( function () {
-
-				renderBlock( blockX, blockY );
-
-			} );
-
-		};
-
-	}() );
+		materials[ mat.uuid ] = props;
+	}
 
 	this.render = function ( scene, camera ) {
 
-		if ( this.autoClear === true ) this.clear();
-
-		cancelAnimationFrame( animationFrameId );
+		renderering = true;
 
 		// update scene graph
 
@@ -16380,49 +16300,56 @@ THREE.RaytracingRenderer = function ( parameters ) {
 
 		if ( camera.parent === null ) camera.updateMatrixWorld();
 
-		camera.matrixWorldInverse.getInverse( camera.matrixWorld );
-		cameraPosition.setFromMatrixPosition( camera.matrixWorld );
 
-		//
+		sceneJSON = scene.toJSON();
+		cameraJSON = camera.toJSON();
+		++ sceneId;
 
-		cameraNormalMatrix.getNormalMatrix( camera.matrixWorld );
-		origin.copy( cameraPosition );
+		scene.traverse( serializeObject );
 
-		perspective = 0.5 / Math.tan( THREE.Math.degToRad( camera.fov * 0.5 ) ) * canvasHeight;
+		pool.forEach( function( worker ) {
 
-		objects = scene.children;
-
-		// collect lights and set up object matrices
-
-		lights.length = 0;
-
-		scene.traverse( function ( object ) {
-
-			if ( object instanceof THREE.Light ) {
-
-				lights.push( object );
-
-			}
-
-			if ( cache[ object.id ] === undefined ) {
-
-				cache[ object.id ] = {
-					normalMatrix: new THREE.Matrix3(),
-					inverseMatrix: new THREE.Matrix4()
-				};
-
-			}
-
-			modelViewMatrix.multiplyMatrices( camera.matrixWorldInverse, object.matrixWorld );
-
-			var _object = cache[ object.id ];
-
-			_object.normalMatrix.getNormalMatrix( modelViewMatrix );
-			_object.inverseMatrix.getInverse( object.matrixWorld );
-
+			worker.postMessage( {
+				scene: sceneJSON,
+				camera: cameraJSON,
+				annex: materials,
+				sceneId: sceneId
+			} );
 		} );
 
-		renderBlock( 0, 0 );
+		context.clearRect( 0, 0, canvasWidth, canvasHeight );
+		reallyThen = Date.now();
+
+		xblocks = Math.ceil( canvasWidth / blockSize );
+		yblocks = Math.ceil( canvasHeight / blockSize );
+		totalBlocks = xblocks * yblocks;
+
+		toRender = [];
+
+		for ( var i = 0; i < totalBlocks; i ++ ) {
+
+			toRender.push( i );
+
+		}
+
+
+		// Randomize painting :)
+
+		if ( scope.randomize ) {
+
+			for ( var i = 0; i < totalBlocks; i ++ ) {
+
+				var swap = Math.random()  * totalBlocks | 0;
+				var tmp = toRender[ swap ];
+				toRender[ swap ] = toRender[ i ];
+				toRender[ i ] = tmp;
+
+			}
+
+		}
+
+
+		pool.forEach( renderNext );
 
 	};
 
@@ -16591,6 +16518,8 @@ THREE.SoftwareRenderer = function ( parameters ) {
 			var element = elements[ e ];
 			var material = element.material;
 			var shader = getMaterialShader( material );
+
+			if ( !shader ) continue;
 
 			if ( element instanceof THREE.RenderableFace ) {
 
@@ -16954,6 +16883,8 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		var id = material.id;
 		var shader = shaders[ id ];
 
+		if ( shader && !textures[ material.map.id ] ) delete shaders[ id ];
+
 		if ( shaders[ id ] === undefined ) {
 
 			material.addEventListener( 'update', onMaterialUpdate );
@@ -16989,6 +16920,8 @@ THREE.SoftwareRenderer = function ( parameters ) {
 
 					var texture = new THREE.SoftwareRenderer.Texture();
 					texture.fromImage( material.map.image );
+
+					if ( !texture.data ) return;
 
 					textures[ material.map.id ] = texture;
 
@@ -17871,7 +17804,6 @@ THREE.SVGRenderer = function () {
 	_clearColor = new THREE.Color(),
 	_clearAlpha = 1,
 
-	_w, // z-buffer to w-buffer
 	_vector3 = new THREE.Vector3(), // Needed for PointLight
 	_centroid = new THREE.Vector3(),
 	_normal = new THREE.Vector3(),
@@ -18006,7 +17938,7 @@ THREE.SVGRenderer = function () {
 
 				_elemBox.setFromPoints( [ _v1.positionScreen, _v2.positionScreen ] );
 
-				if ( _clipBox.isIntersectionBox( _elemBox ) === true ) {
+				if ( _clipBox.intersectsBox( _elemBox ) === true ) {
 
 					renderLine( _v1, _v2, element, material );
 
@@ -18030,7 +17962,7 @@ THREE.SVGRenderer = function () {
 					_v3.positionScreen
 				] );
 
-				if ( _clipBox.isIntersectionBox( _elemBox ) === true ) {
+				if ( _clipBox.intersectsBox( _elemBox ) === true ) {
 
 					renderFace3( _v1, _v2, _v3, element, material );
 
@@ -18218,11 +18150,6 @@ THREE.SVGRenderer = function () {
 
 			_color.multiply( _diffuseColor ).add( material.emissive );
 
-		} else if ( material instanceof THREE.MeshDepthMaterial ) {
-
-			_w = 1 - ( material.__2near / ( material.__farPlusNear - element.z * material.__farMinusNear ) );
-			_color.setRGB( _w, _w, _w );
-
 		} else if ( material instanceof THREE.MeshNormalMaterial ) {
 
 			_normal.copy( element.normalModel ).applyMatrix3( _normalViewMatrix );
@@ -18358,6 +18285,60 @@ UI.Element = function ( dom ) {
 
 UI.Element.prototype = {
 
+	add: function () {
+
+		for ( var i = 0; i < arguments.length; i ++ ) {
+
+			var argument = arguments[ i ];
+
+			if ( argument instanceof UI.Element ) {
+
+				this.dom.appendChild( argument.dom );
+
+			} else {
+
+				console.error( 'UI.Element:', argument, 'is not an instance of UI.Element.' );
+
+			}
+
+		}
+
+		return this;
+
+	},
+
+	remove: function () {
+
+		for ( var i = 0; i < arguments.length; i ++ ) {
+
+			var argument = arguments[ i ];
+
+			if ( argument instanceof UI.Element ) {
+
+				this.dom.removeChild( argument.dom );
+
+			} else {
+
+				console.error( 'UI.Element:', argument, 'is not an instance of UI.Element.' );
+
+			}
+
+		}
+
+		return this;
+
+	},
+
+	clear: function () {
+
+		while ( this.dom.children.length ) {
+
+			this.dom.removeChild( this.dom.lastChild );
+
+		}
+
+	},
+
 	setId: function ( id ) {
 
 		this.dom.id = id;
@@ -18382,6 +18363,8 @@ UI.Element.prototype = {
 
 		}
 
+		return this;
+
 	},
 
 	setDisabled: function ( value ) {
@@ -18400,13 +18383,13 @@ UI.Element.prototype = {
 
 	}
 
-}
+};
 
 // properties
 
 var properties = [ 'position', 'left', 'top', 'right', 'bottom', 'width', 'height', 'border', 'borderLeft',
 'borderTop', 'borderRight', 'borderBottom', 'borderColor', 'display', 'overflow', 'margin', 'marginLeft', 'marginTop', 'marginRight', 'marginBottom', 'padding', 'paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'color',
-'backgroundColor', 'opacity', 'fontSize', 'fontWeight', 'textAlign', 'textDecoration', 'textTransform', 'cursor', 'zIndex' ];
+'backgroundColor', 'opacity', 'fontSize', 'fontWeight', 'textAlign', 'textDecoration', 'textTransform', 'cursor', 'zIndex','backgroundImage' ];
 
 properties.forEach( function ( property ) {
 
@@ -18415,6 +18398,7 @@ properties.forEach( function ( property ) {
 	UI.Element.prototype[ method ] = function () {
 
 		this.setStyle( property, arguments );
+
 		return this;
 
 	};
@@ -18439,6 +18423,53 @@ events.forEach( function ( event ) {
 
 } );
 
+// Span
+
+UI.Span = function () {
+
+	UI.Element.call( this );
+
+	this.dom = document.createElement( 'span' );
+
+	return this;
+
+};
+
+UI.Span.prototype = Object.create( UI.Element.prototype );
+UI.Span.prototype.constructor = UI.Span;
+
+// Div
+
+UI.Div = function () {
+
+	UI.Element.call( this );
+
+	this.dom = document.createElement( 'div' );
+
+	return this;
+
+};
+
+UI.Div.prototype = Object.create( UI.Element.prototype );
+UI.Div.prototype.constructor = UI.Div;
+
+// Row
+
+UI.Row = function () {
+
+	UI.Element.call( this );
+
+	var dom = document.createElement( 'div' );
+	dom.className = 'Row';
+
+	this.dom = dom;
+
+	return this;
+
+};
+
+UI.Row.prototype = Object.create( UI.Element.prototype );
+UI.Row.prototype.constructor = UI.Row;
 
 // Panel
 
@@ -18452,65 +18483,11 @@ UI.Panel = function () {
 	this.dom = dom;
 
 	return this;
+
 };
 
 UI.Panel.prototype = Object.create( UI.Element.prototype );
 UI.Panel.prototype.constructor = UI.Panel;
-
-UI.Panel.prototype.add = function () {
-
-	for ( var i = 0; i < arguments.length; i ++ ) {
-
-		var argument = arguments[ i ];
-
-		if ( argument instanceof UI.Element ) {
-
-			this.dom.appendChild( argument.dom );
-
-		} else {
-
-			console.error( 'UI.Panel:', argument, 'is not an instance of UI.Element.' )
-
-		}
-
-	}
-
-	return this;
-
-};
-
-
-UI.Panel.prototype.remove = function () {
-
-	for ( var i = 0; i < arguments.length; i ++ ) {
-
-		var argument = arguments[ i ];
-
-		if ( argument instanceof UI.Element ) {
-
-			this.dom.removeChild( argument.dom );
-
-		} else {
-
-			console.error( 'UI.Panel:', argument, 'is not an instance of UI.Element.' )
-
-		}
-
-	}
-
-	return this;
-
-};
-
-UI.Panel.prototype.clear = function () {
-
-	while ( this.dom.children.length ) {
-
-		this.dom.removeChild( this.dom.lastChild );
-
-	}
-
-};
 
 
 // Collapsible Panel
@@ -18526,7 +18503,9 @@ UI.CollapsiblePanel = function () {
 	this.static = new UI.Panel();
 	this.static.setClass( 'Static' );
 	this.static.onClick( function () {
+
 		scope.toggle();
+
 	} );
 	this.dom.appendChild( this.static.dom );
 
@@ -18591,7 +18570,7 @@ UI.CollapsiblePanel.prototype.clear = function () {
 
 UI.CollapsiblePanel.prototype.toggle = function() {
 
-	this.setCollapsed( !this.isCollapsed );
+	this.setCollapsed( ! this.isCollapsed );
 
 };
 
@@ -18901,9 +18880,9 @@ UI.Color = function () {
 	var dom = document.createElement( 'input' );
 	dom.className = 'Color';
 	dom.style.width = '64px';
-	dom.style.height = '16px';
+	dom.style.height = '17px';
 	dom.style.border = '0px';
-	dom.style.padding = '0px';
+	dom.style.padding = '2px';
 	dom.style.backgroundColor = 'transparent';
 
 	try {
@@ -18944,7 +18923,7 @@ UI.Color.prototype.setValue = function ( value ) {
 
 UI.Color.prototype.setHexValue = function ( hex ) {
 
-	this.dom.value = '#' + ( '000000' + hex.toString( 16 ) ).slice( -6 );
+	this.dom.value = '#' + ( '000000' + hex.toString( 16 ) ).slice( - 6 );
 
 	return this;
 
@@ -18971,6 +18950,8 @@ UI.Number = function ( number ) {
 
 	}, false );
 
+	this.value = 0;
+
 	this.min = - Infinity;
 	this.max = Infinity;
 
@@ -18978,6 +18959,7 @@ UI.Number = function ( number ) {
 	this.step = 1;
 
 	this.dom = dom;
+
 	this.setValue( number );
 
 	var changeEvent = document.createEvent( 'HTMLEvents' );
@@ -18989,40 +18971,44 @@ UI.Number = function ( number ) {
 	var pointer = [ 0, 0 ];
 	var prevPointer = [ 0, 0 ];
 
-	var onMouseDown = function ( event ) {
+	function onMouseDown( event ) {
 
 		event.preventDefault();
 
 		distance = 0;
 
-		onMouseDownValue = parseFloat( dom.value );
+		onMouseDownValue = scope.value;
 
 		prevPointer = [ event.clientX, event.clientY ];
 
 		document.addEventListener( 'mousemove', onMouseMove, false );
 		document.addEventListener( 'mouseup', onMouseUp, false );
 
-	};
+	}
 
-	var onMouseMove = function ( event ) {
+	function onMouseMove( event ) {
 
-		var currentValue = dom.value;
+		var currentValue = scope.value;
 
 		pointer = [ event.clientX, event.clientY ];
 
 		distance += ( pointer[ 0 ] - prevPointer[ 0 ] ) - ( pointer[ 1 ] - prevPointer[ 1 ] );
 
-		var number = onMouseDownValue + ( distance / ( event.shiftKey ? 5 : 50 ) ) * scope.step;
+		var value = onMouseDownValue + ( distance / ( event.shiftKey ? 5 : 50 ) ) * scope.step;
+		value = Math.min( scope.max, Math.max( scope.min, value ) );
 
-		dom.value = Math.min( scope.max, Math.max( scope.min, number ) ).toFixed( scope.precision );
+		if ( currentValue !== value ) {
 
-		if ( currentValue !== dom.value ) dom.dispatchEvent( changeEvent );
+			scope.setValue( value );
+			dom.dispatchEvent( changeEvent );
+
+		}
 
 		prevPointer = [ event.clientX, event.clientY ];
 
-	};
+	}
 
-	var onMouseUp = function ( event ) {
+	function onMouseUp( event ) {
 
 		document.removeEventListener( 'mousemove', onMouseMove, false );
 		document.removeEventListener( 'mouseup', onMouseUp, false );
@@ -19034,9 +19020,9 @@ UI.Number = function ( number ) {
 
 		}
 
-	};
+	}
 
-	var onChange = function ( event ) {
+	function onChange( event ) {
 
 		var value = 0;
 
@@ -19050,25 +19036,25 @@ UI.Number = function ( number ) {
 
 		}
 
-		dom.value = parseFloat( value );
+		scope.setValue( parseFloat( value ) );
 
-	};
+	}
 
-	var onFocus = function ( event ) {
+	function onFocus( event ) {
 
 		dom.style.backgroundColor = '';
-		dom.style.borderColor = '#ccc';
 		dom.style.cursor = '';
 
-	};
+	}
 
-	var onBlur = function ( event ) {
+	function onBlur( event ) {
 
 		dom.style.backgroundColor = 'transparent';
-		dom.style.borderColor = 'transparent';
 		dom.style.cursor = 'col-resize';
 
-	};
+	}
+
+	onBlur();
 
 	dom.addEventListener( 'mousedown', onMouseDown, false );
 	dom.addEventListener( 'change', onChange, false );
@@ -19084,7 +19070,7 @@ UI.Number.prototype.constructor = UI.Number;
 
 UI.Number.prototype.getValue = function () {
 
-	return parseFloat( this.dom.value );
+	return this.value;
 
 };
 
@@ -19092,6 +19078,7 @@ UI.Number.prototype.setValue = function ( value ) {
 
 	if ( value !== undefined ) {
 
+		this.value = value;
 		this.dom.value = value.toFixed( this.precision );
 
 	}
@@ -19128,7 +19115,7 @@ UI.Integer = function ( number ) {
 
 	var dom = document.createElement( 'input' );
 	dom.className = 'Number';
-	dom.value = '0.00';
+	dom.value = '0';
 
 	dom.addEventListener( 'keydown', function ( event ) {
 
@@ -19136,12 +19123,15 @@ UI.Integer = function ( number ) {
 
 	}, false );
 
+	this.value = 0;
+
 	this.min = - Infinity;
 	this.max = Infinity;
 
 	this.step = 1;
 
 	this.dom = dom;
+
 	this.setValue( number );
 
 	var changeEvent = document.createEvent( 'HTMLEvents' );
@@ -19153,40 +19143,44 @@ UI.Integer = function ( number ) {
 	var pointer = [ 0, 0 ];
 	var prevPointer = [ 0, 0 ];
 
-	var onMouseDown = function ( event ) {
+	function onMouseDown( event ) {
 
 		event.preventDefault();
 
 		distance = 0;
 
-		onMouseDownValue = parseFloat( dom.value );
+		onMouseDownValue = scope.value;
 
 		prevPointer = [ event.clientX, event.clientY ];
 
 		document.addEventListener( 'mousemove', onMouseMove, false );
 		document.addEventListener( 'mouseup', onMouseUp, false );
 
-	};
+	}
 
-	var onMouseMove = function ( event ) {
+	function onMouseMove( event ) {
 
-		var currentValue = dom.value;
+		var currentValue = scope.value;
 
 		pointer = [ event.clientX, event.clientY ];
 
 		distance += ( pointer[ 0 ] - prevPointer[ 0 ] ) - ( pointer[ 1 ] - prevPointer[ 1 ] );
 
-		var number = onMouseDownValue + ( distance / ( event.shiftKey ? 5 : 50 ) ) * scope.step;
+		var value = onMouseDownValue + ( distance / ( event.shiftKey ? 5 : 50 ) ) * scope.step;
+		value = Math.min( scope.max, Math.max( scope.min, value ) ) | 0;
 
-		dom.value = Math.min( scope.max, Math.max( scope.min, number ) ) | 0;
+		if ( currentValue !== value ) {
 
-		if ( currentValue !== dom.value ) dom.dispatchEvent( changeEvent );
+			scope.setValue( value );
+			dom.dispatchEvent( changeEvent );
+
+		}
 
 		prevPointer = [ event.clientX, event.clientY ];
 
-	};
+	}
 
-	var onMouseUp = function ( event ) {
+	function onMouseUp( event ) {
 
 		document.removeEventListener( 'mousemove', onMouseMove, false );
 		document.removeEventListener( 'mouseup', onMouseUp, false );
@@ -19198,9 +19192,9 @@ UI.Integer = function ( number ) {
 
 		}
 
-	};
+	}
 
-	var onChange = function ( event ) {
+	function onChange( event ) {
 
 		var value = 0;
 
@@ -19214,25 +19208,25 @@ UI.Integer = function ( number ) {
 
 		}
 
-		dom.value = parseInt( value );
+		scope.setValue( value );
 
-	};
+	}
 
-	var onFocus = function ( event ) {
+	function onFocus( event ) {
 
 		dom.style.backgroundColor = '';
-		dom.style.borderColor = '#ccc';
 		dom.style.cursor = '';
 
-	};
+	}
 
-	var onBlur = function ( event ) {
+	function onBlur( event ) {
 
 		dom.style.backgroundColor = 'transparent';
-		dom.style.borderColor = 'transparent';
 		dom.style.cursor = 'col-resize';
 
-	};
+	}
+
+	onBlur();
 
 	dom.addEventListener( 'mousedown', onMouseDown, false );
 	dom.addEventListener( 'change', onChange, false );
@@ -19248,7 +19242,7 @@ UI.Integer.prototype.constructor = UI.Integer;
 
 UI.Integer.prototype.getValue = function () {
 
-	return parseInt( this.dom.value );
+	return this.value;
 
 };
 
@@ -19256,6 +19250,7 @@ UI.Integer.prototype.setValue = function ( value ) {
 
 	if ( value !== undefined ) {
 
+		this.value = value | 0;
 		this.dom.value = value | 0;
 
 	}
@@ -19342,178 +19337,62 @@ UI.Button.prototype.setLabel = function ( value ) {
 };
 
 
-// Dialog
+// Modal
 
-UI.Dialog = function ( value ) {
-
-	var scope = this;
-
-	var dom = document.createElement( 'dialog' );
-
-	if ( dom.showModal === undefined ) {
-
-		// fallback
-
-		dom = document.createElement( 'div' );
-		dom.style.display = 'none';
-
-		dom.showModal = function () {
-
-			dom.style.position = 'absolute';
-			dom.style.left = '100px';
-			dom.style.top = '100px';
-			dom.style.zIndex = 1;
-			dom.style.display = '';
-
-		};
-
-	}
-
-	dom.className = 'Dialog';
-
-	this.dom = dom;
-
-	return this;
-
-};
-
-UI.Dialog.prototype = Object.create( UI.Panel.prototype );
-UI.Dialog.prototype.constructor = UI.Dialog;
-
-UI.Dialog.prototype.showModal = function () {
-
-	this.dom.showModal();
-
-	return this;
-
-};
-
-// Sound
-
-UI.Sound = function (  ) {
-
-	UI.Element.call( this );
+UI.Modal = function ( value ) {
 
 	var scope = this;
 
 	var dom = document.createElement( 'div' );
-	dom.className = 'SoundDrop';
+
+	dom.style.position = 'absolute';
+	dom.style.width = '100%';
+	dom.style.height = '100%';
+	dom.style.backgroundColor = 'rgba(0,0,0,0.5)';
+	dom.style.display = 'none';
+	dom.style.alignItems = 'center';
+	dom.style.justifyContent = 'center';
+	dom.addEventListener( 'click', function ( event ) {
+
+		scope.hide();
+
+	} );
 
 	this.dom = dom;
-	
-	this.dom.dropArea = document.createElement( 'div' );
-	this.dom.dropArea.className = 'dropArea';
-	this.dom.dropArea.textContent = 'Drop audio file here';
-	
-	this.dom.appendChild( this.dom.dropArea );
-	
-	var playButton = document.createElement( 'button' );
-	playButton.textContent = '>';
-	playButton.style.display = 'none';
-	this.dom.playButton = playButton;
-	
-	this.dom.appendChild( playButton );
-	
-	
-	this.dom._deleteSoundButton = document.createElement( 'button' );
-	this.dom._deleteSoundButton.className = 'deleteButton';
-	this.dom._deleteSoundButton.textContent = 'x';
-	this.dom._deleteSoundButton.addEventListener( 'click', this.setValue.bind(this) );
-	
-	// Setup the dnd listeners.
-	this.dom.addEventListener('dragover', this.handleDragOver.bind(this), false);
-	this.dom.addEventListener('drop', this.handleFileSelect.bind(this), false);
-	
-	// create the (initially inactive) play listeners
-	this._mouseListeners = {
-		down: this.play.bind(this),
-		up: this.stop.bind(this)
-	};
+
+	this.container = new UI.Panel();
+	this.container.dom.style.width = '200px';
+	this.container.dom.style.padding = '20px';
+	this.container.dom.style.backgroundColor = '#ffffff';
+	this.container.dom.style.boxShadow = '0px 5px 10px rgba(0,0,0,0.5)';
+
+	this.add( this.container );
 
 	return this;
 
 };
 
-UI.Sound.prototype = Object.create( UI.Element.prototype );
+UI.Modal.prototype = Object.create( UI.Element.prototype );
+UI.Modal.prototype.constructor = UI.Modal;
 
-UI.Sound.prototype.setLabel = function ( value ) {
+UI.Modal.prototype.show = function ( content ) {
 
-	this.dom.textContent = value;
+	this.container.clear();
+	this.container.add( content );
+
+	this.dom.style.display = 'flex';
 
 	return this;
 
 };
 
-UI.Sound.prototype.handleFileSelect = function(evt) {
-	evt.stopPropagation();
-	evt.preventDefault();
+UI.Modal.prototype.hide = function () {
 
-	var files = evt.dataTransfer.files; // FileList object.
-	
-	if (files && files[0]) {		
-		this.setValue( files[0] );
-	}
-}
+	this.dom.style.display = 'none';
 
-UI.Sound.prototype.handleDragOver = function(evt) {
-	evt.stopPropagation();
-	evt.preventDefault();
-	evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
-}
+	return this;
 
-UI.Sound.prototype.getValue = function() {
-	return this.sound;
 };
-
-UI.Sound.prototype.setValue = function(sound) {
-
-	if (sound instanceof Blob) {
-	
-		// add sound
-		this.sound = sound;
-		editor.soundCollection.add( sound, new THREE.Vector3(0, 0, 0), function( buffer ) {
-		
-			var changeEvent = document.createEvent('HTMLEvents');
-			changeEvent.initEvent( 'change', true, true );
-			changeEvent.buffer = buffer;
-			this.dom.dispatchEvent( changeEvent );
-			
-		}.bind(this) );
-		this.dom.dropArea.textContent = sound.name;
-		this.dom.dropArea.appendChild ( this.dom._deleteSoundButton );
-		this.dom.playButton.style.display = '';
-		this.dom.playButton.addEventListener( 'mousedown', this._mouseListeners.down, false );
-		this.dom.playButton.addEventListener( 'mouseup', this._mouseListeners.up, false );
-		
-	} else {
-	
-		// remove sound
-		this.stop();
-		this.dom.playButton.style.display = 'none';
-		this.dom.playButton.removeEventListener( 'mousedown', this._mouseListeners.down, false );
-		this.dom.playButton.removeEventListener( 'mouseup', this._mouseListeners.up, false );
-		this.dom.dropArea.textContent = 'Drop audio file here';
-		this.sound = undefined;
-		
-		var changeEvent = document.createEvent('HTMLEvents');
-		changeEvent.initEvent( 'change', true, true );
-		this.dom.dispatchEvent( changeEvent );
-	}
-	
-};
-
-UI.Sound.prototype.play = function() {
-	if (this.sound) {
-		editor.soundCollection.stop(this.sound);
-		editor.soundCollection.play(this.sound);
-	}
-}
-
-UI.Sound.prototype.stop = function() {
-	if (this.sound) {
-		editor.soundCollection.stop(this.sound);
-	}
-}
 
 // File:editor/js/libs/ui.three.js
 
@@ -19591,7 +19470,7 @@ UI.Texture = function ( mapping ) {
 
 		}
 
-	}
+	};
 
 	this.dom = dom;
 	this.texture = null;
@@ -19677,12 +19556,12 @@ UI.Outliner = function ( editor ) {
 
 			if ( item.nextSibling === null ) {
 
-				editor.moveObject( object, editor.scene );
+				editor.execute( new MoveObjectCommand( object, editor.scene ) );
 
 			} else {
 
 				var nextObject = scene.getObjectById( item.nextSibling.value );
-				editor.moveObject( object, nextObject.parent, nextObject );
+				editor.execute( new MoveObjectCommand( object, nextObject.parent, nextObject ) );
 
 			}
 
@@ -19690,48 +19569,54 @@ UI.Outliner = function ( editor ) {
 	} );
 
 	// Broadcast for object selection after arrow navigation
-	var changeEvent = document.createEvent('HTMLEvents');
+	var changeEvent = document.createEvent( 'HTMLEvents' );
 	changeEvent.initEvent( 'change', true, true );
 
 	// Prevent native scroll behavior
-	dom.addEventListener( 'keydown', function (event) {
+	dom.addEventListener( 'keydown', function ( event ) {
 
 		switch ( event.keyCode ) {
 			case 38: // up
 			case 40: // down
-			event.preventDefault();
-			event.stopPropagation();
-			break;
+				event.preventDefault();
+				event.stopPropagation();
+				break;
 		}
 
-	}, false);
+	}, false );
 
 	// Keybindings to support arrow navigation
-	dom.addEventListener( 'keyup', function (event) {
+	dom.addEventListener( 'keyup', function ( event ) {
 
-		switch ( event.keyCode ) {
-			case 38: // up
-			case 40: // down
-			scope.selectedIndex += ( event.keyCode == 38 ) ? -1 : 1;
+		function select( index ) {
 
-			if ( scope.selectedIndex >= 0 && scope.selectedIndex < scope.options.length ) {
+			if ( index >= 0 && index < scope.options.length ) {
+
+				scope.selectedIndex = index;
 
 				// Highlight selected dom elem and scroll parent if needed
-				scope.setValue( scope.options[ scope.selectedIndex ].value );
-
+				scope.setValue( scope.options[ index ].value );
 				scope.dom.dispatchEvent( changeEvent );
 
 			}
 
-			break;
 		}
 
-	}, false);
+		switch ( event.keyCode ) {
+			case 38: // up
+				select( scope.selectedIndex - 1 );
+				break;
+			case 40: // down
+				select( scope.selectedIndex + 1 );
+				break;
+		}
+
+	}, false );
 
 	this.dom = dom;
 
 	this.options = [];
-	this.selectedIndex = -1;
+	this.selectedIndex = - 1;
 	this.selectedValue = null;
 
 	return this;
@@ -19761,7 +19646,7 @@ UI.Outliner.prototype.setOptions = function ( options ) {
 		var option = options[ i ];
 
 		var div = document.createElement( 'div' );
-		div.className = 'option ' + ( option.static === true ? '': 'draggable' );
+		div.className = 'option ' + ( option.static === true ? '' : 'draggable' );
 		div.innerHTML = option.html;
 		div.value = option.value;
 		scope.dom.appendChild( div );
@@ -19805,7 +19690,7 @@ UI.Outliner.prototype.setValue = function ( value ) {
 
 			if ( this.dom.scrollTop > y ) {
 
-				this.dom.scrollTop = y
+				this.dom.scrollTop = y;
 
 			} else if ( this.dom.scrollTop < minScroll ) {
 
@@ -19826,6 +19711,37 @@ UI.Outliner.prototype.setValue = function ( value ) {
 	this.selectedValue = value;
 
 	return this;
+
+};
+
+UI.THREE = {};
+
+UI.THREE.Boolean = function ( boolean, text ) {
+
+	UI.Span.call( this );
+
+	this.setMarginRight( '10px' );
+
+	this.checkbox = new UI.Checkbox( boolean );
+	this.text = new UI.Text( text ).setMarginLeft( '3px' );
+
+	this.add( this.checkbox );
+	this.add( this.text );
+
+};
+
+UI.THREE.Boolean.prototype = Object.create( UI.Span.prototype );
+UI.THREE.Boolean.prototype.constructor = UI.THREE.Boolean;
+
+UI.THREE.Boolean.prototype.getValue = function () {
+
+	return this.checkbox.getValue();
+
+};
+
+UI.THREE.Boolean.prototype.setValue = function ( value ) {
+
+	return this.checkbox.setValue( value );
 
 };
 
@@ -19860,6 +19776,7 @@ var APP = {
 			renderer = new THREE.WebGLRenderer( { antialias: true } );
 			renderer.setClearColor( 0x000000 );
 			renderer.setPixelRatio( window.devicePixelRatio );
+			if ( json.project.shadows ) renderer.shadowMap.enabled = true;
 			this.dom = renderer.domElement;
 
 			this.setScene( loader.parse( json.scene ) );
@@ -19880,18 +19797,28 @@ var APP = {
 				update: []
 			};
 
-			var scriptWrapParams = 'player,renderer,scene';
+			var scriptWrapParams = 'player,renderer,scene,camera';
 			var scriptWrapResultObj = {};
+
 			for ( var eventKey in events ) {
+
 				scriptWrapParams += ',' + eventKey;
 				scriptWrapResultObj[ eventKey ] = eventKey;
+
 			}
-			var scriptWrapResult =
-					JSON.stringify( scriptWrapResultObj ).replace( /\"/g, '' );
+
+			var scriptWrapResult = JSON.stringify( scriptWrapResultObj ).replace( /\"/g, '' );
 
 			for ( var uuid in json.scripts ) {
 
 				var object = scene.getObjectByProperty( 'uuid', uuid, true );
+
+				if ( object === undefined ) {
+
+					console.warn( 'APP.Player: Script without object.', uuid );
+					continue;
+
+				}
 
 				var scripts = json.scripts[ uuid ];
 
@@ -19899,8 +19826,7 @@ var APP = {
 
 					var script = scripts[ i ];
 
-					var functions = ( new Function( scriptWrapParams,
-							script.source + '\nreturn ' + scriptWrapResult+ ';' ).bind( object ) )( this, renderer, scene );
+					var functions = ( new Function( scriptWrapParams, script.source + '\nreturn ' + scriptWrapResult + ';' ).bind( object ) )( this, renderer, scene, camera );
 
 					for ( var name in functions ) {
 
@@ -19908,7 +19834,7 @@ var APP = {
 
 						if ( events[ name ] === undefined ) {
 
-							console.warn( 'APP.Player: event type not supported (', name, ')' );
+							console.warn( 'APP.Player: Event type not supported (', name, ')' );
 							continue;
 
 						}
@@ -19930,7 +19856,6 @@ var APP = {
 			camera = value;
 			camera.aspect = this.width / this.height;
 			camera.updateProjectionMatrix();
-
 
 			if ( vr === true ) {
 
@@ -19974,7 +19899,7 @@ var APP = {
 
 			scene = value;
 
-		},
+		};
 
 		this.setSize = function ( width, height ) {
 
@@ -19990,7 +19915,7 @@ var APP = {
 
 		};
 
-		var dispatch = function ( array, event ) {
+		function dispatch( array, event ) {
 
 			for ( var i = 0, l = array.length; i < l; i ++ ) {
 
@@ -19998,7 +19923,7 @@ var APP = {
 
 					array[ i ]( event );
 
-				} catch (e) {
+				} catch ( e ) {
 
 					console.error( ( e.message || e ), ( e.stack || "" ) );
 
@@ -20006,11 +19931,11 @@ var APP = {
 
 			}
 
-		};
+		}
 
 		var prevTime, request;
 
-		var animate = function ( time ) {
+		function animate( time ) {
 
 			request = requestAnimationFrame( animate );
 
@@ -20029,7 +19954,7 @@ var APP = {
 
 			prevTime = time;
 
-		};
+		}
 
 		this.play = function () {
 
@@ -20045,7 +19970,8 @@ var APP = {
 			dispatch( events.start, arguments );
 
 			request = requestAnimationFrame( animate );
-			prevTime = ( window.performance || Date ).now();
+			prevTime = performance.now();
+
 		};
 
 		this.stop = function () {
@@ -20062,57 +19988,58 @@ var APP = {
 			dispatch( events.stop, arguments );
 
 			cancelAnimationFrame( request );
+
 		};
 
 		//
 
-		var onDocumentKeyDown = function ( event ) {
+		function onDocumentKeyDown( event ) {
 
 			dispatch( events.keydown, event );
 
-		};
+		}
 
-		var onDocumentKeyUp = function ( event ) {
+		function onDocumentKeyUp( event ) {
 
 			dispatch( events.keyup, event );
 
-		};
+		}
 
-		var onDocumentMouseDown = function ( event ) {
+		function onDocumentMouseDown( event ) {
 
 			dispatch( events.mousedown, event );
 
-		};
+		}
 
-		var onDocumentMouseUp = function ( event ) {
+		function onDocumentMouseUp( event ) {
 
 			dispatch( events.mouseup, event );
 
-		};
+		}
 
-		var onDocumentMouseMove = function ( event ) {
+		function onDocumentMouseMove( event ) {
 
 			dispatch( events.mousemove, event );
 
-		};
+		}
 
-		var onDocumentTouchStart = function ( event ) {
+		function onDocumentTouchStart( event ) {
 
 			dispatch( events.touchstart, event );
 
-		};
+		}
 
-		var onDocumentTouchEnd = function ( event ) {
+		function onDocumentTouchEnd( event ) {
 
 			dispatch( events.touchend, event );
 
-		};
+		}
 
-		var onDocumentTouchMove = function ( event ) {
+		function onDocumentTouchMove( event ) {
 
 			dispatch( events.touchmove, event );
 
-		};
+		}
 
 	}
 
@@ -20155,21 +20082,15 @@ var Player = function ( editor ) {
 
 		container.dom.appendChild( player.dom );
 
-		editor.play();
-
 	} );
 
 	signals.stopPlayer.add( function () {
 
 		container.setDisplay( 'none' );
 
-		editor.stop();
-
 		player.stop();
 
 		container.dom.removeChild( player.dom );
-
-
 
 	} );
 
@@ -20261,20 +20182,39 @@ var Script = function ( editor ) {
 
 			if ( typeof( currentScript ) === 'object' ) {
 
-				currentScript.source = value;
-				signals.scriptChanged.dispatch( currentScript );
+				if ( value !== currentScript.source ) {
+
+					editor.execute( new SetScriptValueCommand( currentObject, currentScript, 'source', value, codemirror.getCursor() ) );
+
+				}
 				return;
 			}
 
 			if ( currentScript !== 'programInfo' ) return;
 
 			var json = JSON.parse( value );
-			currentObject.defines = json.defines;
-			currentObject.uniforms = json.uniforms;
-			currentObject.attributes = json.attributes;
 
-			currentObject.needsUpdate = true;
-			signals.materialChanged.dispatch( currentObject );
+			if ( JSON.stringify( currentObject.material.defines ) !== JSON.stringify( json.defines ) ) {
+
+				var cmd = new SetMaterialValueCommand( currentObject, 'defines', json.defines );
+				cmd.updatable = false;
+				editor.execute( cmd );
+
+			}
+			if ( JSON.stringify( currentObject.material.uniforms ) !== JSON.stringify( json.uniforms ) ) {
+
+				var cmd = new SetMaterialValueCommand( currentObject, 'uniforms', json.uniforms );
+				cmd.updatable = false;
+				editor.execute( cmd );
+
+			}
+			if ( JSON.stringify( currentObject.material.attributes ) !== JSON.stringify( json.attributes ) ) {
+
+				var cmd = new SetMaterialValueCommand( currentObject, 'attributes', json.attributes );
+				cmd.updatable = false;
+				editor.execute( cmd );
+
+			}
 
 		}, 300 );
 
@@ -20403,9 +20343,9 @@ var Script = function ( editor ) {
 					if ( errors.length !== 0 ) break;
 					if ( renderer instanceof THREE.WebGLRenderer === false ) break;
 
-					currentObject[ currentScript ] = string;
-					currentObject.needsUpdate = true;
-					signals.materialChanged.dispatch( currentObject );
+					currentObject.material[ currentScript ] = string;
+					currentObject.material.needsUpdate = true;
+					signals.materialChanged.dispatch( currentObject.material );
 
 					var programs = renderer.info.programs;
 
@@ -20417,7 +20357,7 @@ var Script = function ( editor ) {
 						var diagnostics = programs[i].diagnostics;
 
 						if ( diagnostics === undefined ||
-								diagnostics.material !== currentObject ) continue;
+								diagnostics.material !== currentObject.material ) continue;
 
 						if ( ! diagnostics.runnable ) valid = false;
 
@@ -20523,6 +20463,7 @@ var Script = function ( editor ) {
 			mode = 'javascript';
 			name = script.name;
 			source = script.source;
+			title.setValue( object.name + ' / ' + name );
 
 		} else {
 
@@ -20532,7 +20473,7 @@ var Script = function ( editor ) {
 
 					mode = 'glsl';
 					name = 'Vertex Shader';
-					source = object.vertexShader || "";
+					source = object.material.vertexShader || "";
 
 					break;
 
@@ -20540,7 +20481,7 @@ var Script = function ( editor ) {
 
 					mode = 'glsl';
 					name = 'Fragment Shader';
-					source = object.fragmentShader || "";
+					source = object.material.fragmentShader || "";
 
 					break;
 
@@ -20549,13 +20490,14 @@ var Script = function ( editor ) {
 					mode = 'json';
 					name = 'Program Properties';
 					var json = {
-						defines: object.defines,
-						uniforms: object.uniforms,
-						attributes: object.attributes
+						defines: object.material.defines,
+						uniforms: object.material.uniforms,
+						attributes: object.material.attributes
 					};
 					source = JSON.stringify( json, null, '\t' );
 
 			}
+			title.setValue( object.material.name + ' / ' + name );
 
 		}
 
@@ -20563,11 +20505,39 @@ var Script = function ( editor ) {
 		currentScript = script;
 		currentObject = object;
 
-		title.setValue( object.name + ' / ' + name );
 		container.setDisplay( '' );
 		codemirror.setValue( source );
 		if (mode === 'json' ) mode = { name: 'javascript', json: true };
 		codemirror.setOption( 'mode', mode );
+
+	} );
+
+	signals.scriptRemoved.add( function ( script ) {
+
+		if ( currentScript === script ) {
+
+			container.setDisplay( 'none' );
+
+		}
+
+	} );
+
+	signals.refreshScriptEditor.add( function ( object, script, cursorPosition ) {
+
+		if ( currentScript !== script ) return;
+
+		// copying the codemirror history because "codemirror.setValue(...)" alters its history
+
+		var history = codemirror.getHistory();
+		title.setValue( object.name + ' / ' + script.name );
+		codemirror.setValue( script.source );
+
+		if ( cursorPosition !== undefined ) {
+
+			codemirror.setCursor( cursorPosition );
+
+		}
+		codemirror.setHistory( history ); // setting the history to previous state
 
 	} );
 
@@ -20601,27 +20571,6 @@ THREE.VREffect = function ( renderer, onError ) {
 			if ( devices[ i ] instanceof HMDVRDevice ) {
 
 				vrHMD = devices[ i ];
-
-				if ( vrHMD.getEyeParameters !== undefined ) {
-
-					var eyeParamsL = vrHMD.getEyeParameters( 'left' );
-					var eyeParamsR = vrHMD.getEyeParameters( 'right' );
-
-					eyeTranslationL = eyeParamsL.eyeTranslation;
-					eyeTranslationR = eyeParamsR.eyeTranslation;
-					eyeFOVL = eyeParamsL.recommendedFieldOfView;
-					eyeFOVR = eyeParamsR.recommendedFieldOfView;
-
-				} else {
-
-					// TODO: This is an older code path and not spec compliant.
-					// It should be removed at some point in the near future.
-					eyeTranslationL = vrHMD.getEyeTranslation( 'left' );
-					eyeTranslationR = vrHMD.getEyeTranslation( 'right' );
-					eyeFOVL = vrHMD.getRecommendedEyeFieldOfView( 'left' );
-					eyeFOVR = vrHMD.getRecommendedEyeFieldOfView( 'right' );
-
-				}
 
 				break; // We keep the first we encounter
 
@@ -20691,6 +20640,14 @@ THREE.VREffect = function ( renderer, onError ) {
 	this.render = function ( scene, camera ) {
 
 		if ( vrHMD ) {
+
+			var eyeParamsL = vrHMD.getEyeParameters( 'left' );
+			var eyeParamsR = vrHMD.getEyeParameters( 'right' );
+
+			eyeTranslationL = eyeParamsL.eyeTranslation;
+			eyeTranslationR = eyeParamsR.eyeTranslation;
+			eyeFOVL = eyeParamsL.recommendedFieldOfView;
+			eyeFOVR = eyeParamsR.recommendedFieldOfView;
 
 			var sceneL, sceneR;
 
@@ -20969,8 +20926,6 @@ var Storage = function () {
 	var name = 'threejs-editor';
 	var version = 1;
 
-	var dbSize;
-
 	var database;
 
 	return {
@@ -21028,60 +20983,26 @@ var Storage = function () {
 			request.onsuccess = function ( event ) {
 
 				console.log( '[' + /\d\d\:\d\d\:\d\d/.exec( new Date() )[ 0 ] + ']', 'Saved state to IndexedDB. ' + ( performance.now() - start ).toFixed( 2 ) + 'ms' );
-				// console.log(request.);
+
 			};
 
 		},
 
-		clear: function ( callback ) {
+		clear: function () {
 
 			var transaction = database.transaction( [ 'states' ], 'readwrite' );
 			var objectStore = transaction.objectStore( 'states' );
 			var request = objectStore.clear();
 			request.onsuccess = function ( event ) {
 
-				callback();
+				console.log( '[' + /\d\d\:\d\d\:\d\d/.exec( new Date() )[ 0 ] + ']', 'Cleared IndexedDB.' );
 
 			};
 
-		},
-
-		size: function ( callback ){
-
-			if(database != null){
-		        var size = 0;
-		 
-		        var transaction = database.transaction(["states"])
-		            .objectStore("states")
-		            .openCursor();
-		 
-		        transaction.onsuccess = function(event){
-		            var cursor = event.target.result;
-		            if(cursor){
-		                var storedObject = cursor.value;
-		                var json = JSON.stringify(storedObject);
-		                size += json.length;
-		                cursor.continue();
-		            }
-		            else{
-		            	// console.log(size);
-		            	// dbSize = parseInt(size) / 1000000;
-		            	// console.log(dbSize);
-		            	size /= 100000; // -2
-		            	size = parseInt(size);
-
-		            	callback(size,null);
-		            }
-		        }.bind(this);
-		        transaction.onerror = function(err){
-		            callback(null,err);
-		        }
-		    }
-		    else{
-		        callback(null,null);
-		    }
 		}
-	}	
+
+	}
+
 };
 
 // File:editor/js/Editor.js
@@ -21090,9 +21011,14 @@ var Storage = function () {
  * @author mrdoob / http://mrdoob.com/
  */
 
-var Editor = function (shortcuts) {
+var Editor = function () {
 
 	var SIGNALS = signals;
+
+	this.DEFAULT_CAMERA = new THREE.PerspectiveCamera( 50, 1, 0.1, 10000 );
+	this.DEFAULT_CAMERA.name = 'Camera';
+	this.DEFAULT_CAMERA.position.set( 20, 10, 20 );
+	this.DEFAULT_CAMERA.lookAt( new THREE.Vector3() );
 
 	this.signals = {
 
@@ -21107,7 +21033,7 @@ var Editor = function (shortcuts) {
 
 		// actions
 
-		// showDialog: new SIGNALS.Signal(),
+		showModal: new SIGNALS.Signal(),
 
 		// notifications
 
@@ -21151,31 +21077,31 @@ var Editor = function (shortcuts) {
 		windowResize: new SIGNALS.Signal(),
 
 		showGridChanged: new SIGNALS.Signal(),
+		refreshSidebarObject3D: new SIGNALS.Signal(),
+		historyChanged: new SIGNALS.Signal(),
+		refreshScriptEditor: new SIGNALS.Signal(),
 
-		// added by Sam
 		cameraPositionSnap: new SIGNALS.Signal(),
-		saveProject: new SIGNALS.Signal(),
-		unsaveProject: new SIGNALS.Signal(),
 		undo: new SIGNALS.Signal(),
 		redo: new SIGNALS.Signal(),
-		soundAdded: new SIGNALS.Signal(),
-		showManChanged: new SIGNALS.Signal(),
-		bgColorChanged: new SIGNALS.Signal()
+		switchCameraMode: new SIGNALS.Signal(),
+
+		bgColorChanged: new SIGNALS.Signal(),
+		saveProject: new SIGNALS.Signal(),
+		unsaveProject: new SIGNALS.Signal()
+
 	};
 
 	this.config = new Config();
 	this.history = new History( this );
 	this.storage = new Storage();
 	this.loader = new Loader( this );
-	this.shortcuts = new EditorShortCutsList();
 
-	this.camera = new THREE.PerspectiveCamera( 50, 1, 1, 100000 );
-	this.camera.position.set( 500, 250, 500 );
-	this.camera.lookAt( new THREE.Vector3() );
-	this.camera.name = 'Camera';
-
-	this.listener = new THREE.AudioListener();
-	this.camera.add( this.listener );
+	this.camera = this.DEFAULT_CAMERA.clone();
+	// this.camera = new THREE.CombinedCamera( window.innerWidth / 2, window.innerHeight / 2, 70, 1, 1000, - 500, 1000 );
+	// this.camera.name = 'ComboCamera';//'Camera';
+	// this.camera.position.set( 20, 10, 20 );
+	// this.camera.lookAt( new THREE.Vector3() );
 
 	this.scene = new THREE.Scene();
 	this.scene.name = 'Scene';
@@ -21185,16 +21111,26 @@ var Editor = function (shortcuts) {
 	this.object = {};
 	this.geometries = {};
 	this.materials = {};
-	this.textures = {};
+	// this.textures = {};
 	this.scripts = {};
-	
-	this.soundCollection = new SoundCollection({cam:this.camera});
 
 	this.selected = null;
 	this.helpers = {};
-	this.nodes = {};
 
+	this.shortcuts = new EditorShortCutsList();
 	this.isolationMode = false;
+
+
+	var SCREEN_WIDTH = window.innerWidth;
+	var SCREEN_HEIGHT = window.innerHeight;
+
+
+	var activeCamera;
+	var cameraPerspective, cameraOrtho;
+	this.renderer = null;
+
+	this.onRenderFcts = [];
+	this.mixerContext;
 
 };
 
@@ -21202,26 +21138,11 @@ Editor.prototype = {
 
 	setTheme: function ( value ) {
 
-		// var theme;
-
-		// if(value = 'THEME_DARK')
-		// 	theme = THEME_DARK;
-		// else
-		// 	theme = THEME_LIGHT;
-
 		document.getElementById( 'theme' ).href = value;
 
 		this.signals.themeChanged.dispatch( value );
 
 	},
-
-	/*
-	showDialog: function ( value ) {
-
-		this.signals.showDialog.dispatch( value );
-
-	},
-	*/
 
 	//
 
@@ -21285,7 +21206,6 @@ Editor.prototype = {
 	destoryCurrent: function(){
 
 		var object = this.selected;
-		console.log("hey");
 
 		if(object === null) return;
 
@@ -21379,75 +21299,51 @@ Editor.prototype = {
 	},
 
 	//
-	addNode: function () {
-
-		console.log("NodeHelper")
-		pointerPos = object.position;
-		helper = new THREE.NodeHelper( new THREE.Vector3( 1, 0, 0 ), pointerPos, 10 );
-
-	},
 
 	addHelper: function () {
 
-		var geometry = new THREE.SphereBufferGeometry( 20, 4, 2 );
+		var geometry = new THREE.SphereBufferGeometry( 2, 4, 2 );
 		var material = new THREE.MeshBasicMaterial( { color: 0xff0000, visible: false } );
 
 		return function ( object ) {
 
 			var helper;
-			var pointerPos, targetPos = THREE.Vector3( 0, 0, 0 );
 
 			if ( object instanceof THREE.Camera ) {
 
-				helper = new THREE.CameraHelper( object, 10 );
+				helper = new THREE.CameraHelper( object, 1 );
 
 			} else if ( object instanceof THREE.PointLight ) {
 
-				helper = new THREE.PointLightHelper( object, 10 );
+				helper = new THREE.PointLightHelper( object, 1 );
 
 			} else if ( object instanceof THREE.DirectionalLight ) {
 
-				helper = new THREE.DirectionalLightHelper( object, 20 );
+				helper = new THREE.DirectionalLightHelper( object, 1 );
 
 			} else if ( object instanceof THREE.SpotLight ) {
 
-				helper = new THREE.SpotLightHelper( object, 10 );
+				helper = new THREE.SpotLightHelper( object, 1 );
 
 			} else if ( object instanceof THREE.HemisphereLight ) {
 
-				helper = new THREE.HemisphereLightHelper( object, 10 );
+				helper = new THREE.HemisphereLightHelper( object, 1 );
 
 			} else if ( object instanceof THREE.SkinnedMesh ) {
 
 				helper = new THREE.SkeletonHelper( object );
-		
-			} 
-			// else if( object.name == "Pointer_name"){
 
-				// var node = new THREE.NodeHelper();
-
-				// this.nodes.add();
-
-			// }
-			else {
+			} else {
 
 				// no helper for this object type
 				return;
 
 			}
 
-
-
 			var picker = new THREE.Mesh( geometry, material );
 			picker.name = 'picker';
 			picker.userData.object = object;
 			helper.add( picker );
-
-			// if(targetPos != null){
-			// 	console.log("ArrowHelper Yeah");
-			// 	helper = new THREE.ArrowHelper( targetPos-pointerPos, pointerPos, 10 );
-			// }
-			// if(object.name == "Pointer_name" )
 
 			this.sceneHelpers.add( helper );
 			this.helpers[ object.id ] = helper;
@@ -21563,7 +21459,8 @@ Editor.prototype = {
 
 	focus: function ( object ) {
 
-		this.signals.objectFocused.dispatch( object );
+		if ( this.selected === null ) return;
+			this.signals.objectFocused.dispatch( object );
 
 	},
 
@@ -21572,6 +21469,7 @@ Editor.prototype = {
 		this.focus( this.scene.getObjectById( id, true ) );
 
 	},
+
 
 	hide: function(){
 
@@ -21600,27 +21498,18 @@ Editor.prototype = {
 		if(this.selected !== null){
 			this.scene.traverse( function ( child ) {
 
-				console.log(child.name);
 				if ( !(child instanceof THREE.Light )){ 
 					if(child.name !== "Scene" ){
 					
-					child.visible = mode;
+						child.visible = mode;
+
 					}
 				}
-
 			} );
 
-			console.log(this.selected.name);
 			this.selected.visible = true;
 
-			// this.selected.traverse( function ( child2 ) { //Show all chilrden
-
-			// 	child2.visible = true;
-
-			// } );
-
 			//TODO: Add parent iteration so all parents of an object stay visible and don't hide the child
-
 			this.signals.sceneGraphChanged.dispatch();
 
 		}
@@ -21629,9 +21518,9 @@ Editor.prototype = {
 	clear: function () {
 
 		this.history.clear();
+		this.storage.clear();
 
-		this.camera.position.set( 500, 250, 500 );
-		this.camera.lookAt( new THREE.Vector3() );
+		this.camera.copy( this.DEFAULT_CAMERA );
 
 		var objects = this.scene.children;
 
@@ -21650,45 +21539,15 @@ Editor.prototype = {
 
 		this.signals.editorCleared.dispatch();
 
-		this.signals.bgColorChanged.dispatch(0x333333);
-
 	},
-
-	play: function ( ) {
-	
-		this.scene.traverse( function ( child ) {
-		
-			if ( child.sounds ) {
-			
-				if ( child.sounds.constant ) {
-					editor.soundCollection.playAttachedSound( child.sounds.constant, child );
-				}
-			
-			}
-		
-		}.bind( this ) );
-		
-	},
-	
-	stop: function ( ) {
-	
-		this.scene.traverse( function ( child ) {
-			
-			if ( child.sounds ) {
-			
-				editor.soundCollection.stop( child.sounds.constant, true );
-				console.log(child.name);
-			}
-		
-		}.bind( this ) );
-	},	
 
 	//
 
 	fromJSON: function ( json ) {
 
-		var loader = new THREE.ObjectLoader();
+		console.log(json);
 
+		var loader = new THREE.ObjectLoader();
 
 		// backwards
 
@@ -21701,59 +21560,90 @@ Editor.prototype = {
 
 		// TODO: Clean this up somehow
 
-		var camera = loader.parse( json.camera );
+		if ( json.project !== undefined ) {
 
-		this.camera.position.copy( camera.position );
-		this.camera.rotation.copy( camera.rotation );
-		this.camera.aspect = camera.aspect;
-		this.camera.near = camera.near;
-		this.camera.far = camera.far;
+			this.config.setKey( 'project/renderer/shadows', json.project.shadows );
+			this.config.setKey( 'project/vr', json.project.vr );
 
-		this.setScene( loader.parse( json.scene ) );
-		this.scripts = json.scripts;
-
-		// console.log(json.background);
-		if(json.project.background != undefined)//if bg here
-			this.signals.bgColorChanged.dispatch(json.project.background);
-		else
-			this.signals.bgColorChanged.dispatch(0x333333); //Default gray bg
-		
-		// this.scene.fog = json.project.fog;
-		if(json.project.fog != undefined){
-			this.signals.fogTypeChanged.dispatch( json.project.fog.name );
-			this.signals.fogColorChanged.dispatch( json.project.fogColor);
-			this.signals.fogParametersChanged.dispatch( json.project.fog.near, json.project.fog.far, json.project.fog.density );
 		}
 
-		//Meh
-		this.signals.saveProject.dispatch();
+		var camera = loader.parse( json.camera );
 
-		document.getElementById( "preloader" ).style.display = "none";
+		this.camera.copy( camera );
+		this.history.fromJSON( json.history );
+		this.scripts = json.scripts;
+
+		console.log(json.scene);
+
+		this.setScene( loader.parse( json.scene ) );
 
 	},
 
 	toJSON: function () {
 
-		// console.log(this.scene.fog.color );
+		// scripts clean up
+
+		var scene = this.scene;
+		var scripts = this.scripts;
+
+		for ( var key in scripts ) {
+
+			var script = scripts[ key ];
+
+			if ( script.length === 0 || scene.getObjectByProperty( 'uuid', key ) === undefined ) {
+
+				delete scripts[ key ];
+
+			}
+
+		}
+
+		//
+
 		return {
 
+			metadata: {},
 			project: {
-						// editor.config.setKey( 'backgroundColor', bgColor);
-
-				background: this.config.getKey('backgroundColor'),
+				shadows: this.config.getKey( 'project/renderer/shadows' ),
+				vr: this.config.getKey( 'project/vr' ),
+				backgroundColor: this.config.getKey('backgroundColor'),
 				fog: this.scene.fog,
 				fogColor: this.config.getKey('fogColor')
-
 			},
 			camera: this.camera.toJSON(),
 			scene: this.scene.toJSON(),
-			scripts: this.scripts
+			scripts: this.scripts,
+			history: this.history.toJSON()
 
 		};
 
+	},
+
+	objectByUuid: function ( uuid ) {
+
+		return this.scene.getObjectByProperty( 'uuid', uuid, true );
+
+	},
+
+	execute: function ( cmd, optionalName ) {
+
+		this.history.execute( cmd, optionalName );
+
+	},
+
+	undo: function () {
+
+		this.history.undo();
+
+	},
+
+	redo: function () {
+
+		this.history.redo();
+
 	}
 
-}
+};
 
 // File:editor/js/Config.js
 
@@ -21767,16 +21657,19 @@ var Config = function () {
 
 	var storage = {
 		'autosave': true,
-		'theme': 'css/dark.css',
+		'theme': 'css/light.css',
 
 		'backgroundColor': 0xcccccc,
 
+		'project/history/stored': true,
 		'project/renderer': 'WebGLRenderer',
 		'project/renderer/antialias': true,
+		'project/renderer/shadows': true,
 		'project/vr': false,
 
 		'ui/sidebar/animation/collapsed': true,
 		'ui/sidebar/geometry/collapsed': true,
+		'ui/sidebar/history/collapsed': true,
 		'ui/sidebar/material/collapsed': true,
 		'ui/sidebar/object3d/collapsed': false,
 		'ui/sidebar/project/collapsed': true,
@@ -21828,43 +21721,45 @@ var Config = function () {
 
 		}
 
-	}
+	};
 
 };
 
 // File:editor/js/History.js
 
 /**
- * @author mrdoob / http://mrdoob.com/
+ * @author dforrer / https://github.com/dforrer
+ * Developed as part of a project at University of Applied Sciences and Arts Northwestern Switzerland (www.fhnw.ch)
  */
 
-var History = function ( editor ) {
+History = function ( editor ) {
 
-	this.array = [];
-	this.arrayLength = -1;
+	this.editor = editor;
+	this.undos = [];
+	this.redos = [];
+	this.lastCmdTime = new Date();
+	this.idCounter = 0;
 
-	this.current = -1;
-	this.isRecording = true;
+	this.historyDisabled = false;
+	this.config = editor.config;
 
-	//
+	//Set editor-reference in Command
+
+	Command( editor );
+
+	// signals
 
 	var scope = this;
-	var signals = editor.signals;
 
-	signals.objectAdded.add( function ( object ) {
+	this.editor.signals.startPlayer.add( function () {
 
-		if ( scope.isRecording === false ) return;
+		scope.historyDisabled = true;
 
-		scope.add(
-			function () {
-				editor.removeObject( object );
-				editor.select( null );
-			},
-			function () {
-				editor.addObject( object );
-				editor.select( object );
-			}
-		);
+	} );
+
+	this.editor.signals.stopPlayer.add( function () {
+
+		scope.historyDisabled = false;
 
 	} );
 
@@ -21872,45 +21767,285 @@ var History = function ( editor ) {
 
 History.prototype = {
 
-	add: function ( undo, redo ) {
+	execute: function ( cmd, optionalName ) {
 
-		this.current ++;
+		var lastCmd = this.undos[ this.undos.length - 1 ];
+		var timeDifference = new Date().getTime() - this.lastCmdTime.getTime();
 
-		this.array[ this.current ] = { undo: undo, redo: redo };
-		this.arrayLength = this.current;
+		var isUpdatableCmd = lastCmd &&
+			lastCmd.updatable &&
+			cmd.updatable &&
+			lastCmd.object === cmd.object &&
+			lastCmd.type === cmd.type &&
+			lastCmd.script === cmd.script &&
+			lastCmd.attributeName === cmd.attributeName;
+
+		if ( isUpdatableCmd && cmd.type === "SetScriptValueCommand" ) {
+
+			// When the cmd.type is "SetScriptValueCommand" the timeDifference is ignored
+
+			lastCmd.update( cmd );
+			cmd = lastCmd;
+
+		} else if ( isUpdatableCmd && timeDifference < 500 ) {
+
+			lastCmd.update( cmd );
+			cmd = lastCmd;
+
+		} else {
+
+			// the command is not updatable and is added as a new part of the history
+
+			this.undos.push( cmd );
+			cmd.id = ++ this.idCounter;
+
+		}
+		cmd.name = ( optionalName !== undefined ) ? optionalName : cmd.name;
+		cmd.execute();
+		cmd.inMemory = true;
+
+		if ( this.config.getKey( 'project/history/stored' ) ) {
+
+			cmd.json = cmd.toJSON();	// serialize the cmd immediately after execution and append the json to the cmd
+
+		}
+		this.lastCmdTime = new Date();
+
+		// clearing all the redo-commands
+
+		this.redos = [];
+		this.editor.signals.historyChanged.dispatch( cmd );
 
 	},
 
 	undo: function () {
 
-		if ( this.current < 0 ) return;
+		if ( this.historyDisabled ) {
 
-		this.isRecording = false;
+			alert( "Undo/Redo disabled while scene is playing." );
+			return;
 
-		this.array[ this.current -- ].undo();
+		}
 
-		this.isRecording = true;
+		var cmd = undefined;
+
+		if ( this.undos.length > 0 ) {
+
+			cmd = this.undos.pop();
+
+			if ( cmd.inMemory === false ) {
+
+				cmd.fromJSON( cmd.json );
+
+			}
+
+		}
+
+		if ( cmd !== undefined ) {
+
+			cmd.undo();
+			this.redos.push( cmd );
+			this.editor.signals.historyChanged.dispatch( cmd );
+
+		}
+
+		return cmd;
 
 	},
 
 	redo: function () {
 
-		if ( this.current === this.arrayLength ) return;
+		if ( this.historyDisabled ) {
 
-		this.isRecording = false;
+			alert( "Undo/Redo disabled while scene is playing." );
+			return;
 
-		this.array[ ++ this.current ].redo();
+		}
 
-		this.isRecording = true;
+		var cmd = undefined;
+
+		if ( this.redos.length > 0 ) {
+
+			cmd = this.redos.pop();
+
+			if ( cmd.inMemory === false ) {
+
+				cmd.fromJSON( cmd.json );
+
+			}
+
+		}
+
+		if ( cmd !== undefined ) {
+
+			cmd.execute();
+			this.undos.push( cmd );
+			this.editor.signals.historyChanged.dispatch( cmd );
+
+		}
+
+		return cmd;
+
+	},
+
+	toJSON: function () {
+
+		var history = {};
+		history.undos = [];
+		history.redos = [];
+
+		if ( ! this.config.getKey( 'project/history/stored' ) ) {
+
+			return history;
+
+		}
+
+		// Append Undos to History
+
+		for ( var i = 0 ; i < this.undos.length; i ++ ) {
+
+			if ( this.undos[ i ].hasOwnProperty( "json" ) ) {
+
+				history.undos.push( this.undos[ i ].json );
+
+			}
+
+		}
+
+		// Append Redos to History
+
+		for ( var i = 0 ; i < this.redos.length; i ++ ) {
+
+			if ( this.redos[ i ].hasOwnProperty( "json" ) ) {
+
+				history.redos.push( this.redos[ i ].json );
+
+			}
+
+		}
+
+		return history;
+
+	},
+
+	fromJSON: function ( json ) {
+
+		if ( json === undefined ) return;
+
+		for ( var i = 0; i < json.undos.length; i ++ ) {
+
+			var cmdJSON = json.undos[ i ];
+			var cmd = new window[ cmdJSON.type ]();	// creates a new object of type "json.type"
+			cmd.json = cmdJSON;
+			cmd.id = cmdJSON.id;
+			cmd.name = cmdJSON.name;
+			this.undos.push( cmd );
+			this.idCounter = ( cmdJSON.id > this.idCounter ) ? cmdJSON.id : this.idCounter; // set last used idCounter
+
+		}
+
+		for ( var i = 0; i < json.redos.length; i ++ ) {
+
+			var cmdJSON = json.redos[ i ];
+			var cmd = new window[ cmdJSON.type ]();	// creates a new object of type "json.type"
+			cmd.json = cmdJSON;
+			cmd.id = cmdJSON.id;
+			cmd.name = cmdJSON.name;
+			this.redos.push( cmd );
+			this.idCounter = ( cmdJSON.id > this.idCounter ) ? cmdJSON.id : this.idCounter; // set last used idCounter
+
+		}
+
+		// Select the last executed undo-command
+		this.editor.signals.historyChanged.dispatch( this.undos[ this.undos.length - 1 ] );
 
 	},
 
 	clear: function () {
 
-		this.array = [];
-		this.arrayLength = -1;
+		this.undos = [];
+		this.redos = [];
+		this.idCounter = 0;
 
-		this.current = -1;
+		this.editor.signals.historyChanged.dispatch();
+
+	},
+
+	goToState: function ( id ) {
+
+		if ( this.historyDisabled ) {
+
+			alert( "Undo/Redo disabled while scene is playing." );
+			return;
+
+		}
+
+		this.editor.signals.sceneGraphChanged.active = false;
+		this.editor.signals.historyChanged.active = false;
+
+		var cmd = this.undos.length > 0 ? this.undos[ this.undos.length - 1 ] : undefined;	// next cmd to pop
+
+		if ( cmd === undefined || id > cmd.id ) {
+
+			cmd = this.redo();
+			while ( cmd !== undefined && id > cmd.id ) {
+
+				cmd = this.redo();
+
+			}
+
+		} else {
+
+			while ( true ) {
+
+				cmd = this.undos[ this.undos.length - 1 ];	// next cmd to pop
+
+				if ( cmd === undefined || id === cmd.id ) break;
+
+				cmd = this.undo();
+
+			}
+
+		}
+
+		this.editor.signals.sceneGraphChanged.active = true;
+		this.editor.signals.historyChanged.active = true;
+
+		this.editor.signals.sceneGraphChanged.dispatch();
+		this.editor.signals.historyChanged.dispatch( cmd );
+
+	},
+
+	enableSerialization: function ( id ) {
+
+		/**
+		 * because there might be commands in this.undos and this.redos
+		 * which have not been serialized with .toJSON() we go back
+		 * to the oldest command and redo one command after the other
+		 * while also calling .toJSON() on them.
+		 */
+
+		this.goToState( - 1 );
+
+		this.editor.signals.sceneGraphChanged.active = false;
+		this.editor.signals.historyChanged.active = false;
+
+		var cmd = this.redo();
+		while ( cmd !== undefined ) {
+
+			if ( ! cmd.hasOwnProperty( "json" ) ) {
+
+				cmd.json = cmd.toJSON();
+
+			}
+			cmd = this.redo();
+
+		}
+
+		this.editor.signals.sceneGraphChanged.active = true;
+		this.editor.signals.historyChanged.active = true;
+
+		this.goToState( id );
 
 	}
 
@@ -21931,10 +22066,27 @@ var Loader = function ( editor ) {
 
 	this.loadFile = function ( file ) {
 
+		console.log(file);
+
 		var filename = file.name;
 		var extension = filename.split( '.' ).pop().toLowerCase();
 
 		switch ( extension ) {
+
+			case 'amf':
+
+				var reader = new FileReader();
+				reader.addEventListener( 'load', function ( event ) {
+
+					var loader = new THREE.AMFLoader();
+					var amfobject = loader.parse( event.target.result );
+
+					editor.execute( new AddObjectCommand( amfobject ) );
+
+				}, false );
+				reader.readAsArrayBuffer( file );
+
+				break;
 
 			case 'awd':
 
@@ -21944,7 +22096,7 @@ var Loader = function ( editor ) {
 					var loader = new THREE.AWDLoader();
 					var scene = loader.parse( event.target.result );
 
-					editor.setScene( scene );
+					editor.execute( new SetSceneCommand( scene ) );
 
 				}, false );
 				reader.readAsArrayBuffer( file );
@@ -21962,7 +22114,7 @@ var Loader = function ( editor ) {
 					var loader = new THREE.BabylonLoader();
 					var scene = loader.parse( json );
 
-					editor.setScene( scene );
+					editor.execute( new SetSceneCommand( scene ) );
 
 				}, false );
 				reader.readAsText( file );
@@ -21980,13 +22132,12 @@ var Loader = function ( editor ) {
 					var loader = new THREE.BabylonLoader();
 
 					var geometry = loader.parseGeometry( json );
-					var material = new THREE.MeshPhongMaterial();
+					var material = new THREE.MeshStandardMaterial();
 
 					var mesh = new THREE.Mesh( geometry, material );
 					mesh.name = filename;
 
-					editor.addObject( mesh );
-					editor.select( mesh );
+					editor.execute( new AddObjectCommand( mesh ) );
 
 				}, false );
 				reader.readAsText( file );
@@ -22009,13 +22160,12 @@ var Loader = function ( editor ) {
 						geometry.sourceType = "ctm";
 						geometry.sourceFile = file.name;
 
-						var material = new THREE.MeshPhongMaterial();
+						var material = new THREE.MeshStandardMaterial();
 
 						var mesh = new THREE.Mesh( geometry, material );
 						mesh.name = filename;
 
-						editor.addObject( mesh );
-						editor.select( mesh );
+						editor.execute( new AddObjectCommand( mesh ) );
 
 					} );
 
@@ -22031,16 +22181,12 @@ var Loader = function ( editor ) {
 
 					var contents = event.target.result;
 
-					var parser = new DOMParser();
-					var xml = parser.parseFromString( contents, 'text/xml' );
-
 					var loader = new THREE.ColladaLoader();
-					var collada = loader.parse( xml );
+					var collada = loader.parse( contents );
 
 					collada.scene.name = filename;
 
-					editor.addObject( collada.scene );
-					editor.select( collada.scene );
+					editor.execute( new AddObjectCommand( collada.scene ) );
 
 				}, false );
 				reader.readAsText( file );
@@ -22060,11 +22206,9 @@ var Loader = function ( editor ) {
 
 					var contents = event.target.result;
 
-					document.getElementById( "preloader" ).style.display = "block";
-					console.log("preloaderStart");
 					// 2.0
 
-					if ( contents.indexOf( 'postMessage' ) !== -1 ) {
+					if ( contents.indexOf( 'postMessage' ) !== - 1 ) {
 
 						var blob = new Blob( [ contents ], { type: 'text/javascript' } );
 						var url = URL.createObjectURL( blob );
@@ -22079,6 +22223,7 @@ var Loader = function ( editor ) {
 						};
 
 						worker.postMessage( Date.now() );
+
 						return;
 
 					}
@@ -22105,29 +22250,47 @@ var Loader = function ( editor ) {
 
 				break;
 
-				case 'md2':
 
-					var reader = new FileReader();
-					reader.addEventListener( 'load', function ( event ) {
+			case 'kmz':
 
-						var contents = event.target.result;
+				var reader = new FileReader();
+				reader.addEventListener( 'load', function ( event ) {
 
-						var geometry = new THREE.MD2Loader().parse( contents );
-						var material = new THREE.MeshPhongMaterial( {
-							morphTargets: true,
-							morphNormals: true
-						} );
+					var loader = new THREE.KMZLoader();
+					var collada = loader.parse( event.target.result );
 
-						var object = new THREE.MorphAnimMesh( geometry, material );
-						object.name = filename;
+					collada.scene.name = filename;
 
-						editor.addObject( object );
-						editor.select( object );
+					editor.execute( new AddObjectCommand( collada.scene ) );
 
-					}, false );
-					reader.readAsArrayBuffer( file );
+				}, false );
+				reader.readAsArrayBuffer( file );
 
-					break;
+				break;
+
+			case 'md2':
+
+				var reader = new FileReader();
+				reader.addEventListener( 'load', function ( event ) {
+
+					var contents = event.target.result;
+
+					var geometry = new THREE.MD2Loader().parse( contents );
+					var material = new THREE.MeshStandardMaterial( {
+						morphTargets: true,
+						morphNormals: true
+					} );
+
+					var mesh = new THREE.Mesh( geometry, material );
+					mesh.mixer = new THREE.AnimationMixer( mesh );
+					mesh.name = filename;
+
+					editor.execute( new AddObjectCommand( mesh ) );
+
+				}, false );
+				reader.readAsArrayBuffer( file );
+
+				break;
 
 			case 'obj':
 
@@ -22139,8 +22302,25 @@ var Loader = function ( editor ) {
 					var object = new THREE.OBJLoader().parse( contents );
 					object.name = filename;
 
-					editor.addObject( object );
-					editor.select( object );
+					editor.execute( new AddObjectCommand( object ) );
+
+				}, false );
+				reader.readAsText( file );
+
+				break;
+
+			case 'playcanvas':
+
+				var reader = new FileReader();
+				reader.addEventListener( 'load', function ( event ) {
+
+					var contents = event.target.result;
+					var json = JSON.parse( contents );
+
+					var loader = new THREE.PlayCanvasLoader();
+					var object = loader.parse( json );
+
+					editor.execute( new AddObjectCommand( object ) );
 
 				}, false );
 				reader.readAsText( file );
@@ -22158,13 +22338,12 @@ var Loader = function ( editor ) {
 					geometry.sourceType = "ply";
 					geometry.sourceFile = file.name;
 
-					var material = new THREE.MeshPhongMaterial();
+					var material = new THREE.MeshStandardMaterial();
 
 					var mesh = new THREE.Mesh( geometry, material );
 					mesh.name = filename;
 
-					editor.addObject( mesh );
-					editor.select( mesh );
+					editor.execute( new AddObjectCommand( mesh ) );
 
 				}, false );
 				reader.readAsText( file );
@@ -22182,13 +22361,12 @@ var Loader = function ( editor ) {
 					geometry.sourceType = "stl";
 					geometry.sourceFile = file.name;
 
-					var material = new THREE.MeshPhongMaterial();
+					var material = new THREE.MeshStandardMaterial();
 
 					var mesh = new THREE.Mesh( geometry, material );
 					mesh.name = filename;
 
-					editor.addObject( mesh );
-					editor.select( mesh );
+					editor.execute( new AddObjectCommand( mesh ) );
 
 				}, false );
 
@@ -22217,8 +22395,7 @@ var Loader = function ( editor ) {
 
 					var mesh = new THREE.Mesh( geometry, material );
 
-					editor.addObject( mesh );
-					editor.select( mesh );
+					editor.execute( new AddObjectCommand( mesh ) );
 
 				}, false );
 				reader.readAsBinaryString( file );
@@ -22237,13 +22414,12 @@ var Loader = function ( editor ) {
 					geometry.sourceType = "vtk";
 					geometry.sourceFile = file.name;
 
-					var material = new THREE.MeshPhongMaterial();
+					var material = new THREE.MeshStandardMaterial();
 
 					var mesh = new THREE.Mesh( geometry, material );
 					mesh.name = filename;
 
-					editor.addObject( mesh );
-					editor.select( mesh );
+					editor.execute( new AddObjectCommand( mesh ) );
 
 				}, false );
 				reader.readAsText( file );
@@ -22259,7 +22435,7 @@ var Loader = function ( editor ) {
 
 					var result = new THREE.VRMLLoader().parse( contents );
 
-					editor.setScene( result );
+					editor.execute( new SetSceneCommand( result ) );
 
 				}, false );
 				reader.readAsText( file );
@@ -22274,13 +22450,9 @@ var Loader = function ( editor ) {
 
 		}
 
-	}
+	};
 
-	var handleJSON = function ( data, file, filename ) {
-
-		// data.metadata = data.object.metadata;
-
-		// delete data.object.metadata;
+	function handleJSON( data, file, filename ) {
 
 		if ( data.metadata === undefined ) { // 2.0
 
@@ -22294,111 +22466,123 @@ var Loader = function ( editor ) {
 
 		}
 
-		if ( data.metadata.version === undefined ) {
+		if ( data.metadata.formatVersion !== undefined ) {
 
 			data.metadata.version = data.metadata.formatVersion;
 
 		}
 
-		if ( data.metadata.type === 'BufferGeometry' ) {
+		switch ( data.metadata.type.toLowerCase() ) {
 
-			var loader = new THREE.BufferGeometryLoader();
-			var result = loader.parse( data );
+			case 'buffergeometry':
+				console.log("buffergeometry");
 
-			var mesh = new THREE.Mesh( result );
+				var loader = new THREE.BufferGeometryLoader();
+				var result = loader.parse( data );
 
-			editor.addObject( mesh );
-			editor.select( mesh );
+				var mesh = new THREE.Mesh( result );
 
-		} else if ( data.metadata.type.toLowerCase() === 'geometry' ) {
+				editor.execute( new AddObjectCommand( mesh ) );
 
-			// console.log("hey")
+				break;
 
+			case 'geometry':
+				console.log("geometry");
 
-			var loader = new THREE.JSONLoader();
-			loader.setTexturePath( scope.texturePath );
+				var loader = new THREE.JSONLoader();
+				loader.setTexturePath( scope.texturePath );
 
-			var result = loader.parse( data );
+				var result = loader.parse( data );
 
-			var geometry = result.geometry;
-			var material;
+				var geometry = result.geometry;
+				var material;
 
-			if ( result.materials !== undefined ) {
+				if ( result.materials !== undefined ) {
 
-				if ( result.materials.length > 1 ) {
+					if ( result.materials.length > 1 ) {
 
-					material = new THREE.MeshFaceMaterial( result.materials );
+						material = new THREE.MeshFaceMaterial( result.materials );
+
+					} else {
+
+						material = result.materials[ 0 ];
+
+					}
 
 				} else {
 
-					material = result.materials[ 0 ];
+					material = new THREE.MeshStandardMaterial();
 
 				}
 
-			} else {
+				geometry.sourceType = "ascii";
+				geometry.sourceFile = file.name;
 
-				material = new THREE.MeshPhongMaterial();
+				var mesh;
 
-			}
+				if ( geometry.animation && geometry.animation.hierarchy ) {
 
-			geometry.sourceType = "ascii";
-			geometry.sourceFile = file.name;
+					mesh = new THREE.SkinnedMesh( geometry, material );
 
-			var mesh;
+				} else {
 
-			if ( geometry.animation && geometry.animation.hierarchy ) {
+					mesh = new THREE.Mesh( geometry, material );
 
-				mesh = new THREE.SkinnedMesh( geometry, material );
+				}
 
-			} else {
+				mesh.name = filename;
 
-				mesh = new THREE.Mesh( geometry, material );
+				editor.execute( new AddObjectCommand( mesh ) );
 
-			}
+				break;
 
-			mesh.name = filename;
+			case 'object':
+				console.log("object");
 
-			editor.addObject( mesh );
-			editor.select( mesh );
+				var loader = new THREE.ObjectLoader();
+				loader.setTexturePath( scope.texturePath );
 
-		} else if ( data.metadata.type.toLowerCase() === 'object' ) {
+				var result = loader.parse( data );
 
+				if ( result instanceof THREE.Scene ) {
 
-			var loader = new THREE.ObjectLoader();
-			loader.setTexturePath( scope.texturePath );
+					editor.execute( new SetSceneCommand( result ) );
 
-			var result = loader.parse( data );
+				} else {
 
-			if ( result instanceof THREE.Scene ) {
+					editor.execute( new AddObjectCommand( result ) );
 
-				editor.setScene( result );
+				}
 
-			} else {
+				break;
 
-				editor.addObject( result );
-				editor.select( result );
+			case 'scene':
+				console.log("scene");
 
-			}
+				// DEPRECATED
 
-		} else if ( data.metadata.type.toLowerCase() === 'scene' ) {
+				var loader = new THREE.SceneLoader();
+				loader.parse( data, function ( result ) {
 
-			// DEPRECATED
+					editor.execute( new SetSceneCommand( result.scene ) );
 
-			var loader = new THREE.SceneLoader();
-			loader.parse( data, function ( result ) {
+				}, '' );
 
-				editor.setScene( result.scene );
+				break;
 
-			}, '' );
+			case 'app':
+
+				console.log(data);
+
+				editor.fromJSON( data );
+
+				break;
 
 		}
-		
 
-		document.getElementById( "preloader" ).style.display = "none";
-		console.log("preLoaderDone");
-	};
+	}
 
-}
+};
 
 // File:editor/js/Menubar.js
 
@@ -22414,14 +22598,11 @@ var Menubar = function ( editor ) {
 	container.add( new Menubar.File( editor ) );
 	container.add( new Menubar.Edit( editor ) );
 	container.add( new Menubar.Add( editor ) );
-	container.add( new Menubar.Light( editor ) );
-	container.add( new Menubar.Navigation( editor ) );
-	container.add( new Menubar.View( editor ) );
-	// container.add( new Menubar.Play( editor ) );
-	container.add( new Menubar.Plus( editor ) );
+	container.add( new Menubar.Play( editor ) );
+	container.add( new Menubar.Examples( editor ) );
+	container.add( new Menubar.Help( editor ) );
 
 	container.add( new Menubar.Status( editor ) );
-    container.add( new Menubar.Preview( editor ) );
 
 	return container;
 
@@ -22449,7 +22630,7 @@ Menubar.File = function ( editor ) {
 
 	// New
 
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'New' );
 	option.onClick( function () {
@@ -22457,7 +22638,6 @@ Menubar.File = function ( editor ) {
 		if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
 
 			editor.clear();
-            // App.Helper.New();
 
 		}
 
@@ -22478,7 +22658,7 @@ Menubar.File = function ( editor ) {
 
 	} );
 
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'Import' );
 	option.onClick( function () {
@@ -22488,97 +22668,315 @@ Menubar.File = function ( editor ) {
 	} );
 	options.add( option );
 
-	// var option = new UI.Panel();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Reload from LocalStorage' );
-	// option.onClick( function () {
+	//
 
-	// 	var file = null;
-	// 	var hash = window.location.hash;
+	options.add( new UI.HorizontalRule() );
 
-	// 	if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
-	// 	if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
+	// Export Editor
 
-	// 	if ( file !== null ) {
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export Editor' );
+	option.onClick( function () {
 
-	// 		if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
+		var zip = new JSZip();
 
-	// 			var loader = new THREE.XHRLoader();
-	// 			loader.crossOrigin = '';
-	// 			loader.load( file, function ( text ) {
+		//
 
-	// 				var json = JSON.parse( text );
+		var output = editor.toJSON();
+		output.metadata.type = 'App';
+		delete output.history;
 
-	// 				editor.clear();
-	// 				editor.fromJSON( json );
+		output = JSON.stringify( output, null, '\t' );
+		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-	// 			} );
+		saveString( output, 'zaak.json' );
 
-	// 		}
+		// //
 
-	// 	}
+		// var manager = new THREE.LoadingManager( function () {
 
-	// } );
-	// options.add( option );
+		// 	save( zip.generate( { type: 'blob' } ), 'download.zip' );
 
+		// } );
+
+		// var loader = new THREE.XHRLoader( manager );
+		// loader.load( 'js/libs/app/index.html', function ( content ) {
+
+		// 	zip.file( 'index.html', content );
+
+		// } );
+		// loader.load( 'js/libs/app.js', function ( content ) {
+
+		// 	zip.file( 'js/app.js', content );
+
+		// } );
+		// loader.load( '../build/three.min.js', function ( content ) {
+
+		// 	zip.file( 'js/three.min.js', content );
+
+		// } );
+
+	} );
+	options.add( option );
+
+
+	// Export Geometry
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export Geometry' );
+	option.onClick( function () {
+
+		var object = editor.selected;
+
+		if ( object === null ) {
+
+			alert( 'No object selected.' );
+			return;
+
+		}
+
+		var geometry = object.geometry;
+
+		if ( geometry === undefined ) {
+
+			alert( 'The selected object doesn\'t have geometry.' );
+			return;
+
+		}
+
+		var output = geometry.toJSON();
+
+		try {
+
+			output = JSON.stringify( output, null, '\t' );
+			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+		} catch ( e ) {
+
+			output = JSON.stringify( output );
+
+		}
+
+		saveString( output, 'geometry.json' );
+
+	} );
+	options.add( option );
+
+	// Export Geometry
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export Geometry' );
+	option.onClick( function () {
+
+		var object = editor.selected;
+
+		if ( object === null ) {
+
+			alert( 'No object selected.' );
+			return;
+
+		}
+
+		var geometry = object.geometry;
+
+		if ( geometry === undefined ) {
+
+			alert( 'The selected object doesn\'t have geometry.' );
+			return;
+
+		}
+
+		var output = geometry.toJSON();
+
+		try {
+
+			output = JSON.stringify( output, null, '\t' );
+			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+		} catch ( e ) {
+
+			output = JSON.stringify( output );
+
+		}
+
+		saveString( output, 'geometry.json' );
+
+	} );
+	options.add( option );
+
+	// Export Object
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export Object' );
+	option.onClick( function () {
+
+		var object = editor.selected;
+
+		if ( object === null ) {
+
+			alert( 'No object selected' );
+			return;
+
+		}
+
+		var output = object.toJSON();
+
+		try {
+
+			output = JSON.stringify( output, null, '\t' );
+			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+		} catch ( e ) {
+
+			output = JSON.stringify( output );
+
+		}
+
+		saveString( output, 'model.json' );
+
+	} );
+	options.add( option );
+
+	// Export Scene
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export Scene' );
+	option.onClick( function () {
+
+		var output = editor.scene.toJSON();
+
+		try {
+
+			output = JSON.stringify( output, null, '\t' );
+			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+		} catch ( e ) {
+
+			output = JSON.stringify( output );
+
+		}
+
+		saveString( output, 'scene.json' );
+
+	} );
+	options.add( option );
+
+	// Export OBJ
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export OBJ' );
+	option.onClick( function () {
+
+		var object = editor.selected;
+
+		if ( object === null ) {
+
+			alert( 'No object selected.' );
+			return;
+
+		}
+
+		var exporter = new THREE.OBJExporter();
+
+		saveString( exporter.parse( object ), 'model.obj' );
+
+	} );
+	options.add( option );
+
+	// Export STL
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export STL' );
+	option.onClick( function () {
+
+		var exporter = new THREE.STLExporter();
+
+		saveString( exporter.parse( editor.scene ), 'model.stl' );
+
+	} );
+	options.add( option );
 
 	//
 
 	options.add( new UI.HorizontalRule() );
 
+	// Publish
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Publish' );
+	option.onClick( function () {
+
+		var zip = new JSZip();
+
+		//
+
+		var output = editor.toJSON();
+		output.metadata.type = 'App';
+		delete output.history;
+
+		output = JSON.stringify( output, null, '\t' );
+		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+
+		zip.file( 'app.json', output );
+
+		//
+
+		var manager = new THREE.LoadingManager( function () {
+
+			save( zip.generate( { type: 'blob' } ), 'download.zip' );
+
+		} );
+
+		var loader = new THREE.XHRLoader( manager );
+		loader.load( 'js/libs/app/index.html', function ( content ) {
+
+			zip.file( 'index.html', content );
+
+		} );
+		loader.load( 'js/libs/app.js', function ( content ) {
+
+			zip.file( 'js/app.js', content );
+
+		} );
+		loader.load( '../build/three.min.js', function ( content ) {
+
+			zip.file( 'js/three.min.js', content );
+
+		} );
+
+	} );
+	options.add( option );
 
 
-
-
-	// Export Scene
-
-	// var option = new UI.Panel();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Export Scene' );
-	// option.onClick( function () {
-
-	// 	var output = editor.scene.toJSON();
-	// 	output = JSON.stringify( output, null, '\t' );
-	// 	output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
-
-	// 	exportString( output, 'scene.json' );
-
-	// } );
-	// options.add( option );
+	//
 
 	var link = document.createElement( 'a' );
 	link.style.display = 'none';
 	document.body.appendChild( link ); // Firefox workaround, see #6594
 
-	var exportString = function ( output, filename ) {
+	function save( blob, filename ) {
 
-		var blob = new Blob( [ output ], { type: 'text/plain' } );
-		var objectURL = URL.createObjectURL( blob );
-
-		link.href = objectURL;
+		link.href = URL.createObjectURL( blob );
 		link.download = filename || 'data.json';
-		link.target = '_blank';
+		link.click();
 
-		var event = document.createEvent("MouseEvents");
-		event.initMouseEvent(
-			"click", true, false, window, 0, 0, 0, 0, 0
-			, false, false, false, false, 0, null
-		);
-		link.dispatchEvent(event);
+		// URL.revokeObjectURL( url ); breaks Firefox...
 
-	};
+	}
 
-	// Save to Platform
+	function saveString( text, filename ) {
 
-    var option = new UI.Panel();
-    option.setClass( 'option' );
-    option.setTextContent( 'Publish' );
+		save( new Blob( [ text ], { type: 'text/plain' } ), filename );
 
-    option.onClick( function () {
-        var output = editor.scene.toJSON();
-        App.Helper.Save(output);
-    } );
-    options.add( option );
+	}
 
 	return container;
 
@@ -22595,7 +22993,7 @@ Menubar.Edit = function ( editor ) {
 	var container = new UI.Panel();
 	container.setClass( 'menu' );
 
-	var title = new UI.Panel();	
+	var title = new UI.Panel();
 	title.setClass( 'title' );
 	title.setTextContent( 'Edit' );
 	container.add( title );
@@ -22604,105 +23002,189 @@ Menubar.Edit = function ( editor ) {
 	options.setClass( 'options' );
 	container.add( options );
 
-	//Undo
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Undo ( ' + editor.shortcuts.getKey( 'history/undo' ) +' )' );
-	option.onClick( function () {
+	// Undo
 
-		editor.history.undo();
+	var undo = new UI.Row();
+	undo.setClass( 'option' );
+	undo.setTextContent( 'Undo (Ctrl+Z)' );
+	undo.onClick( function () {
+
+		editor.undo();
 
 	} );
-	options.add( option );	
+	options.add( undo );
 
-	//Redo
-	var option = new UI.Panel();
+	// Redo
+
+	var redo = new UI.Row();
+	redo.setClass( 'option' );
+	redo.setTextContent( 'Redo (Ctrl+Shift+Z)' );
+	redo.onClick( function () {
+
+		editor.redo();
+
+	} );
+	options.add( redo );
+
+	// Clear History
+
+	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'Redo ( ' + editor.shortcuts.getKey( 'history/redo' ) +' )' );
+	option.setTextContent( 'Clear History' );
 	option.onClick( function () {
 
-		editor.history.redo();
+		if ( confirm( 'The Undo/Redo History will be cleared. Are you sure?' ) ) {
+
+			editor.history.clear();
+
+		}
 
 	} );
 	options.add( option );
+
+
+	editor.signals.historyChanged.add( function () {
+
+		var history = editor.history;
+
+		undo.setClass( 'option' );
+		redo.setClass( 'option' );
+
+		if ( history.undos.length == 0 ) {
+
+			undo.setClass( 'inactive' );
+
+		}
+
+		if ( history.redos.length == 0 ) {
+
+			redo.setClass( 'inactive' );
+
+		}
+
+	} );
+
+	// ---
 
 	options.add( new UI.HorizontalRule() );
 
-	//Translate
-	var option = new UI.Panel();
+	// Clone
+
+	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'Translate ( ' + editor.shortcuts.getKey( 'transform/move' ) +' )' );
+	option.setTextContent( 'Clone' );
 	option.onClick( function () {
 
-		signals.transformModeChanged.dispatch( 'translate' );
+		var object = editor.selected;
+
+		if ( object.parent === null ) return; // avoid cloning the camera or scene
+
+		object = object.clone();
+
+		editor.execute( new AddObjectCommand( object ) );
 
 	} );
 	options.add( option );
 
-	//Scale
-	var option = new UI.Panel();
+	// Delete
+
+	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'Scale ( ' + editor.shortcuts.getKey( 'transform/scale' ) +' )' );
-		option.onClick( function () {
-
-		signals.transformModeChanged.dispatch( 'scale' );
-
-	} );
-	options.add( option );
-
-	//Rotate
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Rotate ( ' + editor.shortcuts.getKey( 'transform/rotate' ) +' )' );
+	option.setTextContent( 'Delete' );
 	option.onClick( function () {
 
-		signals.transformModeChanged.dispatch( 'rotate' );
+		var object = editor.selected;
+
+		if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
+
+		var parent = object.parent;
+		if ( parent === undefined ) return; // avoid deleting the camera or scene
+
+		editor.execute( new RemoveObjectCommand( object ) );
 
 	} );
 	options.add( option );
 
-	options.add( new UI.HorizontalRule() );
+	// Minify shaders
 
-	//TODO: Put the action to a different place
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'Clone ( ' + editor.shortcuts.getKey( 'edit/clone' ) +' )');
-	option.onClick( function () {
+	option.setTextContent( 'Minify Shaders' );
+	option.onClick( function() {
 
-		// var object = editor.selected;
+		var root = editor.selected || editor.scene;
 
-		// if ( object.parent === undefined ) return; // avoid cloning the camera or scene
+		var errors = [];
+		var nMaterialsChanged = 0;
 
-		// object = object.clone();
+		var path = [];
 
-		// editor.addObject( object );
-		// editor.select( object );
-		editor.cloneObject();
+		function getPath ( object ) {
+
+			path.length = 0;
+
+			var parent = object.parent;
+			if ( parent !== undefined ) getPath( parent );
+
+			path.push( object.name || object.uuid );
+
+			return path;
+
+		}
+
+		var cmds = [];
+		root.traverse( function ( object ) {
+
+			var material = object.material;
+
+			if ( material instanceof THREE.ShaderMaterial ) {
+
+				try {
+
+					var shader = glslprep.minifyGlsl( [
+							material.vertexShader, material.fragmentShader ] );
+
+					cmds.push( new SetMaterialValueCommand( object, 'vertexShader', shader[ 0 ] ) );
+					cmds.push( new SetMaterialValueCommand( object, 'fragmentShader', shader[ 1 ] ) );
+
+					++nMaterialsChanged;
+
+				} catch ( e ) {
+
+					var path = getPath( object ).join( "/" );
+
+					if ( e instanceof glslprep.SyntaxError )
+
+						errors.push( path + ":" +
+								e.line + ":" + e.column + ": " + e.message );
+
+					else {
+
+						errors.push( path +
+								": Unexpected error (see console for details)." );
+
+						console.error( e.stack || e );
+
+					}
+
+				}
+
+			}
+
+		} );
+
+		if ( nMaterialsChanged > 0 ) {
+
+			editor.execute( new MultiCmdsCommand( cmds ), 'Minify Shaders' );
+
+		}
+
+		window.alert( nMaterialsChanged +
+				" material(s) were changed.\n" + errors.join( "\n" ) );
 
 	} );
 	options.add( option );
 
-	//TODO: Put the action to a different place
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Delete ( X )' );
-	option.onClick( function () {
-	
-		// var object = editor.selected;
-
-		// if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
-
-		// var parent = object.parent;
-		// editor.removeObject( object );
-		// editor.select( parent );
-		editor.destoryCurrent();
-
-	} );
-	options.add( option );
-
-
-	options.add( option );
-	
 
 	return container;
 
@@ -22728,7 +23210,8 @@ Menubar.Add = function ( editor ) {
 	options.setClass( 'options' );
 	container.add( options );
 
-	
+	//
+
 	var meshCount = 0;
 	var lightCount = 0;
 	var cameraCount = 0;
@@ -22741,98 +23224,174 @@ Menubar.Add = function ( editor ) {
 
 	} );
 
-	// Plane
+	// Group
 
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'Plane' );
+	option.setTextContent( 'Group' );
 	option.onClick( function () {
 
-		var width = 200;
-		var height = 200;
+		var mesh = new THREE.Group();
+		mesh.name = 'Group ' + ( ++ meshCount );
 
-		var widthSegments = 1;
-		var heightSegments = 1;
-
-		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
-		var material = new THREE.MeshPhongMaterial();
-		var mesh = new THREE.Mesh( geometry, material );
-		mesh.name = 'Plane ' + ( ++ meshCount );
-
-		editor.addObject( mesh );
-		editor.select( mesh );
+		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
 	options.add( option );
 
-	// // Soundsource
-	// var option = new UI.Panel();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Soundsource' );
-	// option.onClick( function () {
+	//
 
-	// 	var source = new THREE.Audio(editor.listener);
+	options.add( new UI.HorizontalRule() );
 
-	// 	editor.addObject( source );
-	// 	editor.select( source );
+	// HTML Mixer
 
-	// } );
-	// options.add( option );
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'HTML' );
+	option.onClick( function () {
+
+			////////////////////////////////////////////////////////////////////////////////
+		//		create THREEx.HtmlMixer						//
+		//////////////////////////////////////////////////////////////////////////////////
+
+		console.log(editor.renderer);
+
+		var mixerContext = new THREEx.HtmlMixer.Context(editor.renderer, editor.scene, editor.camera)
+		mixerContext.rendererCss.setSize( window.innerWidth, window.innerHeight )
+
+		// handle window resize for mixerContext
+		window.addEventListener('resize', function(){
+			mixerContext.rendererCss.setSize( window.innerWidth, window.innerHeight )
+		}, false)
+
+		//////////////////////////////////////////////////////////////////////////////////
+		//		mixerContext configuration and dom attachement
+		//////////////////////////////////////////////////////////////////////////////////
+
+	 	// set up rendererCss
+		var rendererCss		= mixerContext.rendererCss
+		// set up rendererWebgl
+		var rendererWebgl	= mixerContext.rendererWebgl
+
+		var css3dElement		= rendererCss.domElement
+		css3dElement.style.position	= 'absolute'
+		css3dElement.style.top		= '0px'
+		css3dElement.style.width	= '100%'
+		css3dElement.style.height	= '100%'
+		css3dElement.style.zIndex = -20
+		document.body.appendChild( css3dElement )
+		
+		
+		//////////////////////////////////////////////////////////////////////////////////
+		//		create a Plane for THREEx.HtmlMixer				//
+		//////////////////////////////////////////////////////////////////////////////////
+		
+		// var url		= 'http://threejs.org';
+		// var domElement	= THREEx.HtmlMixerHelpers.createIframeDomElement(url)
+
+		//
+
+		var url		= 'images/UV_Grid_Sm.jpg';
+		var domElement	= THREEx.HtmlMixerHelpers.createImageDomElement(url)
+
+		console.log('domElement', domElement)
+
+		var mixerPlane	= new THREEx.HtmlMixer.Plane(editor.mixerContext, domElement)
+		scene.add( mixerPlane.object3d )
+
+		onRenderFcts.push(function(){
+			var object3d	= mixerPlane.object3d
+			// object3d.rotation.y	+= 0.001
+		})
+
+		editor.execute( new AddObjectCommand( mixerPlane.object3d ) );
+
+	} );
+	options.add( option );
+
+	// Plane
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Plane' );
+	option.onClick( function () {
+
+		var geometry = new THREE.PlaneGeometry( 2, 2 );
+		var material = new THREE.MeshStandardMaterial();
+		var mesh = new THREE.Mesh( geometry, material );
+		mesh.name = 'Plane ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
 
 	// Box
-	var option = new UI.Panel();
+
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'Box' );
 	option.onClick( function () {
 
-		var width = 100;
-		var height = 100;
-		var depth = 100;
-
-		var widthSegments = 1;
-		var heightSegments = 1;
-		var depthSegments = 1;
-
-		var geometry = new THREE.BoxGeometry( width, height, depth, widthSegments, heightSegments, depthSegments );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial() );
+		var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Box ' + ( ++ meshCount );
 
-		editor.addObject( mesh );
-		editor.select( mesh );
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
+
+	// Circle
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Circle' );
+	option.onClick( function () {
+
+		var radius = 1;
+		var segments = 32;
+
+		var geometry = new THREE.CircleGeometry( radius, segments );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
+		mesh.name = 'Circle ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
 	options.add( option );
 
 	// Cylinder
-	var option = new UI.Panel();
+
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'Cylinder' );
 	option.onClick( function () {
 
-		var radiusTop = 20;
-		var radiusBottom = 20;
-		var height = 100;
+		var radiusTop = 1;
+		var radiusBottom = 1;
+		var height = 2;
 		var radiusSegments = 32;
 		var heightSegments = 1;
 		var openEnded = false;
 
 		var geometry = new THREE.CylinderGeometry( radiusTop, radiusBottom, height, radiusSegments, heightSegments, openEnded );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial() );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Cylinder ' + ( ++ meshCount );
 
-		editor.addObject( mesh );
-		editor.select( mesh );
+		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
 	options.add( option );
 
 	// Sphere
-	var option = new UI.Panel();
+
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'Sphere' );
 	option.onClick( function () {
 
-		var radius = 75;
+		var radius = 1;
 		var widthSegments = 32;
 		var heightSegments = 16;
 		var phiStart = 0;
@@ -22841,175 +23400,244 @@ Menubar.Add = function ( editor ) {
 		var thetaLength = Math.PI;
 
 		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial() );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Sphere ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
+
+	// Icosahedron
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Icosahedron' );
+	option.onClick( function () {
+
+		var radius = 1;
+		var detail = 2;
+
+		var geometry = new THREE.IcosahedronGeometry( radius, detail );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
+		mesh.name = 'Icosahedron ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
+
+	// Torus
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Torus' );
+	option.onClick( function () {
+
+		var radius = 2;
+		var tube = 1;
+		var radialSegments = 32;
+		var tubularSegments = 12;
+		var arc = Math.PI * 2;
+
+		var geometry = new THREE.TorusGeometry( radius, tube, radialSegments, tubularSegments, arc );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
+		mesh.name = 'Torus ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
+
+	// TorusKnot
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'TorusKnot' );
+	option.onClick( function () {
+
+		var radius = 2;
+		var tube = 0.8;
+		var radialSegments = 64;
+		var tubularSegments = 12;
+		var p = 2;
+		var q = 3;
+		var heightScale = 1;
+
+		var geometry = new THREE.TorusKnotGeometry( radius, tube, radialSegments, tubularSegments, p, q, heightScale );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
+		mesh.name = 'TorusKnot ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
+
+	/*
+	// Teapot
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Teapot' );
+	option.onClick( function () {
+
+		var size = 50;
+		var segments = 10;
+		var bottom = true;
+		var lid = true;
+		var body = true;
+		var fitLid = false;
+		var blinnScale = true;
+
+		var material = new THREE.MeshStandardMaterial();
+
+		var geometry = new THREE.TeapotBufferGeometry( size, segments, bottom, lid, body, fitLid, blinnScale );
+		var mesh = new THREE.Mesh( geometry, material );
+		mesh.name = 'Teapot ' + ( ++ meshCount );
 
 		editor.addObject( mesh );
 		editor.select( mesh );
 
 	} );
 	options.add( option );
+	*/
 
-	
-	// // Text
-	// var option = new UI.Panel();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Text' );
-	// option.onClick( function () {
+	// Sprite
 
-	// 	var text = "three.js",
-	// 			height = 20,
-	// 			size = 70,
-	// 			hover = 30,
-
-	// 			curveSegments = 4,
-
-	// 			bevelThickness = 2,
-	// 			bevelSize = 1.5,
-	// 			bevelSegments = 3,
-	// 			bevelEnabled = true,
-
-	// 			font = "helvetiker", // helvetiker, optimer, gentilis, droid sans, droid serif
-	// 			weight = "bold", // normal bold
-	// 			style = "normal"; // normal italic
-
-
-
-	// 	var textGeo = new THREE.TextGeometry( text, {
-
-	// 		size: size,
-	// 		height: height,
-	// 		curveSegments: curveSegments,
-
-	// 		font: font,
-	// 		weight: weight,
-	// 		style: style,
-
-	// 		bevelThickness: bevelThickness,
-	// 		bevelSize: bevelSize,
-	// 		bevelEnabled: bevelEnabled,
-
-	// 		material: 0,
-	// 		extrudeMaterial: 1
-
-	// 	});
-
-	// 	console.log(textGeo);
-
-	// 	textGeo.computeBoundingBox();
-	// 	textGeo.computeVertexNormals();
-
-	// 	// "fix" side normals by removing z-component of normals for side faces
-	// 	// (this doesn't work well for beveled geometry as then we lose nice curvature around z-axis)
-
-	// 	if ( ! bevelEnabled ) {
-
-	// 		var triangleAreaHeuristics = 0.1 * ( height * size );
-
-	// 		for ( var i = 0; i < textGeo.faces.length; i ++ ) {
-
-	// 			var face = textGeo.faces[ i ];
-
-	// 			if ( face.materialIndex == 1 ) {
-
-	// 				for ( var j = 0; j < face.vertexNormals.length; j ++ ) {
-
-	// 					face.vertexNormals[ j ].z = 0;
-	// 					face.vertexNormals[ j ].normalize();
-
-	// 				}
-
-	// 				var va = textGeo.vertices[ face.a ];
-	// 				var vb = textGeo.vertices[ face.b ];
-	// 				var vc = textGeo.vertices[ face.c ];
-
-	// 				var s = THREE.GeometryUtils.triangleArea( va, vb, vc );
-
-	// 				if ( s > triangleAreaHeuristics ) {
-
-	// 					for ( var j = 0; j < face.vertexNormals.length; j ++ ) {
-
-	// 						face.vertexNormals[ j ].copy( face.normal );
-
-	// 					}
-
-	// 				}
-
-	// 			}
-
-	// 		}
-
-	// 	}
-
-	// 	var centerOffset = -0.5 * ( textGeo.boundingBox.max.x - textGeo.boundingBox.min.x );
-
-	// 	textMesh1 = new THREE.Mesh( textGeo, new THREE.MeshBasicMaterial({color: 'antiquewhite', needsUpdate: true }) );
-
-	// 	textMesh1.position.x = centerOffset;
-	// 	textMesh1.position.y = hover;
-	// 	textMesh1.position.z = 0;
-
-	// 	textMesh1.rotation.x = 0;
-	// 	textMesh1.rotation.y = Math.PI * 2;
-
-	// 	textMesh1.name = "Text Object";
-
-	// 	console.log(textMesh1);
-
-	// 	editor.addObject( textMesh1 );
-	// 	editor.select( textMesh1 );
-
-	// } );
-	// options.add( option );
-
-	// Mediasphere
-
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'Mediasphere' );
+	option.setTextContent( 'Sprite' );
 	option.onClick( function () {
 
-		//Media Object
-		var radius = 120;
-		var widthSegments = 32;
-		var heightSegments = 32;
-		var phiStart = 0;
-		var phiLength = Math.PI * 2;
-		var thetaStart = 0;
-		var thetaLength = Math.PI;
+		var sprite = new THREE.Sprite( new THREE.SpriteMaterial() );
+		sprite.name = 'Sprite ' + ( ++ meshCount );
 
-		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		THREE.ImageUtils.crossOrigin = '';
-		var texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/VVvulRt.jpg');
-		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({map: texture, side: THREE.FrontSide, needsUpdate: true}) );
+		editor.execute( new AddObjectCommand( sprite ) );
 
-		mediaObject.name = 'MediaSphere';
+	} );
+	options.add( option );
 
+	//
 
-		editor.addObject( mediaObject );
-		mediaObject.scale.set(-1,1,1);
+	options.add( new UI.HorizontalRule() );
 
-		// //TargetObject
-		// var radius = 15;
-		// var widthSegments = 10;
-		// var heightSegments = 10;
-		// var phiStart = 0;
-		// var phiLength = Math.PI * 2;
-		// var thetaStart = 0;
-		// var thetaLength = Math.PI;
+	// PointLight
 
-		// var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		// var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: true, depthWrite: true, needsUpdate: true}) );
-		// // var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: false, depthWrite: false, needsUpdate: true}) );
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'PointLight' );
+	option.onClick( function () {
 
-		// mesh.name = 'Target_name';
+		var color = 0xffffff;
+		var intensity = 1;
+		var distance = 0;
 
-		// editor.addObject( mesh );
-		// mesh.scale.set(-1,1,1);
-		
-		editor.select( mediaObject );
+		var light = new THREE.PointLight( color, intensity, distance );
+		light.name = 'PointLight ' + ( ++ lightCount );
 
-		// editor.moveObject(mesh, mediaObject);
+		editor.execute( new AddObjectCommand( light ) );
+
+	} );
+	options.add( option );
+
+	// SpotLight
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'SpotLight' );
+	option.onClick( function () {
+
+		var color = 0xffffff;
+		var intensity = 1;
+		var distance = 0;
+		var angle = Math.PI * 0.1;
+		var exponent = 10;
+
+		var light = new THREE.SpotLight( color, intensity, distance, angle, exponent );
+		light.name = 'SpotLight ' + ( ++ lightCount );
+		light.target.name = 'SpotLight ' + ( lightCount ) + ' Target';
+
+		light.position.set( 5, 10, 7.5 );
+
+		editor.execute( new AddObjectCommand( light ) );
+
+	} );
+	options.add( option );
+
+	// DirectionalLight
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'DirectionalLight' );
+	option.onClick( function () {
+
+		var color = 0xffffff;
+		var intensity = 1;
+
+		var light = new THREE.DirectionalLight( color, intensity );
+		light.name = 'DirectionalLight ' + ( ++ lightCount );
+		light.target.name = 'DirectionalLight ' + ( lightCount ) + ' Target';
+
+		light.position.set( 5, 10, 7.5 );
+
+		editor.execute( new AddObjectCommand( light ) );
+
+	} );
+	options.add( option );
+
+	// HemisphereLight
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'HemisphereLight' );
+	option.onClick( function () {
+
+		var skyColor = 0x00aaff;
+		var groundColor = 0xffaa00;
+		var intensity = 1;
+
+		var light = new THREE.HemisphereLight( skyColor, groundColor, intensity );
+		light.name = 'HemisphereLight ' + ( ++ lightCount );
+
+		light.position.set( 0, 10, 0 );
+
+		editor.execute( new AddObjectCommand( light ) );
+
+	} );
+	options.add( option );
+
+	// AmbientLight
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'AmbientLight' );
+	option.onClick( function() {
+
+		var color = 0x222222;
+
+		var light = new THREE.AmbientLight( color );
+		light.name = 'AmbientLight ' + ( ++ lightCount );
+
+		editor.execute( new AddObjectCommand( light ) );
+
+	} );
+	options.add( option );
+
+	//
+
+	options.add( new UI.HorizontalRule() );
+
+	// PerspectiveCamera
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'PerspectiveCamera' );
+	option.onClick( function() {
+
+		var camera = new THREE.PerspectiveCamera( 50, 1, 1, 10000 );
+		camera.name = 'PerspectiveCamera ' + ( ++ cameraCount );
+
+		editor.execute( new AddObjectCommand( camera ) );
 
 	} );
 	options.add( option );
@@ -23079,49 +23707,15 @@ Menubar.View = function ( editor ) {
 	options.setClass( 'options' );
 	container.add( options );
 
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Hide selected ( ' + editor.shortcuts.getKey( 'view/hide' ) +' )' );
-	option.onClick( function () {
-
-		editor.hide();
-
-	} );
-	options.add( option );
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Unhide All ( ' + editor.shortcuts.getKey( 'view/unhideAll' ) +' )');
-		option.onClick( function () {
-
-		editor.unhideAll();
-
-	} );
-	options.add( option );
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Isolation Mode ( ' + editor.shortcuts.getKey( 'view/isolate' ) +' )');
-	option.onClick( function () {
-
-		editor.isolate();
-
-	} );
-	options.add( option );
-
-	options.add( new UI.HorizontalRule() );
-
 	// Light theme
+
 	var option = new UI.Panel();
 	option.setClass( 'option' );
 	option.setTextContent( 'Light theme' );
 	option.onClick( function () {
 
-		// editor.setTheme( 'THEME_LIGHT' );
-		// editor.config.setKey( 'theme', "THEME_LIGHT" );
 		editor.setTheme( 'css/light.css' );
 		editor.config.setKey( 'theme', 'css/light.css' );
-		editor.hide();
 
 	} );
 	options.add( option );
@@ -23133,11 +23727,8 @@ Menubar.View = function ( editor ) {
 	option.setTextContent( 'Dark theme' );
 	option.onClick( function () {
 
-		// editor.setTheme( 'THEME_DARK' );
-		// editor.config.setKey( 'theme', "THEME_DARK" );
 		editor.setTheme( 'css/dark.css' );
 		editor.config.setKey( 'theme', 'css/dark.css' );
-		editor.unhideAll();
 
 	} );
 	options.add( option );
@@ -23174,16 +23765,11 @@ Menubar.View = function ( editor ) {
 		}
 
 	} );
-
-
 	options.add( option );
 
 	return container;
 
-	
 };
-
-
 
 // File:editor/js/Menubar.Examples.js
 
@@ -23208,11 +23794,10 @@ Menubar.Examples = function ( editor ) {
 	// Examples
 
 	var items = [
-		{ title: 'Head Studies', file: 'arkanoid.app.json' },
-		{ title: 'Architecture Demo', file: 'camera.app.json' },
-		{ title: 'Photo Book', file: 'particles.app.json' },
-		{ title: 'Interactive Campaign Demo', file: 'pong.app.json' },
-		{ title: 'Sam Default', file: 'scene.json' }
+		{ title: 'Arkanoid', file: 'arkanoid.app.json' },
+		{ title: 'Camera', file: 'camera.app.json' },
+		{ title: 'Particles', file: 'particles.app.json' },
+		{ title: 'Pong', file: 'pong.app.json' }
 	];
 
 	var loader = new THREE.XHRLoader();
@@ -23223,7 +23808,7 @@ Menubar.Examples = function ( editor ) {
 
 			var item = items[ i ];
 
-			var option = new UI.Panel();
+			var option = new UI.Row();
 			option.setClass( 'option' );
 			option.setTextContent( item.title );
 			option.onClick( function () {
@@ -23263,11 +23848,7 @@ Menubar.Help = function ( editor ) {
 
 	var title = new UI.Panel();
 	title.setClass( 'title' );
-	title.setTextContent("Info");
-	// title.setBackground('#E6E6E6 url(http://localhost:8000/GITTY/MYVR/editor/imgs/toolbar-07.png)');
-	// title.setBackgroundRepeat("no-repeat");
-	// title.setBackgroundSize("50px, 100px");
-	// title.setTextContent( 'Info' );
+	title.setTextContent( 'Help' );
 	container.add( title );
 
 	var options = new UI.Panel();
@@ -23276,7 +23857,7 @@ Menubar.Help = function ( editor ) {
 
 	// Source code
 
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'Source code' );
 	option.onClick( function () {
@@ -23288,7 +23869,7 @@ Menubar.Help = function ( editor ) {
 
 	// About
 
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'About' );
 	option.onClick( function () {
@@ -23313,131 +23894,40 @@ Menubar.Status = function ( editor ) {
 	var container = new UI.Panel();
 	container.setClass( 'menu right' );
 
-	// var checkbox = new UI.Checkbox( editor.config.getKey( 'autosave' ) );
-	// checkbox.onChange( function () {
+	var autosave = new UI.THREE.Boolean( editor.config.getKey( 'autosave' ), 'autosave' );
+	autosave.text.setColor( '#888' );
+	autosave.onChange( function () {
 
-	// 	var value = this.getValue();
+		var value = this.getValue();
 
-	// 	editor.config.setKey( 'autosave', value );
+		editor.config.setKey( 'autosave', value );
 
-	// 	if ( value === true ) {
+		if ( value === true ) {
 
-	// 		editor.signals.sceneGraphChanged.dispatch();
+			editor.signals.sceneGraphChanged.dispatch();
 
-	// 	}
-
-	// } );
-	// container.add( checkbox );
-
-	var title = new UI.Panel();
-	title.setClass( 'title' );
-	title.setTextContent( 'Size: unknown' );
-
-	editor.storage.size( function (size){
-
-				var _size = (size !== null) ? size : "0";
-				console.log(size);
-				title.setTextContent( "Size : " + _size/10 + "/50Mb");
-				// title.setWidth(size);
-
-		});
-
-	container.add( title );
-
-	// var loading = new UI.Panel();
-	// loading.setClass( 'status' );
-
-	// container.add( loading );
-
-	var saveButton = new UI.Panel();
-	saveButton.setClass( 'button' );
-	// saveButton.setWidth("300px");
-	saveButton.setTextContent( 'Save' );
-	saveButton.onClick( function() {
-
-		editor.signals.saveProject.dispatch();
-
+		}
 
 	} );
-	container.add(saveButton);
-
-	// var title = new UI.Panel();
-	// title.setClass( 'title' );
-	// title.setTextContent( 'Size: unknown' );
-	// container.add( title );
-
-	editor.signals.unsaveProject.add( function () {
-		// e05e60 / saving : #333 / save : #2cbb84
-
-		saveButton.setBackgroundColor('#e05e60').setColor('white').setBorder('none');
-		// saveButton.setBackgroundColor('crimson').setColor('white').setBorder('none');
-
-		// saveButton.setColor('white');
-
-	} );
+	container.add( autosave );
 
 	editor.signals.savingStarted.add( function () {
 
-		// title.setTextDecoration( 'underline' );
-		saveButton.setBackgroundColor('#f2f2f2').setColor('darkslategrey');
-		//Create a "currently saving overlay"
-		// document.getElementById((saveOverlay).style.display = 'initial';
+		autosave.text.setTextDecoration( 'underline' );
 
 	} );
 
 	editor.signals.savingFinished.add( function () {
 
-		saveButton.setBackgroundColor('#2cbb84');
-		
-		editor.storage.size( function (size){
-			title.setTextContent( "Size : " + size/10 + "/50Mb");
-
-		});
-	} );
-
-	return container;
-
-};
-
-// File:editor/js/Menubar.Plus.js
-
-/**
- * @author mrdoob / http://mrdoob.com/
- */
-
-Menubar.Plus = function ( editor ) {
-
-	var container = new UI.Panel();
-	container.setClass( 'menu' );
-
-	var title = new UI.Panel();
-	title.setClass( 'title' );
-	title.setTextContent( 'Exit' );
-	title.onClick( function () {
-
-		if ( confirm( 'Do you want to go back to the platform? Any unsaved data will be lost. Are you sure?' ) ) {
-
-			window.open ('http://zaak.io','_self',false)
-		}
+		autosave.text.setTextDecoration( 'none' );
 
 	} );
-	container.add( title );
 
-	// var options = new UI.Panel();
-	// options.setClass( 'options' );
-	// container.add( options );
+	var version = new UI.Text( 'r' + THREE.REVISION );
+	version.setClass( 'title' );
+	version.setOpacity( 0.5 );
+	container.add( version );
 
-	// // Source code
-
-	// var option = new UI.Panel();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Return to ZAAK Plus' );
-	// option.onClick( function () {
-
-	// 	window.open( 'http://zaak.io' )
-
-	// } );
-	// options.add( option );
 	return container;
 
 };
@@ -23477,14 +23967,74 @@ var Sidebar = function ( editor ) {
 	var container = new UI.Panel();
 	container.setId( 'sidebar' );
 
-	container.add( new Sidebar.Project( editor ) );
-	container.add( new Sidebar.Scene( editor ) );
-	container.add( new Sidebar.Object3D( editor ) );
-	// container.add( new Sidebar.Sounds( editor ) );
-	container.add( new Sidebar.Geometry( editor ) );
-	container.add( new Sidebar.Material( editor ) );
-	container.add( new Sidebar.Animation( editor ) );
-	// container.add( new Sidebar.Script( editor ) );
+	//
+
+	var sceneTab = new UI.Text( 'SCENE' ).onClick( onClick );
+	var projectTab = new UI.Text( 'PROJECT' ).onClick( onClick );
+	var settingsTab = new UI.Text( 'SETTINGS' ).onClick( onClick );
+
+	var tabs = new UI.Div();
+	tabs.setId( 'tabs' );
+	tabs.add( sceneTab, projectTab, settingsTab );
+	container.add( tabs );
+
+	function onClick( event ) {
+
+		select( event.target.textContent );
+
+	}
+
+	//
+
+	var scene = new UI.Span().add(
+		new Sidebar.Scene( editor ),
+		new Sidebar.Properties( editor ),
+		new Sidebar.Animation( editor ),
+		new Sidebar.Script( editor )
+	);
+	container.add( scene );
+
+	var project = new UI.Span().add(
+		new Sidebar.Project( editor )
+	);
+	container.add( project );
+
+	var settings = new UI.Span().add(
+		new Sidebar.Settings( editor ),
+		new Sidebar.History( editor )
+	);
+	container.add( settings );
+
+	//
+
+	function select( section ) {
+
+		sceneTab.setClass( '' );
+		projectTab.setClass( '' );
+		settingsTab.setClass( '' );
+
+		scene.setDisplay( 'none' );
+		project.setDisplay( 'none' );
+		settings.setDisplay( 'none' );
+
+		switch ( section ) {
+			case 'SCENE':
+				sceneTab.setClass( 'selected' );
+				scene.setDisplay( '' );
+				break;
+			case 'PROJECT':
+				projectTab.setClass( 'selected' );
+				project.setDisplay( '' );
+				break;
+			case 'SETTINGS':
+				settingsTab.setClass( 'selected' );
+				settings.setDisplay( '' );
+				break;
+		}
+
+	}
+
+	select( 'SCENE' );
 
 	return container;
 
@@ -23498,6 +24048,7 @@ var Sidebar = function ( editor ) {
 
 Sidebar.Project = function ( editor ) {
 
+	var config = editor.config;
 	var signals = editor.signals;
 
 	var rendererTypes = {
@@ -23510,16 +24061,9 @@ Sidebar.Project = function ( editor ) {
 
 	};
 
-	var container = new UI.CollapsiblePanel();
-	container.setCollapsed( editor.config.getKey( 'ui/sidebar/project/collapsed' ) );
-	container.onCollapsedChange( function ( boolean ) {
-
-		editor.config.setKey( 'ui/sidebar/project/collapsed', boolean );
-
-	} );
-
-	container.addStatic( new UI.Text( 'PROJECT' ) );
-	container.add( new UI.Break() );
+	var container = new UI.Panel();
+	container.setBorderTop( '0' );
+	container.setPaddingTop( '20px' );
 
 	// class
 
@@ -23533,10 +24077,13 @@ Sidebar.Project = function ( editor ) {
 
 	}
 
-	var rendererTypeRow = new UI.Panel();
+	var rendererTypeRow = new UI.Row();
 	var rendererType = new UI.Select().setOptions( options ).setWidth( '150px' ).onChange( function () {
 
-		editor.config.setKey( 'project/renderer', this.getValue() );
+		var value = this.getValue();
+
+		config.setKey( 'project/renderer', value );
+
 		updateRenderer();
 
 	} );
@@ -23546,51 +24093,61 @@ Sidebar.Project = function ( editor ) {
 
 	container.add( rendererTypeRow );
 
-	if ( editor.config.getKey( 'project/renderer' ) !== undefined ) {
+	if ( config.getKey( 'project/renderer' ) !== undefined ) {
 
-		rendererType.setValue( editor.config.getKey( 'project/renderer' ) );
+		rendererType.setValue( config.getKey( 'project/renderer' ) );
 
 	}
 
 	// antialiasing
 
-	var rendererAntialiasRow = new UI.Panel();
-	var rendererAntialias = new UI.Checkbox( editor.config.getKey( 'project/renderer/antialias' ) ).setLeft( '100px' ).onChange( function () {
+	var rendererPropertiesRow = new UI.Row();
+	rendererPropertiesRow.add( new UI.Text( '' ).setWidth( '90px' ) );
 
-		editor.config.setKey( 'project/renderer/antialias', this.getValue() );
+	var rendererAntialias = new UI.THREE.Boolean( config.getKey( 'project/renderer/antialias' ), 'antialias' ).onChange( function () {
+
+		config.setKey( 'project/renderer/antialias', this.getValue() );
 		updateRenderer();
 
 	} );
+	rendererPropertiesRow.add( rendererAntialias );
 
-	rendererAntialiasRow.add( new UI.Text( 'Antialias' ).setWidth( '90px' ) );
-	rendererAntialiasRow.add( rendererAntialias );
+	// shadow
 
-	container.add( rendererAntialiasRow );
+	var rendererShadows = new UI.THREE.Boolean( config.getKey( 'project/renderer/shadows' ), 'shadows' ).onChange( function () {
+
+		config.setKey( 'project/renderer/shadows', this.getValue() );
+		updateRenderer();
+
+	} );
+	rendererPropertiesRow.add( rendererShadows );
+
+	container.add( rendererPropertiesRow );
 
 	// VR
 
-	// var vrRow = new UI.Panel();
-	// var vr = new UI.Checkbox( editor.config.getKey( 'project/vr' ) ).setLeft( '100px' ).onChange( function () {
+	var vrRow = new UI.Row();
+	var vr = new UI.Checkbox( config.getKey( 'project/vr' ) ).setLeft( '100px' ).onChange( function () {
 
-	// 	editor.config.setKey( 'project/vr', this.getValue() );
-	// 	// updateRenderer();
+		config.setKey( 'project/vr', this.getValue() );
+		// updateRenderer();
 
-	// } );
+	} );
 
-	// vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
-	// vrRow.add( vr );
+	vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
+	vrRow.add( vr );
 
-	// container.add( vrRow );
+	container.add( vrRow );
 
 	//
 
 	function updateRenderer() {
 
-		createRenderer( rendererType.getValue(), rendererAntialias.getValue() );
+		createRenderer( rendererType.getValue(), rendererAntialias.getValue(), rendererShadows.getValue() );
 
 	}
 
-	function createRenderer( type, antialias ) {
+	function createRenderer( type, antialias, shadows ) {
 
 		if ( type === 'WebGLRenderer' && System.support.webgl === false ) {
 
@@ -23598,12 +24155,15 @@ Sidebar.Project = function ( editor ) {
 
 		}
 
+		rendererPropertiesRow.setDisplay( type === 'WebGLRenderer' ? '' : 'none' );
+
 		var renderer = new rendererTypes[ type ]( { antialias: antialias } );
+		if ( shadows && renderer.shadowMap ) renderer.shadowMap.enabled = true;
 		signals.rendererChanged.dispatch( renderer );
 
 	}
 
-	createRenderer( editor.config.getKey( 'project/renderer' ), editor.config.getKey( 'project/renderer/antialias' ) );
+	createRenderer( config.getKey( 'project/renderer' ), config.getKey( 'project/renderer/antialias' ), config.getKey( 'project/renderer/shadows' ) );
 
 	return container;
 
@@ -23619,20 +24179,14 @@ Sidebar.Scene = function ( editor ) {
 
 	var signals = editor.signals;
 
-	var container = new UI.CollapsiblePanel();
-	container.setCollapsed( editor.config.getKey( 'ui/sidebar/scene/collapsed' ) );
-	container.onCollapsedChange( function ( boolean ) {
-
-		editor.config.setKey( 'ui/sidebar/scene/collapsed', boolean );
-
-	} );
-
-	container.addStatic( new UI.Text( 'SCENE' ) );
-	container.add( new UI.Break() );
+	var container = new UI.Panel();
+	container.setBorderTop( '0' );
+	container.setPaddingTop( '20px' );
 
 	var ignoreObjectSelectedSignal = false;
 
 	var outliner = new UI.Outliner( editor );
+	outliner.setId( 'outliner' );
 	outliner.onChange( function () {
 
 		ignoreObjectSelectedSignal = true;
@@ -23650,6 +24204,7 @@ Sidebar.Scene = function ( editor ) {
 	container.add( outliner );
 	container.add( new UI.Break() );
 
+	//bg
 	
 	var bgColorRow = new UI.Panel();
 	var bgColor = new UI.Color().setHexValue( editor.config.getKey('backgroundColor'));
@@ -23675,11 +24230,8 @@ Sidebar.Scene = function ( editor ) {
 
 	};
 
-	var activeFogType = "Exponential";
-	// if(editor.scene.fog != undefined) activeFogType = editor.scene.fog.name;
-
-	var fogTypeRow = new UI.Panel();
-	var fogType = new UI.Select(activeFogType).setOptions( {
+	var fogTypeRow = new UI.Row();
+	var fogType = new UI.Select().setOptions( {
 
 		'None': 'None',
 		'Fog': 'Linear',
@@ -23702,7 +24254,7 @@ Sidebar.Scene = function ( editor ) {
 
 	// fog color
 
-	var fogColorRow = new UI.Panel();
+	var fogColorRow = new UI.Row();
 	fogColorRow.setDisplay( 'none' );
 
 	var fogColor = new UI.Color().setValue( '#aaaaaa' )
@@ -23719,7 +24271,7 @@ Sidebar.Scene = function ( editor ) {
 
 	// fog near
 
-	var fogNearRow = new UI.Panel();
+	var fogNearRow = new UI.Row();
 	fogNearRow.setDisplay( 'none' );
 
 	var fogNear = new UI.Number( 1 ).setWidth( '60px' ).setRange( 0, Infinity ).onChange( updateFogParameters );
@@ -23729,7 +24281,7 @@ Sidebar.Scene = function ( editor ) {
 
 	container.add( fogNearRow );
 
-	var fogFarRow = new UI.Panel();
+	var fogFarRow = new UI.Row();
 	fogFarRow.setDisplay( 'none' );
 
 	// fog far
@@ -23743,7 +24295,7 @@ Sidebar.Scene = function ( editor ) {
 
 	// fog density
 
-	var fogDensityRow = new UI.Panel();
+	var fogDensityRow = new UI.Row();
 	fogDensityRow.setDisplay( 'none' );
 
 	var fogDensity = new UI.Number( 0.00025 ).setWidth( '60px' ).setRange( 0, 0.1 ).setPrecision( 5 ).onChange( updateFogParameters );
@@ -23762,8 +24314,20 @@ Sidebar.Scene = function ( editor ) {
 
 		var options = [];
 
-		// options.push( { value: camera.id, html: '<span class="type ' + camera.type + '"></span> ' + camera.name } );
-		options.push( { static: true, value: scene.id, html: '<span class="type ' + scene.type + '"></span> ' + scene.name } );
+		options.push( { static: true, value: camera.id, html: '<span class="type ' + camera.type + '"></span> ' + camera.name } );
+		options.push( { static: true, value: scene.id, html: '<span class="type ' + scene.type + '"></span> ' + scene.name + getScript( scene.uuid ) } );
+
+		function getScript( uuid ) {
+
+			if ( editor.scripts[ uuid ] !== undefined ) {
+
+				return ' <span class="type Script"></span>';
+
+			}
+
+			return '';
+
+		}
 
 		( function addObjects( objects, pad ) {
 
@@ -23782,6 +24346,8 @@ Sidebar.Scene = function ( editor ) {
 					html += ' <span class="type ' + material.type + '"></span> ' + material.name;
 
 				}
+
+				html += getScript( object.uuid );
 
 				options.push( { value: object.id, html: html } );
 
@@ -23855,646 +24421,6 @@ Sidebar.Scene = function ( editor ) {
 
 }
 
-// File:editor/js/Sidebar.Object3D.js
-
-/**
- * @author mrdoob / http://mrdoob.com/
- */
-
-Sidebar.Object3D = function ( editor ) {
-
-	var signals = editor.signals;
-
-	var container = new UI.CollapsiblePanel();
-	container.setCollapsed( editor.config.getKey( 'ui/sidebar/object3d/collapsed' ) );
-	container.onCollapsedChange( function ( boolean ) {
-
-		editor.config.setKey( 'ui/sidebar/object3d/collapsed', boolean );
-
-	} );
-	container.setDisplay( 'none' );
-
-	var objectType = new UI.Text().setTextTransform( 'uppercase' );
-	container.addStatic( objectType );
-
-	// Actions
-
-	var objectActions = new UI.Select().setPosition('absolute').setRight( '8px' ).setFontSize( '11px' );
-	objectActions.setOptions( {
-
-		'Actions': 'Actions',
-		'Reset Position': 'Reset Position',
-		'Reset Rotation': 'Reset Rotation',
-		'Reset Scale': 'Reset Scale'
-
-	} );
-	objectActions.onClick( function ( event ) {
-
-		event.stopPropagation(); // Avoid panel collapsing
-
-	} );
-	objectActions.onChange( function ( event ) {
-
-		var object = editor.selected;
-
-		switch ( this.getValue() ) {
-
-			case 'Reset Position':
-				object.position.set( 0, 0, 0 );
-				break;
-
-			case 'Reset Rotation':
-				object.rotation.set( 0, 0, 0 );
-				break;
-
-			case 'Reset Scale':
-				object.scale.set( 1, 1, 1 );
-				break;
-
-		}
-
-		this.setValue( 'Actions' );
-
-		signals.objectChanged.dispatch( object );
-
-	} );
-	container.addStatic( objectActions );
-
-	container.add( new UI.Break() );
-
-	// uuid
-
-	var objectUUIDRow = new UI.Panel();
-	var objectUUID = new UI.Input().setWidth( '115px' ).setFontSize( '12px' ).setDisabled( true );
-	var objectUUIDRenew = new UI.Button( '⟳' ).setMarginLeft( '7px' ).onClick( function () {
-
-		objectUUID.setValue( THREE.Math.generateUUID() );
-
-		editor.selected.uuid = objectUUID.getValue();
-
-	} );
-
-	objectUUIDRow.add( new UI.Text( 'UUID' ).setWidth( '90px' ) );
-	objectUUIDRow.add( objectUUID );
-	objectUUIDRow.add( objectUUIDRenew );
-
-	container.add( objectUUIDRow );
-
-	// name
-
-	var objectNameRow = new UI.Panel();
-	var objectName = new UI.Input().setWidth( '150px' ).setFontSize( '12px' ).onChange( function () {
-
-		editor.nameObject( editor.selected, objectName.getValue() );
-
-	} );
-
-	objectNameRow.add( new UI.Text( 'Name' ).setWidth( '90px' ) );
-	objectNameRow.add( objectName );
-
-	container.add( objectNameRow );
-
-	// parent
-
-	var objectParentRow = new UI.Panel();
-	var objectParent = new UI.Select().setWidth( '150px' ).setFontSize( '12px' ).onChange( update );
-
-	objectParentRow.add( new UI.Text( 'Parent' ).setWidth( '90px' ) );
-	objectParentRow.add( objectParent );
-
-	container.add( objectParentRow );
-
-	// position
-
-	var objectPositionRow = new UI.Panel();
-	var objectPositionX = new UI.Number().setWidth( '50px' ).onChange( update );
-	var objectPositionY = new UI.Number().setWidth( '50px' ).onChange( update );
-	var objectPositionZ = new UI.Number().setWidth( '50px' ).onChange( update );
-
-	objectPositionRow.add( new UI.Text( 'Position' ).setWidth( '90px' ) );
-	objectPositionRow.add( objectPositionX, objectPositionY, objectPositionZ );
-
-	container.add( objectPositionRow );
-
-	// rotation
-
-	var objectRotationRow = new UI.Panel();
-	var objectRotationX = new UI.Number().setWidth( '50px' ).onChange( update );
-	var objectRotationY = new UI.Number().setWidth( '50px' ).onChange( update );
-	var objectRotationZ = new UI.Number().setWidth( '50px' ).onChange( update );
-
-	objectRotationRow.add( new UI.Text( 'Rotation' ).setWidth( '90px' ) );
-	objectRotationRow.add( objectRotationX, objectRotationY, objectRotationZ );
-
-	container.add( objectRotationRow );
-
-	// scale
-
-	var objectScaleRow = new UI.Panel();
-	var objectScaleLock = new UI.Checkbox( true ).setPosition( 'absolute' ).setLeft( '75px' );
-	var objectScaleX = new UI.Number( 1 ).setRange( 0.01, Infinity ).setWidth( '50px' ).onChange( updateScaleX );
-	var objectScaleY = new UI.Number( 1 ).setRange( 0.01, Infinity ).setWidth( '50px' ).onChange( updateScaleY );
-	var objectScaleZ = new UI.Number( 1 ).setRange( 0.01, Infinity ).setWidth( '50px' ).onChange( updateScaleZ );
-
-	objectScaleRow.add( new UI.Text( 'Scale' ).setWidth( '90px' ) );
-	objectScaleRow.add( objectScaleLock );
-	objectScaleRow.add( objectScaleX, objectScaleY, objectScaleZ );
-
-	container.add( objectScaleRow );
-
-	// fov
-
-	var objectFovRow = new UI.Panel();
-	var objectFov = new UI.Number().onChange( update );
-
-	objectFovRow.add( new UI.Text( 'Fov' ).setWidth( '90px' ) );
-	objectFovRow.add( objectFov );
-
-	container.add( objectFovRow );
-
-	// near
-
-	var objectNearRow = new UI.Panel();
-	var objectNear = new UI.Number().onChange( update );
-
-	objectNearRow.add( new UI.Text( 'Near' ).setWidth( '90px' ) );
-	objectNearRow.add( objectNear );
-
-	container.add( objectNearRow );
-
-	// far
-
-	var objectFarRow = new UI.Panel();
-	var objectFar = new UI.Number().onChange( update );
-
-	objectFarRow.add( new UI.Text( 'Far' ).setWidth( '90px' ) );
-	objectFarRow.add( objectFar );
-
-	container.add( objectFarRow );
-
-	// intensity
-
-	var objectIntensityRow = new UI.Panel();
-	var objectIntensity = new UI.Number().setRange( 0, Infinity ).onChange( update );
-
-	objectIntensityRow.add( new UI.Text( 'Intensity' ).setWidth( '90px' ) );
-	objectIntensityRow.add( objectIntensity );
-
-	container.add( objectIntensityRow );
-
-	// color
-
-	var objectColorRow = new UI.Panel();
-	var objectColor = new UI.Color().onChange( update );
-
-	objectColorRow.add( new UI.Text( 'Color' ).setWidth( '90px' ) );
-	objectColorRow.add( objectColor );
-
-	container.add( objectColorRow );
-
-	// ground color
-
-	var objectGroundColorRow = new UI.Panel();
-	var objectGroundColor = new UI.Color().onChange( update );
-
-	objectGroundColorRow.add( new UI.Text( 'Ground color' ).setWidth( '90px' ) );
-	objectGroundColorRow.add( objectGroundColor );
-
-	container.add( objectGroundColorRow );
-
-	// distance
-
-	var objectDistanceRow = new UI.Panel();
-	var objectDistance = new UI.Number().setRange( 0, Infinity ).onChange( update );
-
-	objectDistanceRow.add( new UI.Text( 'Distance' ).setWidth( '90px' ) );
-	objectDistanceRow.add( objectDistance );
-
-	container.add( objectDistanceRow );
-
-	// angle
-
-	var objectAngleRow = new UI.Panel();
-	var objectAngle = new UI.Number().setPrecision( 3 ).setRange( 0, Math.PI / 2 ).onChange( update );
-
-	objectAngleRow.add( new UI.Text( 'Angle' ).setWidth( '90px' ) );
-	objectAngleRow.add( objectAngle );
-
-	container.add( objectAngleRow );
-
-	// exponent
-
-	var objectExponentRow = new UI.Panel();
-	var objectExponent = new UI.Number().setRange( 0, Infinity ).onChange( update );
-
-	objectExponentRow.add( new UI.Text( 'Exponent' ).setWidth( '90px' ) );
-	objectExponentRow.add( objectExponent );
-
-	container.add( objectExponentRow );
-
-	// decay
-
-	var objectDecayRow = new UI.Panel();
-	var objectDecay = new UI.Number().setRange( 0, Infinity ).onChange( update );
-
-	objectDecayRow.add( new UI.Text( 'Decay' ).setWidth( '90px' ) );
-	objectDecayRow.add( objectDecay );
-
-	container.add( objectDecayRow );
-
-	// visible
-
-	var objectVisibleRow = new UI.Panel();
-	var objectVisible = new UI.Checkbox().onChange( update );
-
-	objectVisibleRow.add( new UI.Text( 'Visible' ).setWidth( '90px' ) );
-	objectVisibleRow.add( objectVisible );
-
-	container.add( objectVisibleRow );
-
-	// user data
-
-	var timeout;
-
-	var objectUserDataRow = new UI.Panel();
-	var objectUserData = new UI.TextArea().setWidth( '150px' ).setHeight( '40px' ).setFontSize( '12px' ).onChange( update );
-	objectUserData.onKeyUp( function () {
-
-		try {
-
-			JSON.parse( objectUserData.getValue() );
-
-			objectUserData.dom.classList.add( 'success' );
-			objectUserData.dom.classList.remove( 'fail' );
-
-		} catch ( error ) {
-
-			objectUserData.dom.classList.remove( 'success' );
-			objectUserData.dom.classList.add( 'fail' );
-
-		}
-
-	} );
-
-	objectUserDataRow.add( new UI.Text( 'User data' ).setWidth( '90px' ) );
-	objectUserDataRow.add( objectUserData );
-
-	container.add( objectUserDataRow );
-
-
-	//
-
-	function updateScaleX() {
-
-		var object = editor.selected;
-
-		if ( objectScaleLock.getValue() === true ) {
-
-			var scale = objectScaleX.getValue() / object.scale.x;
-
-			objectScaleY.setValue( objectScaleY.getValue() * scale );
-			objectScaleZ.setValue( objectScaleZ.getValue() * scale );
-
-		}
-
-		update();
-
-	}
-
-	function updateScaleY() {
-
-		var object = editor.selected;
-
-		if ( objectScaleLock.getValue() === true ) {
-
-			var scale = objectScaleY.getValue() / object.scale.y;
-
-			objectScaleX.setValue( objectScaleX.getValue() * scale );
-			objectScaleZ.setValue( objectScaleZ.getValue() * scale );
-
-		}
-
-		update();
-
-	}
-
-	function updateScaleZ() {
-
-		var object = editor.selected;
-
-		if ( objectScaleLock.getValue() === true ) {
-
-			var scale = objectScaleZ.getValue() / object.scale.z;
-
-			objectScaleX.setValue( objectScaleX.getValue() * scale );
-			objectScaleY.setValue( objectScaleY.getValue() * scale );
-
-		}
-
-		update();
-
-	}
-
-	function update() {
-
-		var object = editor.selected;
-
-		if ( object !== null ) {
-
-			if ( object.parent !== null ) {
-
-				var newParentId = parseInt( objectParent.getValue() );
-
-				if ( object.parent.id !== newParentId && object.id !== newParentId ) {
-
-					editor.moveObject( object, editor.scene.getObjectById( newParentId ) );
-
-				}
-
-			}
-
-			object.position.x = objectPositionX.getValue();
-			object.position.y = objectPositionY.getValue();
-			object.position.z = objectPositionZ.getValue();
-
-			object.rotation.x = objectRotationX.getValue();
-			object.rotation.y = objectRotationY.getValue();
-			object.rotation.z = objectRotationZ.getValue();
-
-			object.scale.x = objectScaleX.getValue();
-			object.scale.y = objectScaleY.getValue();
-			object.scale.z = objectScaleZ.getValue();
-
-			if ( object.fov !== undefined ) {
-
-				object.fov = objectFov.getValue();
-				object.updateProjectionMatrix();
-
-			}
-
-			if ( object.near !== undefined ) {
-
-				object.near = objectNear.getValue();
-
-			}
-
-			if ( object.far !== undefined ) {
-
-				object.far = objectFar.getValue();
-
-			}
-
-			if ( object.intensity !== undefined ) {
-
-				object.intensity = objectIntensity.getValue();
-
-			}
-
-			if ( object.color !== undefined ) {
-
-				object.color.setHex( objectColor.getHexValue() );
-
-			}
-
-			if ( object.groundColor !== undefined ) {
-
-				object.groundColor.setHex( objectGroundColor.getHexValue() );
-
-			}
-
-			if ( object.distance !== undefined ) {
-
-				object.distance = objectDistance.getValue();
-
-			}
-
-			if ( object.angle !== undefined ) {
-
-				object.angle = objectAngle.getValue();
-
-			}
-
-			if ( object.exponent !== undefined ) {
-
-				object.exponent = objectExponent.getValue();
-
-			}
-
-			if ( object.decay !== undefined ) {
-
-				object.decay = objectDecay.getValue();
-
-			}
-
-			object.visible = objectVisible.getValue();
-
-			try {
-
-				object.userData = JSON.parse( objectUserData.getValue() );
-
-			} catch ( exception ) {
-
-				console.warn( exception );
-
-			}
-
-			signals.objectChanged.dispatch( object );
-
-		}
-
-	}
-
-	function updateRows( object ) {
-
-		var properties = {
-			'parent': objectParentRow,
-			'fov': objectFovRow,
-			'near': objectNearRow,
-			'far': objectFarRow,
-			'intensity': objectIntensityRow,
-			'color': objectColorRow,
-			'groundColor': objectGroundColorRow,
-			'distance' : objectDistanceRow,
-			'angle' : objectAngleRow,
-			'exponent' : objectExponentRow,
-			'decay' : objectDecayRow
-		};
-
-		for ( var property in properties ) {
-
-			properties[ property ].setDisplay( object[ property ] !== undefined ? '' : 'none' );
-
-		}
-
-	}
-
-	function updateTransformRows( object ) {
-
-		if ( object instanceof THREE.Light ||
-		   ( object instanceof THREE.Object3D && object.userData.targetInverse ) ) {
-
-			objectRotationRow.setDisplay( 'none' );
-			objectScaleRow.setDisplay( 'none' );
-
-		} else {
-
-			objectRotationRow.setDisplay( '' );
-			objectScaleRow.setDisplay( '' );
-
-		}
-
-	}
-
-	// events
-
-	signals.objectSelected.add( function ( object ) {
-
-		if ( object !== null ) {
-
-			container.setDisplay( 'block' );
-
-			updateRows( object );
-			updateUI( object );
-
-		} else {
-
-			container.setDisplay( 'none' );
-
-		}
-
-	} );
-
-	signals.sceneGraphChanged.add( function () {
-
-		var scene = editor.scene;
-		var options = {};
-
-		scene.traverse( function ( object ) {
-
-			options[ object.id ] = object.name;
-
-		} );
-
-		objectParent.setOptions( options );
-
-	} );
-
-	signals.objectChanged.add( function ( object ) {
-
-		if ( object !== editor.selected ) return;
-
-		updateUI( object );
-
-	} );
-
-	function updateUI( object ) {
-
-		objectType.setValue( object.type );
-
-		objectUUID.setValue( object.uuid );
-		objectName.setValue( object.name );
-
-		if ( object.parent !== null ) {
-
-			objectParent.setValue( object.parent.id );
-
-		}
-
-		objectPositionX.setValue( object.position.x );
-		objectPositionY.setValue( object.position.y );
-		objectPositionZ.setValue( object.position.z );
-
-		objectRotationX.setValue( object.rotation.x );
-		objectRotationY.setValue( object.rotation.y );
-		objectRotationZ.setValue( object.rotation.z );
-
-		objectScaleX.setValue( object.scale.x );
-		objectScaleY.setValue( object.scale.y );
-		objectScaleZ.setValue( object.scale.z );
-
-		if ( object.fov !== undefined ) {
-
-			objectFov.setValue( object.fov );
-
-		}
-
-		if ( object.near !== undefined ) {
-
-			objectNear.setValue( object.near );
-
-		}
-
-		if ( object.far !== undefined ) {
-
-			objectFar.setValue( object.far );
-
-		}
-
-		if ( object.intensity !== undefined ) {
-
-			objectIntensity.setValue( object.intensity );
-
-		}
-
-		if ( object.color !== undefined ) {
-
-			objectColor.setHexValue( object.color.getHexString() );
-
-		}
-
-		if ( object.groundColor !== undefined ) {
-
-			objectGroundColor.setHexValue( object.groundColor.getHexString() );
-
-		}
-
-		if ( object.distance !== undefined ) {
-
-			objectDistance.setValue( object.distance );
-
-		}
-
-		if ( object.angle !== undefined ) {
-
-			objectAngle.setValue( object.angle );
-
-		}
-
-		if ( object.exponent !== undefined ) {
-
-			objectExponent.setValue( object.exponent );
-
-		}
-
-		if ( object.decay !== undefined ) {
-
-			objectDecay.setValue( object.decay );
-
-		}
-
-		objectVisible.setValue( object.visible );
-
-		try {
-
-			objectUserData.setValue( JSON.stringify( object.userData, null, '  ' ) );
-
-		} catch ( error ) {
-
-			console.log( error );
-
-		}
-
-		objectUserData.setBorderColor( 'transparent' );
-		objectUserData.setBackgroundColor( '' );
-
-		updateTransformRows( object );
-
-	}
-
-	return container;
-
-}
-
 // File:editor/js/Sidebar.Animation.js
 
 /**
@@ -24520,8 +24446,10 @@ Sidebar.Animation = function ( editor ) {
 	container.addStatic( new UI.Text( 'Animation' ).setTextTransform( 'uppercase' ) );
 	container.add( new UI.Break() );
 
-	var animationsRow = new UI.Panel();
+	var animationsRow = new UI.Row();
 	container.add( animationsRow );
+
+	/*
 
 	var animations = {};
 
@@ -24604,6 +24532,8 @@ Sidebar.Animation = function ( editor ) {
 
 	} );
 
+	*/
+
 	return container;
 
 }
@@ -24618,21 +24548,13 @@ Sidebar.Geometry = function ( editor ) {
 
 	var signals = editor.signals;
 
-	var container = new UI.CollapsiblePanel();
-	container.setCollapsed( editor.config.getKey( 'ui/sidebar/geometry/collapsed' ) );
-	container.onCollapsedChange( function ( boolean ) {
-
-		editor.config.setKey( 'ui/sidebar/geometry/collapsed', boolean );
-
-	} );
-	container.setDisplay( 'none' );
-
-	var geometryType = new UI.Text().setTextTransform( 'uppercase' );
-	container.addStatic( geometryType );
+	var container = new UI.Panel();
+	container.setBorderTop( '0' );
+	container.setPaddingTop( '20px' );
 
 	// Actions
 
-	var objectActions = new UI.Select().setPosition('absolute').setRight( '8px' ).setFontSize( '11px' );
+	var objectActions = new UI.Select().setPosition( 'absolute' ).setRight( '8px' ).setFontSize( '11px' );
 	objectActions.setOptions( {
 
 		'Actions': 'Actions',
@@ -24661,10 +24583,11 @@ Sidebar.Geometry = function ( editor ) {
 
 				var offset = geometry.center();
 
-				object.position.sub( offset );
+				var newPosition = object.position.clone();
+				newPosition.sub( offset );
+				editor.execute( new SetPositionCommand( object, newPosition ) );
 
-				editor.signals.geometryChanged.dispatch( geometry );
-				editor.signals.objectChanged.dispatch( object );
+				editor.signals.geometryChanged.dispatch( object );
 
 				break;
 
@@ -24672,9 +24595,7 @@ Sidebar.Geometry = function ( editor ) {
 
 				if ( geometry instanceof THREE.Geometry ) {
 
-					object.geometry = new THREE.BufferGeometry().fromGeometry( geometry );
-
-					signals.geometryChanged.dispatch( object );
+					editor.execute( new SetGeometryCommand( object, new THREE.BufferGeometry().fromGeometry( geometry ) ) );
 
 				}
 
@@ -24682,14 +24603,16 @@ Sidebar.Geometry = function ( editor ) {
 
 			case 'Flatten':
 
-				geometry.applyMatrix( object.matrix );
+				var newGeometry = geometry.clone();
+				newGeometry.uuid = geometry.uuid;
+				newGeometry.applyMatrix( object.matrix );
 
-				object.position.set( 0, 0, 0 );
-				object.rotation.set( 0, 0, 0 );
-				object.scale.set( 1, 1, 1 );
+				var cmds = [ new SetGeometryCommand( object, newGeometry ),
+					new SetPositionCommand( object, new THREE.Vector3( 0, 0, 0 ) ),
+					new SetRotationCommand( object, new THREE.Euler( 0, 0, 0 ) ),
+					new SetScaleCommand( object, new THREE.Vector3( 1, 1, 1 ) ) ];
 
-				editor.signals.geometryChanged.dispatch( geometry );
-				editor.signals.objectChanged.dispatch( object );
+				editor.execute( new MultiCmdsCommand( cmds ), 'Flatten Geometry' );
 
 				break;
 
@@ -24697,22 +24620,28 @@ Sidebar.Geometry = function ( editor ) {
 
 		this.setValue( 'Actions' );
 
-		signals.objectChanged.dispatch( object );
-
 	} );
-	container.addStatic( objectActions );
+	// container.addStatic( objectActions );
 
-	container.add( new UI.Break() );
+	// type
+
+	var geometryTypeRow = new UI.Row();
+	var geometryType = new UI.Text();
+
+	geometryTypeRow.add( new UI.Text( 'Type' ).setWidth( '90px' ) );
+	geometryTypeRow.add( geometryType );
+
+	container.add( geometryTypeRow );
 
 	// uuid
 
-	var geometryUUIDRow = new UI.Panel();
+	var geometryUUIDRow = new UI.Row();
 	var geometryUUID = new UI.Input().setWidth( '115px' ).setFontSize( '12px' ).setDisabled( true );
 	var geometryUUIDRenew = new UI.Button( '⟳' ).setMarginLeft( '7px' ).onClick( function () {
 
 		geometryUUID.setValue( THREE.Math.generateUUID() );
 
-		editor.selected.geometry.uuid = geometryUUID.getValue();
+		editor.execute( new SetGeometryValueCommand( editor.selected, 'uuid', geometryUUID.getValue() ) );
 
 	} );
 
@@ -24724,10 +24653,10 @@ Sidebar.Geometry = function ( editor ) {
 
 	// name
 
-	var geometryNameRow = new UI.Panel();
+	var geometryNameRow = new UI.Row();
 	var geometryName = new UI.Input().setWidth( '150px' ).setFontSize( '12px' ).onChange( function () {
 
-		editor.setGeometryName( editor.selected.geometry, geometryName.getValue() );
+		editor.execute( new SetGeometryValueCommand( editor.selected, 'name', geometryName.getValue() ) );
 
 	} );
 
@@ -24738,15 +24667,15 @@ Sidebar.Geometry = function ( editor ) {
 
 	// geometry
 
-	container.add( new Sidebar.Geometry.Geometry( signals ) );
+	container.add( new Sidebar.Geometry.Geometry( editor ) );
 
 	// buffergeometry
 
-	container.add( new Sidebar.Geometry.BufferGeometry( signals ) );
+	container.add( new Sidebar.Geometry.BufferGeometry( editor ) );
 
 	// parameters
 
-	var parameters = new UI.Panel();
+	var parameters = new UI.Span();
 	container.add( parameters );
 
 
@@ -24773,11 +24702,11 @@ Sidebar.Geometry = function ( editor ) {
 
 			if ( geometry.type === 'BufferGeometry' || geometry.type === 'Geometry' ) {
 
-				parameters.add( new Sidebar.Geometry.Modifiers( signals, object ) );
+				parameters.add( new Sidebar.Geometry.Modifiers( editor, object ) );
 
 			} else if ( Sidebar.Geometry[ geometry.type ] !== undefined ) {
 
-				parameters.add( new Sidebar.Geometry[ geometry.type ]( signals, object ) );
+				parameters.add( new Sidebar.Geometry[ geometry.type ]( editor, object ) );
 
 			}
 
@@ -24794,7 +24723,7 @@ Sidebar.Geometry = function ( editor ) {
 
 	return container;
 
-}
+};
 
 // File:editor/js/Sidebar.Geometry.Geometry.js
 
@@ -24802,14 +24731,16 @@ Sidebar.Geometry = function ( editor ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.Geometry = function ( signals ) {
+Sidebar.Geometry.Geometry = function ( editor ) {
 
-	var container = new UI.Panel();
+	var signals = editor.signals;
+
+	var container = new UI.Row();
 
 	// vertices
 
-	var verticesRow = new UI.Panel();
-	var vertices = new UI.Text().setFontSize( '12px' );
+	var verticesRow = new UI.Row();
+	var vertices = new UI.Text();
 
 	verticesRow.add( new UI.Text( 'Vertices' ).setWidth( '90px' ) );
 	verticesRow.add( vertices );
@@ -24818,8 +24749,8 @@ Sidebar.Geometry.Geometry = function ( signals ) {
 
 	// faces
 
-	var facesRow = new UI.Panel();
-	var faces = new UI.Text().setFontSize( '12px' );
+	var facesRow = new UI.Row();
+	var faces = new UI.Text();
 
 	facesRow.add( new UI.Text( 'Faces' ).setWidth( '90px' ) );
 	facesRow.add( faces );
@@ -24834,7 +24765,7 @@ Sidebar.Geometry.Geometry = function ( signals ) {
 
 		var geometry = object.geometry;
 
-		if ( geometry instanceof THREE.Geometry ) { 
+		if ( geometry instanceof THREE.Geometry ) {
 
 			container.setDisplay( 'block' );
 
@@ -24862,9 +24793,11 @@ Sidebar.Geometry.Geometry = function ( signals ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.BufferGeometry = function ( signals ) {
+Sidebar.Geometry.BufferGeometry = function ( editor ) {
 
-	var container = new UI.Panel();
+	var signals = editor.signals;
+
+	var container = new UI.Row();
 
 	function update( object ) {
 
@@ -24881,7 +24814,7 @@ Sidebar.Geometry.BufferGeometry = function ( signals ) {
 
 			if ( index !== null ) {
 
-				var panel = new UI.Panel();
+				var panel = new UI.Row();
 				panel.add( new UI.Text( 'index' ).setWidth( '90px' ) );
 				panel.add( new UI.Text( ( index.count ).format() ).setFontSize( '12px' ) );
 				container.add( panel );
@@ -24892,7 +24825,7 @@ Sidebar.Geometry.BufferGeometry = function ( signals ) {
 
 			for ( var name in attributes ) {
 
-				var panel = new UI.Panel();
+				var panel = new UI.Row();
 				panel.add( new UI.Text( name ).setWidth( '90px' ) );
 				panel.add( new UI.Text( ( attributes[ name ].count ).format() ).setFontSize( '12px' ) );
 				container.add( panel );
@@ -24905,14 +24838,14 @@ Sidebar.Geometry.BufferGeometry = function ( signals ) {
 
 		}
 
-	};
+	}
 
 	signals.objectSelected.add( update );
 	signals.geometryChanged.add( update );
 
 	return container;
 
-}
+};
 
 // File:editor/js/Sidebar.Geometry.Modifiers.js
 
@@ -24920,9 +24853,11 @@ Sidebar.Geometry.BufferGeometry = function ( signals ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.Modifiers = function ( signals, object ) {
+Sidebar.Geometry.Modifiers = function ( editor, object ) {
 
-	var container = new UI.Panel().setPaddingLeft( '90px' );
+	var signals = editor.signals;
+
+	var container = new UI.Row().setPaddingLeft( '90px' );
 
 	var geometry = object.geometry;
 
@@ -24953,7 +24888,7 @@ Sidebar.Geometry.Modifiers = function ( signals, object ) {
 
 	return container;
 
-}
+};
 
 // File:editor/js/Sidebar.Geometry.BoxGeometry.js
 
@@ -24961,15 +24896,17 @@ Sidebar.Geometry.Modifiers = function ( signals, object ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.BoxGeometry = function ( signals, object ) {
+Sidebar.Geometry.BoxGeometry = function ( editor, object ) {
 
-	var container = new UI.Panel();
+	var signals = editor.signals;
+
+	var container = new UI.Row();
 
 	var parameters = object.geometry.parameters;
 
 	// width
 
-	var widthRow = new UI.Panel();
+	var widthRow = new UI.Row();
 	var width = new UI.Number( parameters.width ).onChange( update );
 
 	widthRow.add( new UI.Text( 'Width' ).setWidth( '90px' ) );
@@ -24979,7 +24916,7 @@ Sidebar.Geometry.BoxGeometry = function ( signals, object ) {
 
 	// height
 
-	var heightRow = new UI.Panel();
+	var heightRow = new UI.Row();
 	var height = new UI.Number( parameters.height ).onChange( update );
 
 	heightRow.add( new UI.Text( 'Height' ).setWidth( '90px' ) );
@@ -24989,7 +24926,7 @@ Sidebar.Geometry.BoxGeometry = function ( signals, object ) {
 
 	// depth
 
-	var depthRow = new UI.Panel();
+	var depthRow = new UI.Row();
 	var depth = new UI.Number( parameters.depth ).onChange( update );
 
 	depthRow.add( new UI.Text( 'Depth' ).setWidth( '90px' ) );
@@ -24999,7 +24936,7 @@ Sidebar.Geometry.BoxGeometry = function ( signals, object ) {
 
 	// widthSegments
 
-	var widthSegmentsRow = new UI.Panel();
+	var widthSegmentsRow = new UI.Row();
 	var widthSegments = new UI.Integer( parameters.widthSegments ).setRange( 1, Infinity ).onChange( update );
 
 	widthSegmentsRow.add( new UI.Text( 'Width segments' ).setWidth( '90px' ) );
@@ -25009,7 +24946,7 @@ Sidebar.Geometry.BoxGeometry = function ( signals, object ) {
 
 	// heightSegments
 
-	var heightSegmentsRow = new UI.Panel();
+	var heightSegmentsRow = new UI.Row();
 	var heightSegments = new UI.Integer( parameters.heightSegments ).setRange( 1, Infinity ).onChange( update );
 
 	heightSegmentsRow.add( new UI.Text( 'Height segments' ).setWidth( '90px' ) );
@@ -25019,7 +24956,7 @@ Sidebar.Geometry.BoxGeometry = function ( signals, object ) {
 
 	// depthSegments
 
-	var depthSegmentsRow = new UI.Panel();
+	var depthSegmentsRow = new UI.Row();
 	var depthSegments = new UI.Integer( parameters.depthSegments ).setRange( 1, Infinity ).onChange( update );
 
 	depthSegmentsRow.add( new UI.Text( 'Height segments' ).setWidth( '90px' ) );
@@ -25031,20 +24968,14 @@ Sidebar.Geometry.BoxGeometry = function ( signals, object ) {
 
 	function update() {
 
-		object.geometry.dispose();
-
-		object.geometry = new THREE.BoxGeometry(
+		editor.execute( new SetGeometryCommand( object, new THREE.BoxGeometry(
 			width.getValue(),
 			height.getValue(),
 			depth.getValue(),
 			widthSegments.getValue(),
 			heightSegments.getValue(),
 			depthSegments.getValue()
-		);
-
-		object.geometry.computeBoundingSphere();
-
-		signals.geometryChanged.dispatch( object );
+		) ) );
 
 	}
 
@@ -25058,15 +24989,17 @@ Sidebar.Geometry.BoxGeometry = function ( signals, object ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.CircleGeometry = function ( signals, object ) {
+Sidebar.Geometry.CircleGeometry = function ( editor, object ) {
 
-	var container = new UI.Panel();
+	var signals = editor.signals;
+
+	var container = new UI.Row();
 
 	var parameters = object.geometry.parameters;
 
 	// radius
 
-	var radiusRow = new UI.Panel();
+	var radiusRow = new UI.Row();
 	var radius = new UI.Number( parameters.radius ).onChange( update );
 
 	radiusRow.add( new UI.Text( 'Radius' ).setWidth( '90px' ) );
@@ -25076,7 +25009,7 @@ Sidebar.Geometry.CircleGeometry = function ( signals, object ) {
 
 	// segments
 
-	var segmentsRow = new UI.Panel();
+	var segmentsRow = new UI.Row();
 	var segments = new UI.Integer( parameters.segments ).setRange( 3, Infinity ).onChange( update );
 
 	segmentsRow.add( new UI.Text( 'Segments' ).setWidth( '90px' ) );
@@ -25084,20 +25017,36 @@ Sidebar.Geometry.CircleGeometry = function ( signals, object ) {
 
 	container.add( segmentsRow );
 
+	// thetaStart
+
+	var thetaStartRow = new UI.Row();
+	var thetaStart = new UI.Number( parameters.thetaStart ).onChange( update );
+
+	thetaStartRow.add( new UI.Text( 'Theta start' ).setWidth( '90px' ) );
+	thetaStartRow.add( thetaStart );
+
+	container.add( thetaStartRow );
+
+	// thetaLength
+
+	var thetaLengthRow = new UI.Row();
+	var thetaLength = new UI.Number( parameters.thetaLength ).onChange( update );
+
+	thetaLengthRow.add( new UI.Text( 'Theta length' ).setWidth( '90px' ) );
+	thetaLengthRow.add( thetaLength );
+
+	container.add( thetaLengthRow );
+
 	//
 
 	function update() {
 
-		object.geometry.dispose();
-
-		object.geometry = new THREE.CircleGeometry(
+		editor.execute( new SetGeometryCommand( object, new THREE.CircleGeometry(
 			radius.getValue(),
-			segments.getValue()
-		);
-
-		object.geometry.computeBoundingSphere();
-
-		signals.geometryChanged.dispatch( object );
+			segments.getValue(),
+			thetaStart.getValue(),
+			thetaLength.getValue()
+		) ) );
 
 	}
 
@@ -25111,15 +25060,17 @@ Sidebar.Geometry.CircleGeometry = function ( signals, object ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.CylinderGeometry = function ( signals, object ) {
+Sidebar.Geometry.CylinderGeometry = function ( editor, object ) {
 
-	var container = new UI.Panel();
+	var signals = editor.signals;
+
+	var container = new UI.Row();
 
 	var parameters = object.geometry.parameters;
 
 	// radiusTop
 
-	var radiusTopRow = new UI.Panel();
+	var radiusTopRow = new UI.Row();
 	var radiusTop = new UI.Number( parameters.radiusTop ).onChange( update );
 
 	radiusTopRow.add( new UI.Text( 'Radius top' ).setWidth( '90px' ) );
@@ -25129,7 +25080,7 @@ Sidebar.Geometry.CylinderGeometry = function ( signals, object ) {
 
 	// radiusBottom
 
-	var radiusBottomRow = new UI.Panel();
+	var radiusBottomRow = new UI.Row();
 	var radiusBottom = new UI.Number( parameters.radiusBottom ).onChange( update );
 
 	radiusBottomRow.add( new UI.Text( 'Radius bottom' ).setWidth( '90px' ) );
@@ -25139,7 +25090,7 @@ Sidebar.Geometry.CylinderGeometry = function ( signals, object ) {
 
 	// height
 
-	var heightRow = new UI.Panel();
+	var heightRow = new UI.Row();
 	var height = new UI.Number( parameters.height ).onChange( update );
 
 	heightRow.add( new UI.Text( 'Height' ).setWidth( '90px' ) );
@@ -25149,7 +25100,7 @@ Sidebar.Geometry.CylinderGeometry = function ( signals, object ) {
 
 	// radialSegments
 
-	var radialSegmentsRow = new UI.Panel();
+	var radialSegmentsRow = new UI.Row();
 	var radialSegments = new UI.Integer( parameters.radialSegments ).setRange( 1, Infinity ).onChange( update );
 
 	radialSegmentsRow.add( new UI.Text( 'Radial segments' ).setWidth( '90px' ) );
@@ -25159,7 +25110,7 @@ Sidebar.Geometry.CylinderGeometry = function ( signals, object ) {
 
 	// heightSegments
 
-	var heightSegmentsRow = new UI.Panel();
+	var heightSegmentsRow = new UI.Row();
 	var heightSegments = new UI.Integer( parameters.heightSegments ).setRange( 1, Infinity ).onChange( update );
 
 	heightSegmentsRow.add( new UI.Text( 'Height segments' ).setWidth( '90px' ) );
@@ -25169,7 +25120,7 @@ Sidebar.Geometry.CylinderGeometry = function ( signals, object ) {
 
 	// openEnded
 
-	var openEndedRow = new UI.Panel();
+	var openEndedRow = new UI.Row();
 	var openEnded = new UI.Checkbox( parameters.openEnded ).onChange( update );
 
 	openEndedRow.add( new UI.Text( 'Open ended' ).setWidth( '90px' ) );
@@ -25181,20 +25132,14 @@ Sidebar.Geometry.CylinderGeometry = function ( signals, object ) {
 
 	function update() {
 
-		object.geometry.dispose();
-
-		object.geometry = new THREE.CylinderGeometry(
+		editor.execute( new SetGeometryCommand( object, new THREE.CylinderGeometry(
 			radiusTop.getValue(),
 			radiusBottom.getValue(),
 			height.getValue(),
 			radialSegments.getValue(),
 			heightSegments.getValue(),
 			openEnded.getValue()
-		);
-
-		object.geometry.computeBoundingSphere();
-
-		signals.geometryChanged.dispatch( object );
+		) ) );
 
 	}
 
@@ -25208,15 +25153,17 @@ Sidebar.Geometry.CylinderGeometry = function ( signals, object ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.IcosahedronGeometry = function ( signals, object ) {
+Sidebar.Geometry.IcosahedronGeometry = function ( editor, object ) {
 
-	var container = new UI.Panel();
+	var signals = editor.signals;
+
+	var container = new UI.Row();
 
 	var parameters = object.geometry.parameters;
 
 	// radius
 
-	var radiusRow = new UI.Panel();
+	var radiusRow = new UI.Row();
 	var radius = new UI.Number( parameters.radius ).onChange( update );
 
 	radiusRow.add( new UI.Text( 'Radius' ).setWidth( '90px' ) );
@@ -25226,7 +25173,7 @@ Sidebar.Geometry.IcosahedronGeometry = function ( signals, object ) {
 
 	// detail
 
-	var detailRow = new UI.Panel();
+	var detailRow = new UI.Row();
 	var detail = new UI.Integer( parameters.detail ).setRange( 0, Infinity ).onChange( update );
 
 	detailRow.add( new UI.Text( 'Detail' ).setWidth( '90px' ) );
@@ -25239,14 +25186,10 @@ Sidebar.Geometry.IcosahedronGeometry = function ( signals, object ) {
 
 	function update() {
 
-		object.geometry.dispose();
-
-		object.geometry = new THREE.IcosahedronGeometry(
+		editor.execute( new SetGeometryCommand( object, new THREE.IcosahedronGeometry(
 			radius.getValue(),
 			detail.getValue()
-		);
-
-		object.geometry.computeBoundingSphere();
+		) ) );
 
 		signals.objectChanged.dispatch( object );
 
@@ -25262,15 +25205,17 @@ Sidebar.Geometry.IcosahedronGeometry = function ( signals, object ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.PlaneGeometry = function ( signals, object ) {
+Sidebar.Geometry.PlaneGeometry = function ( editor, object ) {
 
-	var container = new UI.Panel();
+	var signals = editor.signals;
+
+	var container = new UI.Row();
 
 	var parameters = object.geometry.parameters;
 
 	// width
 
-	var widthRow = new UI.Panel();
+	var widthRow = new UI.Row();
 	var width = new UI.Number( parameters.width ).onChange( update );
 
 	widthRow.add( new UI.Text( 'Width' ).setWidth( '90px' ) );
@@ -25280,7 +25225,7 @@ Sidebar.Geometry.PlaneGeometry = function ( signals, object ) {
 
 	// height
 
-	var heightRow = new UI.Panel();
+	var heightRow = new UI.Row();
 	var height = new UI.Number( parameters.height ).onChange( update );
 
 	heightRow.add( new UI.Text( 'Height' ).setWidth( '90px' ) );
@@ -25290,7 +25235,7 @@ Sidebar.Geometry.PlaneGeometry = function ( signals, object ) {
 
 	// widthSegments
 
-	var widthSegmentsRow = new UI.Panel();
+	var widthSegmentsRow = new UI.Row();
 	var widthSegments = new UI.Integer( parameters.widthSegments ).setRange( 1, Infinity ).onChange( update );
 
 	widthSegmentsRow.add( new UI.Text( 'Width segments' ).setWidth( '90px' ) );
@@ -25300,7 +25245,7 @@ Sidebar.Geometry.PlaneGeometry = function ( signals, object ) {
 
 	// heightSegments
 
-	var heightSegmentsRow = new UI.Panel();
+	var heightSegmentsRow = new UI.Row();
 	var heightSegments = new UI.Integer( parameters.heightSegments ).setRange( 1, Infinity ).onChange( update );
 
 	heightSegmentsRow.add( new UI.Text( 'Height segments' ).setWidth( '90px' ) );
@@ -25312,19 +25257,13 @@ Sidebar.Geometry.PlaneGeometry = function ( signals, object ) {
 	//
 
 	function update() {
-		
-		object.geometry.dispose();
 
-		object.geometry = new THREE.PlaneGeometry(
+		editor.execute( new SetGeometryCommand( object, new THREE.PlaneGeometry(
 			width.getValue(),
 			height.getValue(),
 			widthSegments.getValue(),
 			heightSegments.getValue()
-		);
-
-		object.geometry.computeBoundingSphere();
-
-		signals.geometryChanged.dispatch( object );
+		) ) );
 
 	}
 
@@ -25338,15 +25277,17 @@ Sidebar.Geometry.PlaneGeometry = function ( signals, object ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.SphereGeometry = function ( signals, object ) {
+Sidebar.Geometry.SphereGeometry = function ( editor, object ) {
 
-	var container = new UI.Panel();
+	var signals = editor.signals;
+
+	var container = new UI.Row();
 
 	var parameters = object.geometry.parameters;
 
 	// radius
 
-	var radiusRow = new UI.Panel();
+	var radiusRow = new UI.Row();
 	var radius = new UI.Number( parameters.radius ).onChange( update );
 
 	radiusRow.add( new UI.Text( 'Radius' ).setWidth( '90px' ) );
@@ -25356,7 +25297,7 @@ Sidebar.Geometry.SphereGeometry = function ( signals, object ) {
 
 	// widthSegments
 
-	var widthSegmentsRow = new UI.Panel();
+	var widthSegmentsRow = new UI.Row();
 	var widthSegments = new UI.Integer( parameters.widthSegments ).setRange( 1, Infinity ).onChange( update );
 
 	widthSegmentsRow.add( new UI.Text( 'Width segments' ).setWidth( '90px' ) );
@@ -25366,7 +25307,7 @@ Sidebar.Geometry.SphereGeometry = function ( signals, object ) {
 
 	// heightSegments
 
-	var heightSegmentsRow = new UI.Panel();
+	var heightSegmentsRow = new UI.Row();
 	var heightSegments = new UI.Integer( parameters.heightSegments ).setRange( 1, Infinity ).onChange( update );
 
 	heightSegmentsRow.add( new UI.Text( 'Height segments' ).setWidth( '90px' ) );
@@ -25376,7 +25317,7 @@ Sidebar.Geometry.SphereGeometry = function ( signals, object ) {
 
 	// phiStart
 
-	var phiStartRow = new UI.Panel();
+	var phiStartRow = new UI.Row();
 	var phiStart = new UI.Number( parameters.phiStart ).onChange( update );
 
 	phiStartRow.add( new UI.Text( 'Phi start' ).setWidth( '90px' ) );
@@ -25386,7 +25327,7 @@ Sidebar.Geometry.SphereGeometry = function ( signals, object ) {
 
 	// phiLength
 
-	var phiLengthRow = new UI.Panel();
+	var phiLengthRow = new UI.Row();
 	var phiLength = new UI.Number( parameters.phiLength ).onChange( update );
 
 	phiLengthRow.add( new UI.Text( 'Phi length' ).setWidth( '90px' ) );
@@ -25396,7 +25337,7 @@ Sidebar.Geometry.SphereGeometry = function ( signals, object ) {
 
 	// thetaStart
 
-	var thetaStartRow = new UI.Panel();
+	var thetaStartRow = new UI.Row();
 	var thetaStart = new UI.Number( parameters.thetaStart ).onChange( update );
 
 	thetaStartRow.add( new UI.Text( 'Theta start' ).setWidth( '90px' ) );
@@ -25406,7 +25347,7 @@ Sidebar.Geometry.SphereGeometry = function ( signals, object ) {
 
 	// thetaLength
 
-	var thetaLengthRow = new UI.Panel();
+	var thetaLengthRow = new UI.Row();
 	var thetaLength = new UI.Number( parameters.thetaLength ).onChange( update );
 
 	thetaLengthRow.add( new UI.Text( 'Theta length' ).setWidth( '90px' ) );
@@ -25419,9 +25360,7 @@ Sidebar.Geometry.SphereGeometry = function ( signals, object ) {
 
 	function update() {
 
-		object.geometry.dispose();
-
-		object.geometry = new THREE.SphereGeometry(
+		editor.execute( new SetGeometryCommand( object, new THREE.SphereGeometry(
 			radius.getValue(),
 			widthSegments.getValue(),
 			heightSegments.getValue(),
@@ -25429,11 +25368,7 @@ Sidebar.Geometry.SphereGeometry = function ( signals, object ) {
 			phiLength.getValue(),
 			thetaStart.getValue(),
 			thetaLength.getValue()
-		);
-
-		object.geometry.computeBoundingSphere();
-
-		signals.geometryChanged.dispatch( object );
+		) ) );
 
 	}
 
@@ -25447,15 +25382,17 @@ Sidebar.Geometry.SphereGeometry = function ( signals, object ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.TorusGeometry = function ( signals, object ) {
+Sidebar.Geometry.TorusGeometry = function ( editor, object ) {
 
-	var container = new UI.Panel();
+	var signals = editor.signals;
+
+	var container = new UI.Row();
 
 	var parameters = object.geometry.parameters;
 
 	// radius
 
-	var radiusRow = new UI.Panel();
+	var radiusRow = new UI.Row();
 	var radius = new UI.Number( parameters.radius ).onChange( update );
 
 	radiusRow.add( new UI.Text( 'Radius' ).setWidth( '90px' ) );
@@ -25465,7 +25402,7 @@ Sidebar.Geometry.TorusGeometry = function ( signals, object ) {
 
 	// tube
 
-	var tubeRow = new UI.Panel();
+	var tubeRow = new UI.Row();
 	var tube = new UI.Number( parameters.tube ).onChange( update );
 
 	tubeRow.add( new UI.Text( 'Tube' ).setWidth( '90px' ) );
@@ -25475,7 +25412,7 @@ Sidebar.Geometry.TorusGeometry = function ( signals, object ) {
 
 	// radialSegments
 
-	var radialSegmentsRow = new UI.Panel();
+	var radialSegmentsRow = new UI.Row();
 	var radialSegments = new UI.Integer( parameters.radialSegments ).setRange( 1, Infinity ).onChange( update );
 
 	radialSegmentsRow.add( new UI.Text( 'Radial segments' ).setWidth( '90px' ) );
@@ -25485,7 +25422,7 @@ Sidebar.Geometry.TorusGeometry = function ( signals, object ) {
 
 	// tubularSegments
 
-	var tubularSegmentsRow = new UI.Panel();
+	var tubularSegmentsRow = new UI.Row();
 	var tubularSegments = new UI.Integer( parameters.tubularSegments ).setRange( 1, Infinity ).onChange( update );
 
 	tubularSegmentsRow.add( new UI.Text( 'Tubular segments' ).setWidth( '90px' ) );
@@ -25495,7 +25432,7 @@ Sidebar.Geometry.TorusGeometry = function ( signals, object ) {
 
 	// arc
 
-	var arcRow = new UI.Panel();
+	var arcRow = new UI.Row();
 	var arc = new UI.Number( parameters.arc ).onChange( update );
 
 	arcRow.add( new UI.Text( 'Arc' ).setWidth( '90px' ) );
@@ -25508,19 +25445,13 @@ Sidebar.Geometry.TorusGeometry = function ( signals, object ) {
 
 	function update() {
 
-		object.geometry.dispose();
-
-		object.geometry = new THREE.TorusGeometry(
+		editor.execute( new SetGeometryCommand( object, new THREE.TorusGeometry(
 			radius.getValue(),
 			tube.getValue(),
 			radialSegments.getValue(),
 			tubularSegments.getValue(),
 			arc.getValue()
-		);
-
-		object.geometry.computeBoundingSphere();
-
-		signals.geometryChanged.dispatch( object );
+		) ) );
 
 	}
 
@@ -25534,15 +25465,17 @@ Sidebar.Geometry.TorusGeometry = function ( signals, object ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-Sidebar.Geometry.TorusKnotGeometry = function ( signals, object ) {
+Sidebar.Geometry.TorusKnotGeometry = function ( editor, object ) {
 
-	var container = new UI.Panel();
+	var signals = editor.signals;
+
+	var container = new UI.Row();
 
 	var parameters = object.geometry.parameters;
 
 	// radius
 
-	var radiusRow = new UI.Panel();
+	var radiusRow = new UI.Row();
 	var radius = new UI.Number( parameters.radius ).onChange( update );
 
 	radiusRow.add( new UI.Text( 'Radius' ).setWidth( '90px' ) );
@@ -25552,7 +25485,7 @@ Sidebar.Geometry.TorusKnotGeometry = function ( signals, object ) {
 
 	// tube
 
-	var tubeRow = new UI.Panel();
+	var tubeRow = new UI.Row();
 	var tube = new UI.Number( parameters.tube ).onChange( update );
 
 	tubeRow.add( new UI.Text( 'Tube' ).setWidth( '90px' ) );
@@ -25562,7 +25495,7 @@ Sidebar.Geometry.TorusKnotGeometry = function ( signals, object ) {
 
 	// radialSegments
 
-	var radialSegmentsRow = new UI.Panel();
+	var radialSegmentsRow = new UI.Row();
 	var radialSegments = new UI.Integer( parameters.radialSegments ).setRange( 1, Infinity ).onChange( update );
 
 	radialSegmentsRow.add( new UI.Text( 'Radial segments' ).setWidth( '90px' ) );
@@ -25572,7 +25505,7 @@ Sidebar.Geometry.TorusKnotGeometry = function ( signals, object ) {
 
 	// tubularSegments
 
-	var tubularSegmentsRow = new UI.Panel();
+	var tubularSegmentsRow = new UI.Row();
 	var tubularSegments = new UI.Integer( parameters.tubularSegments ).setRange( 1, Infinity ).onChange( update );
 
 	tubularSegmentsRow.add( new UI.Text( 'Tubular segments' ).setWidth( '90px' ) );
@@ -25582,7 +25515,7 @@ Sidebar.Geometry.TorusKnotGeometry = function ( signals, object ) {
 
 	// p
 
-	var pRow = new UI.Panel();
+	var pRow = new UI.Row();
 	var p = new UI.Number( parameters.p ).onChange( update );
 
 	pRow.add( new UI.Text( 'P' ).setWidth( '90px' ) );
@@ -25592,7 +25525,7 @@ Sidebar.Geometry.TorusKnotGeometry = function ( signals, object ) {
 
 	// q
 
-	var qRow = new UI.Panel();
+	var qRow = new UI.Row();
 	var q = new UI.Number( parameters.q ).onChange( update );
 
 	pRow.add( new UI.Text( 'Q' ).setWidth( '90px' ) );
@@ -25602,7 +25535,7 @@ Sidebar.Geometry.TorusKnotGeometry = function ( signals, object ) {
 
 	// heightScale
 
-	var heightScaleRow = new UI.Panel();
+	var heightScaleRow = new UI.Row();
 	var heightScale = new UI.Number( parameters.heightScale ).onChange( update );
 
 	pRow.add( new UI.Text( 'Height scale' ).setWidth( '90px' ) );
@@ -25615,9 +25548,7 @@ Sidebar.Geometry.TorusKnotGeometry = function ( signals, object ) {
 
 	function update() {
 
-		object.geometry.dispose();
-
-		object.geometry = new THREE.TorusKnotGeometry(
+		editor.execute( new SetGeometryCommand( object, new THREE.TorusKnotGeometry(
 			radius.getValue(),
 			tube.getValue(),
 			radialSegments.getValue(),
@@ -25625,11 +25556,7 @@ Sidebar.Geometry.TorusKnotGeometry = function ( signals, object ) {
 			p.getValue(),
 			q.getValue(),
 			heightScale.getValue()
-		);
-
-		object.geometry.computeBoundingSphere();
-
-		signals.geometryChanged.dispatch( object );
+		) ) );
 
 	}
 
@@ -26056,8 +25983,8 @@ THREE.TeapotBufferGeometry = function ( size, segments, bottom, lid, body, fitLi
 	lid = lid === undefined ? true : lid;
 	body = body === undefined ? true : body;
 
-	// Should the lid be snug? It's not traditional, so off by default
-	fitLid = fitLid === undefined ? false : fitLid;
+	// Should the lid be snug? It's not traditional, but we make it snug by default
+	fitLid = fitLid === undefined ? true : fitLid;
 
 	// Jim Blinn scaled the teapot down in size by about 1.3 for
 	// some rendering tests. He liked the new proportions that he kept
@@ -26399,13 +26326,13 @@ THREE.TeapotBufferGeometry.prototype.clone = function () {
 
 Sidebar.Geometry.TeapotBufferGeometry = function ( signals, object ) {
 
-	var container = new UI.Panel();
+	var container = new UI.Row();
 
 	var parameters = object.geometry.parameters;
 
 	// size
 
-	var sizeRow = new UI.Panel();
+	var sizeRow = new UI.Row();
 	var size = new UI.Number( parameters.size ).onChange( update );
 
 	sizeRow.add( new UI.Text( 'Size' ).setWidth( '90px' ) );
@@ -26415,7 +26342,7 @@ Sidebar.Geometry.TeapotBufferGeometry = function ( signals, object ) {
 
 	// segments
 
-	var segmentsRow = new UI.Panel();
+	var segmentsRow = new UI.Row();
 	var segments = new UI.Integer( parameters.segments ).setRange( 1, Infinity ).onChange( update );
 
 	segmentsRow.add( new UI.Text( 'Segments' ).setWidth( '90px' ) );
@@ -26425,7 +26352,7 @@ Sidebar.Geometry.TeapotBufferGeometry = function ( signals, object ) {
 
 	// bottom
 
-	var bottomRow = new UI.Panel();
+	var bottomRow = new UI.Row();
 	var bottom = new UI.Checkbox( parameters.bottom ).onChange( update );
 
 	bottomRow.add( new UI.Text( 'Bottom' ).setWidth( '90px' ) );
@@ -26435,7 +26362,7 @@ Sidebar.Geometry.TeapotBufferGeometry = function ( signals, object ) {
 
 	// lid
 
-	var lidRow = new UI.Panel();
+	var lidRow = new UI.Row();
 	var lid = new UI.Checkbox( parameters.lid ).onChange( update );
 
 	lidRow.add( new UI.Text( 'Lid' ).setWidth( '90px' ) );
@@ -26445,7 +26372,7 @@ Sidebar.Geometry.TeapotBufferGeometry = function ( signals, object ) {
 
 	// body
 
-	var bodyRow = new UI.Panel();
+	var bodyRow = new UI.Row();
 	var body = new UI.Checkbox( parameters.body ).onChange( update );
 
 	bodyRow.add( new UI.Text( 'Body' ).setWidth( '90px' ) );
@@ -26455,7 +26382,7 @@ Sidebar.Geometry.TeapotBufferGeometry = function ( signals, object ) {
 
 	// fitted lid
 
-	var fitLidRow = new UI.Panel();
+	var fitLidRow = new UI.Row();
 	var fitLid = new UI.Checkbox( parameters.fitLid ).onChange( update );
 
 	fitLidRow.add( new UI.Text( 'Fitted Lid' ).setWidth( '90px' ) );
@@ -26465,7 +26392,7 @@ Sidebar.Geometry.TeapotBufferGeometry = function ( signals, object ) {
 
 	// blinn-sized
 
-	var blinnRow = new UI.Panel();
+	var blinnRow = new UI.Row();
 	var blinn = new UI.Checkbox( parameters.blinn ).onChange( update );
 
 	blinnRow.add( new UI.Text( 'Blinn-scaled' ).setWidth( '90px' ) );
@@ -26508,22 +26435,36 @@ Sidebar.Material = function ( editor ) {
 	var signals = editor.signals;
 	var currentObject;
 
-	var container = new UI.CollapsiblePanel();
-	container.setCollapsed( editor.config.getKey( 'ui/sidebar/material/collapsed' ) );
-	container.onCollapsedChange( function ( boolean ) {
+	var container = new UI.Panel();
+	container.setBorderTop( '0' );
+	container.setPaddingTop( '20px' );
 
-		editor.config.setKey( 'ui/sidebar/material/collapsed', boolean );
+	// type
 
-	} );
-	container.setDisplay( 'none' );
-	container.dom.classList.add( 'Material' );
+	var materialClassRow = new UI.Row();
+	var materialClass = new UI.Select().setOptions( {
 
-	container.addStatic( new UI.Text().setValue( 'MATERIAL' ) );
-	container.add( new UI.Break() );
+		'LineBasicMaterial': 'LineBasicMaterial',
+		'LineDashedMaterial': 'LineDashedMaterial',
+		'MeshBasicMaterial': 'MeshBasicMaterial',
+		'MeshDepthMaterial': 'MeshDepthMaterial',
+		'MeshNormalMaterial': 'MeshNormalMaterial',
+		'MeshLambertMaterial': 'MeshLambertMaterial',
+		'MeshPhongMaterial': 'MeshPhongMaterial',
+		'MeshStandardMaterial': 'MeshStandardMaterial',
+		'ShaderMaterial': 'ShaderMaterial',
+		'SpriteMaterial': 'SpriteMaterial'
+
+	} ).setWidth( '150px' ).setFontSize( '12px' ).onChange( update );
+
+	materialClassRow.add( new UI.Text( 'Type' ).setWidth( '90px' ) );
+	materialClassRow.add( materialClass );
+
+	container.add( materialClassRow );
 
 	// uuid
 
-	var materialUUIDRow = new UI.Panel();
+	var materialUUIDRow = new UI.Row();
 	var materialUUID = new UI.Input().setWidth( '115px' ).setFontSize( '12px' ).setDisabled( true );
 	var materialUUIDRenew = new UI.Button( '⟳' ).setMarginLeft( '7px' ).onClick( function () {
 
@@ -26540,10 +26481,10 @@ Sidebar.Material = function ( editor ) {
 
 	// name
 
-	var materialNameRow = new UI.Panel();
+	var materialNameRow = new UI.Row();
 	var materialName = new UI.Input().setWidth( '150px' ).setFontSize( '12px' ).onChange( function () {
 
-		editor.setMaterialName( editor.selected.material, materialName.getValue() );
+		editor.execute( new SetMaterialValueCommand( editor.selected, 'name', materialName.getValue() ) );
 
 	} );
 
@@ -26552,38 +26493,16 @@ Sidebar.Material = function ( editor ) {
 
 	container.add( materialNameRow );
 
-	// class
-
-	var materialClassRow = new UI.Panel();
-	var materialClass = new UI.Select().setOptions( {
-
-		'LineBasicMaterial': 'LineBasicMaterial',
-		'LineDashedMaterial': 'LineDashedMaterial',
-		'MeshBasicMaterial': 'MeshBasicMaterial',
-		'MeshDepthMaterial': 'MeshDepthMaterial',
-		'MeshLambertMaterial': 'MeshLambertMaterial',
-		'MeshNormalMaterial': 'MeshNormalMaterial',
-		'MeshPhongMaterial': 'MeshPhongMaterial',
-		'ShaderMaterial': 'ShaderMaterial',
-		'SpriteMaterial': 'SpriteMaterial'
-
-	} ).setWidth( '150px' ).setFontSize( '12px' ).onChange( update );
-
-	materialClassRow.add( new UI.Text( 'Type' ).setWidth( '90px' ) );
-	materialClassRow.add( materialClass );
-
-	container.add( materialClassRow );
-
 	// program
 
-	var materialProgramRow = new UI.Panel();
+	var materialProgramRow = new UI.Row();
 	materialProgramRow.add( new UI.Text( 'Program' ).setWidth( '90px' ) );
 
 	var materialProgramInfo = new UI.Button( 'Info' );
 	materialProgramInfo.setMarginLeft( '4px' );
 	materialProgramInfo.onClick( function () {
 
-		signals.editScript.dispatch( currentObject.material, 'programInfo' );
+		signals.editScript.dispatch( currentObject, 'programInfo' );
 
 	} );
 	materialProgramRow.add( materialProgramInfo );
@@ -26592,7 +26511,7 @@ Sidebar.Material = function ( editor ) {
 	materialProgramVertex.setMarginLeft( '4px' );
 	materialProgramVertex.onClick( function () {
 
-		signals.editScript.dispatch( currentObject.material, 'vertexShader' );
+		signals.editScript.dispatch( currentObject, 'vertexShader' );
 
 	} );
 	materialProgramRow.add( materialProgramVertex );
@@ -26601,7 +26520,7 @@ Sidebar.Material = function ( editor ) {
 	materialProgramFragment.setMarginLeft( '4px' );
 	materialProgramFragment.onClick( function () {
 
-		signals.editScript.dispatch( currentObject.material, 'fragmentShader' );
+		signals.editScript.dispatch( currentObject, 'fragmentShader' );
 
 	} );
 	materialProgramRow.add( materialProgramFragment );
@@ -26610,7 +26529,7 @@ Sidebar.Material = function ( editor ) {
 
 	// color
 
-	var materialColorRow = new UI.Panel();
+	var materialColorRow = new UI.Row();
 	var materialColor = new UI.Color().onChange( update );
 
 	materialColorRow.add( new UI.Text( 'Color' ).setWidth( '90px' ) );
@@ -26618,9 +26537,29 @@ Sidebar.Material = function ( editor ) {
 
 	container.add( materialColorRow );
 
+	// roughness
+
+	var materialRoughnessRow = new UI.Row();
+	var materialRoughness = new UI.Number( 0.5 ).setWidth( '60px' ).setRange( 0, 1 ).onChange( update );
+
+	materialRoughnessRow.add( new UI.Text( 'Roughness' ).setWidth( '90px' ) );
+	materialRoughnessRow.add( materialRoughness );
+
+	container.add( materialRoughnessRow );
+
+	// metalness
+
+	var materialMetalnessRow = new UI.Row();
+	var materialMetalness = new UI.Number( 0.5 ).setWidth( '60px' ).setRange( 0, 1 ).onChange( update );
+
+	materialMetalnessRow.add( new UI.Text( 'Metalness' ).setWidth( '90px' ) );
+	materialMetalnessRow.add( materialMetalness );
+
+	container.add( materialMetalnessRow );
+
 	// emissive
 
-	var materialEmissiveRow = new UI.Panel();
+	var materialEmissiveRow = new UI.Row();
 	var materialEmissive = new UI.Color().setHexValue( 0x000000 ).onChange( update );
 
 	materialEmissiveRow.add( new UI.Text( 'Emissive' ).setWidth( '90px' ) );
@@ -26630,7 +26569,7 @@ Sidebar.Material = function ( editor ) {
 
 	// specular
 
-	var materialSpecularRow = new UI.Panel();
+	var materialSpecularRow = new UI.Row();
 	var materialSpecular = new UI.Color().setHexValue( 0x111111 ).onChange( update );
 
 	materialSpecularRow.add( new UI.Text( 'Specular' ).setWidth( '90px' ) );
@@ -26640,7 +26579,7 @@ Sidebar.Material = function ( editor ) {
 
 	// shininess
 
-	var materialShininessRow = new UI.Panel();
+	var materialShininessRow = new UI.Row();
 	var materialShininess = new UI.Number( 30 ).onChange( update );
 
 	materialShininessRow.add( new UI.Text( 'Shininess' ).setWidth( '90px' ) );
@@ -26650,7 +26589,7 @@ Sidebar.Material = function ( editor ) {
 
 	// vertex colors
 
-	var materialVertexColorsRow = new UI.Panel();
+	var materialVertexColorsRow = new UI.Row();
 	var materialVertexColors = new UI.Select().setOptions( {
 
 		0: 'No',
@@ -26666,7 +26605,7 @@ Sidebar.Material = function ( editor ) {
 
 	// skinning
 
-	var materialSkinningRow = new UI.Panel();
+	var materialSkinningRow = new UI.Row();
 	var materialSkinning = new UI.Checkbox( false ).onChange( update );
 
 	materialSkinningRow.add( new UI.Text( 'Skinning' ).setWidth( '90px' ) );
@@ -26676,7 +26615,7 @@ Sidebar.Material = function ( editor ) {
 
 	// map
 
-	var materialMapRow = new UI.Panel();
+	var materialMapRow = new UI.Row();
 	var materialMapEnabled = new UI.Checkbox( false ).onChange( update );
 	var materialMap = new UI.Texture().onChange( update );
 
@@ -26688,7 +26627,7 @@ Sidebar.Material = function ( editor ) {
 
 	// alpha map
 
-	var materialAlphaMapRow = new UI.Panel();
+	var materialAlphaMapRow = new UI.Row();
 	var materialAlphaMapEnabled = new UI.Checkbox( false ).onChange( update );
 	var materialAlphaMap = new UI.Texture().onChange( update );
 
@@ -26700,7 +26639,7 @@ Sidebar.Material = function ( editor ) {
 
 	// bump map
 
-	var materialBumpMapRow = new UI.Panel();
+	var materialBumpMapRow = new UI.Row();
 	var materialBumpMapEnabled = new UI.Checkbox( false ).onChange( update );
 	var materialBumpMap = new UI.Texture().onChange( update );
 	var materialBumpScale = new UI.Number( 1 ).setWidth( '30px' ).onChange( update );
@@ -26714,7 +26653,7 @@ Sidebar.Material = function ( editor ) {
 
 	// normal map
 
-	var materialNormalMapRow = new UI.Panel();
+	var materialNormalMapRow = new UI.Row();
 	var materialNormalMapEnabled = new UI.Checkbox( false ).onChange( update );
 	var materialNormalMap = new UI.Texture().onChange( update );
 
@@ -26726,7 +26665,7 @@ Sidebar.Material = function ( editor ) {
 
 	// displacement map
 
-	var materialDisplacementMapRow = new UI.Panel();
+	var materialDisplacementMapRow = new UI.Row();
 	var materialDisplacementMapEnabled = new UI.Checkbox( false ).onChange( update );
 	var materialDisplacementMap = new UI.Texture().onChange( update );
 	var materialDisplacementScale = new UI.Number( 1 ).setWidth( '30px' ).onChange( update );
@@ -26738,9 +26677,33 @@ Sidebar.Material = function ( editor ) {
 
 	container.add( materialDisplacementMapRow );
 
+	// roughness map
+
+	var materialRoughnessMapRow = new UI.Row();
+	var materialRoughnessMapEnabled = new UI.Checkbox( false ).onChange( update );
+	var materialRoughnessMap = new UI.Texture().onChange( update );
+
+	materialRoughnessMapRow.add( new UI.Text( 'Rough. Map' ).setWidth( '90px' ) );
+	materialRoughnessMapRow.add( materialRoughnessMapEnabled );
+	materialRoughnessMapRow.add( materialRoughnessMap );
+
+	container.add( materialRoughnessMapRow );
+
+	// metalness map
+
+	var materialMetalnessMapRow = new UI.Row();
+	var materialMetalnessMapEnabled = new UI.Checkbox( false ).onChange( update );
+	var materialMetalnessMap = new UI.Texture().onChange( update );
+
+	materialMetalnessMapRow.add( new UI.Text( 'Metal. Map' ).setWidth( '90px' ) );
+	materialMetalnessMapRow.add( materialMetalnessMapEnabled );
+	materialMetalnessMapRow.add( materialMetalnessMap );
+
+	container.add( materialMetalnessMapRow );
+
 	// specular map
 
-	var materialSpecularMapRow = new UI.Panel();
+	var materialSpecularMapRow = new UI.Row();
 	var materialSpecularMapEnabled = new UI.Checkbox( false ).onChange( update );
 	var materialSpecularMap = new UI.Texture().onChange( update );
 
@@ -26752,7 +26715,7 @@ Sidebar.Material = function ( editor ) {
 
 	// env map
 
-	var materialEnvMapRow = new UI.Panel();
+	var materialEnvMapRow = new UI.Row();
 	var materialEnvMapEnabled = new UI.Checkbox( false ).onChange( update );
 	var materialEnvMap = new UI.Texture( THREE.SphericalReflectionMapping ).onChange( update );
 	var materialReflectivity = new UI.Number( 1 ).setWidth( '30px' ).onChange( update );
@@ -26766,7 +26729,7 @@ Sidebar.Material = function ( editor ) {
 
 	// light map
 
-	var materialLightMapRow = new UI.Panel();
+	var materialLightMapRow = new UI.Row();
 	var materialLightMapEnabled = new UI.Checkbox( false ).onChange( update );
 	var materialLightMap = new UI.Texture().onChange( update );
 
@@ -26778,7 +26741,7 @@ Sidebar.Material = function ( editor ) {
 
 	// ambient occlusion map
 
-	var materialAOMapRow = new UI.Panel();
+	var materialAOMapRow = new UI.Row();
 	var materialAOMapEnabled = new UI.Checkbox( false ).onChange( update );
 	var materialAOMap = new UI.Texture().onChange( update );
 	var materialAOScale = new UI.Number( 1 ).setRange( 0, 1 ).setWidth( '30px' ).onChange( update );
@@ -26790,9 +26753,21 @@ Sidebar.Material = function ( editor ) {
 
 	container.add( materialAOMapRow );
 
+	// emissive map
+
+	var materialEmissiveMapRow = new UI.Row();
+	var materialEmissiveMapEnabled = new UI.Checkbox( false ).onChange( update );
+	var materialEmissiveMap = new UI.Texture().onChange( update );
+
+	materialEmissiveMapRow.add( new UI.Text( 'Emissive Map' ).setWidth( '90px' ) );
+	materialEmissiveMapRow.add( materialEmissiveMapEnabled );
+	materialEmissiveMapRow.add( materialEmissiveMap );
+
+	container.add( materialEmissiveMapRow );
+
 	// side
 
-	var materialSideRow = new UI.Panel();
+	var materialSideRow = new UI.Row();
 	var materialSide = new UI.Select().setOptions( {
 
 		0: 'Front',
@@ -26808,7 +26783,7 @@ Sidebar.Material = function ( editor ) {
 
 	// shading
 
-	var materialShadingRow = new UI.Panel();
+	var materialShadingRow = new UI.Row();
 	var materialShading = new UI.Select().setOptions( {
 
 		0: 'No',
@@ -26824,7 +26799,7 @@ Sidebar.Material = function ( editor ) {
 
 	// blending
 
-	var materialBlendingRow = new UI.Panel();
+	var materialBlendingRow = new UI.Row();
 	var materialBlending = new UI.Select().setOptions( {
 
 		0: 'No',
@@ -26843,8 +26818,8 @@ Sidebar.Material = function ( editor ) {
 
 	// opacity
 
-	var materialOpacityRow = new UI.Panel();
-	var materialOpacity = new UI.Number().setWidth( '60px' ).setRange( 0, 1 ).onChange( update );
+	var materialOpacityRow = new UI.Row();
+	var materialOpacity = new UI.Number( 1 ).setWidth( '60px' ).setRange( 0, 1 ).onChange( update );
 
 	materialOpacityRow.add( new UI.Text( 'Opacity' ).setWidth( '90px' ) );
 	materialOpacityRow.add( materialOpacity );
@@ -26853,7 +26828,7 @@ Sidebar.Material = function ( editor ) {
 
 	// transparent
 
-	var materialTransparentRow = new UI.Panel();
+	var materialTransparentRow = new UI.Row();
 	var materialTransparent = new UI.Checkbox().setLeft( '100px' ).onChange( update );
 
 	materialTransparentRow.add( new UI.Text( 'Transparent' ).setWidth( '90px' ) );
@@ -26863,7 +26838,7 @@ Sidebar.Material = function ( editor ) {
 
 	// alpha test
 
-	var materialAlphaTestRow = new UI.Panel();
+	var materialAlphaTestRow = new UI.Row();
 	var materialAlphaTest = new UI.Number().setWidth( '60px' ).setRange( 0, 1 ).onChange( update );
 
 	materialAlphaTestRow.add( new UI.Text( 'Alpha Test' ).setWidth( '90px' ) );
@@ -26873,7 +26848,7 @@ Sidebar.Material = function ( editor ) {
 
 	// wireframe
 
-	var materialWireframeRow = new UI.Panel();
+	var materialWireframeRow = new UI.Row();
 	var materialWireframe = new UI.Checkbox( false ).onChange( update );
 	var materialWireframeLinewidth = new UI.Number( 1 ).setWidth( '60px' ).setRange( 0, 100 ).onChange( update );
 
@@ -26901,9 +26876,9 @@ Sidebar.Material = function ( editor ) {
 
 		if ( material ) {
 
-			if ( material.uuid !== undefined ) {
+			if ( material.uuid !== undefined && material.uuid !== materialUUID.getValue() ) {
 
-				material.uuid = materialUUID.getValue();
+				editor.execute( new SetMaterialValueCommand( currentObject, 'uuid', materialUUID.getValue() ) );
 
 			}
 
@@ -26911,7 +26886,7 @@ Sidebar.Material = function ( editor ) {
 
 				material = new THREE[ materialClass.getValue() ]();
 
-				object.material = material;
+				editor.execute( new SetMaterialCommand( currentObject, material ), 'New Material: ' + materialClass.getValue() );
 				// TODO Copy other references in the scene graph
 				// keeping name and UUID then.
 				// Also there should be means to create a unique
@@ -26920,27 +26895,39 @@ Sidebar.Material = function ( editor ) {
 
 			}
 
-			if ( material.color !== undefined ) {
+			if ( material.color !== undefined && material.color.getHex() !== materialColor.getHexValue() ) {
 
-				material.color.setHex( materialColor.getHexValue() );
-
-			}
-
-			if ( material.emissive !== undefined ) {
-
-				material.emissive.setHex( materialEmissive.getHexValue() );
+				editor.execute( new SetMaterialColorCommand( currentObject, 'color', materialColor.getHexValue() ) );
 
 			}
 
-			if ( material.specular !== undefined ) {
+			if ( material.roughness !== undefined && Math.abs( material.roughness - materialRoughness.getValue() ) >= 0.01 ) {
 
-				material.specular.setHex( materialSpecular.getHexValue() );
+				editor.execute( new SetMaterialValueCommand( currentObject, 'roughness', materialRoughness.getValue() ) );
 
 			}
 
-			if ( material.shininess !== undefined ) {
+			if ( material.metalness !== undefined && Math.abs( material.metalness - materialMetalness.getValue() ) >= 0.01 ) {
 
-				material.shininess = materialShininess.getValue();
+				editor.execute( new SetMaterialValueCommand( currentObject, 'metalness', materialMetalness.getValue() ) );
+
+			}
+
+			if ( material.emissive !== undefined && material.emissive.getHex() !== materialEmissive.getHexValue() ) {
+
+				editor.execute( new SetMaterialColorCommand( currentObject, 'emissive', materialEmissive.getHexValue() ) );
+
+			}
+
+			if ( material.specular !== undefined && material.specular.getHex() !== materialSpecular.getHexValue() ) {
+
+				editor.execute( new SetMaterialColorCommand( currentObject, 'specular', materialSpecular.getHexValue() ) );
+
+			}
+
+			if ( material.shininess !== undefined && Math.abs( material.shininess - materialShininess.getValue() ) >= 0.01 ) {
+
+				editor.execute( new SetMaterialValueCommand( currentObject, 'shininess', materialShininess.getValue() ) );
 
 			}
 
@@ -26950,16 +26937,15 @@ Sidebar.Material = function ( editor ) {
 
 				if ( material.vertexColors !== vertexColors ) {
 
-					material.vertexColors = vertexColors;
-					material.needsUpdate = true;
+					editor.execute( new SetMaterialValueCommand( currentObject, 'vertexColors', vertexColors ) );
 
 				}
 
 			}
 
-			if ( material.skinning !== undefined ) {
+			if ( material.skinning !== undefined && material.skinning !== materialSkinning.getValue() ) {
 
-				material.skinning = materialSkinning.getValue();
+				editor.execute( new SetMaterialValueCommand( currentObject, 'skinning', materialSkinning.getValue() ) );
 
 			}
 
@@ -26969,8 +26955,12 @@ Sidebar.Material = function ( editor ) {
 
 				if ( objectHasUvs ) {
 
-					material.map = mapEnabled ? materialMap.getValue() : null;
-					material.needsUpdate = true;
+					var map = mapEnabled ? materialMap.getValue() : null;
+					if ( material.map !== map ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'map', map ) );
+
+					}
 
 				} else {
 
@@ -26986,8 +26976,12 @@ Sidebar.Material = function ( editor ) {
 
 				if ( objectHasUvs ) {
 
-					material.alphaMap = mapEnabled ? materialAlphaMap.getValue() : null;
-					material.needsUpdate = true;
+					var alphaMap = mapEnabled ? materialAlphaMap.getValue() : null;
+					if ( material.alphaMap !== alphaMap ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'alphaMap', alphaMap ) );
+
+					}
 
 				} else {
 
@@ -27003,9 +26997,18 @@ Sidebar.Material = function ( editor ) {
 
 				if ( objectHasUvs ) {
 
-					material.bumpMap = bumpMapEnabled ? materialBumpMap.getValue() : null;
-					material.bumpScale = materialBumpScale.getValue();
-					material.needsUpdate = true;
+					var bumpMap = bumpMapEnabled ? materialBumpMap.getValue() : null;
+					if ( material.bumpMap !== bumpMap ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'bumpMap', bumpMap ) );
+
+					}
+
+					if ( material.bumpScale !== materialBumpScale.getValue() ) {
+
+						editor.execute( new SetMaterialValueCommand( currentObject, 'bumpScale', materialBumpScale.getValue() ) );
+
+					}
 
 				} else {
 
@@ -27021,8 +27024,12 @@ Sidebar.Material = function ( editor ) {
 
 				if ( objectHasUvs ) {
 
-					material.normalMap = normalMapEnabled ? materialNormalMap.getValue() : null;
-					material.needsUpdate = true;
+					var normalMap = normalMapEnabled ? materialNormalMap.getValue() : null;
+					if ( material.normalMap !== normalMap ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'normalMap', normalMap ) );
+
+					}
 
 				} else {
 
@@ -27038,13 +27045,76 @@ Sidebar.Material = function ( editor ) {
 
 				if ( objectHasUvs ) {
 
-					material.displacementMap = displacementMapEnabled ? materialDisplacementMap.getValue() : null;
-					material.displacementScale = materialDisplacementScale.getValue();
-					material.needsUpdate = true;
+					var displacementMap = displacementMapEnabled ? materialDisplacementMap.getValue() : null;
+					if ( material.displacementMap !== displacementMap ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'displacementMap', displacementMap ) );
+
+					}
+
+					if ( material.displacementScale !== materialDisplacementScale.getValue() ) {
+
+						editor.execute( new SetMaterialValueCommand( currentObject, 'displacementScale', materialDisplacementScale.getValue() ) );
+
+					}
 
 				} else {
 
 					if ( displacementMapEnabled ) textureWarning = true;
+
+				}
+
+			}
+
+			if ( material.roughnessMap !== undefined ) {
+
+				var roughnessMapEnabled = materialRoughnessMapEnabled.getValue() === true;
+
+				if ( objectHasUvs ) {
+
+					var roughnessMap = roughnessMapEnabled ? materialRoughnessMap.getValue() : null;
+					if ( material.roughnessMap !== roughnessMap ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'roughnessMap', roughnessMap ) );
+
+					}
+
+					if ( material.displacementScale !== materialDisplacementScale.getValue() ) {
+
+						editor.execute( new SetMaterialValueCommand( currentObject, 'displacementScale', materialDisplacementScale.getValue() ) );
+
+					}
+
+				} else {
+
+					if ( roughnessMapEnabled ) textureWarning = true;
+
+				}
+
+			}
+
+			if ( material.metalnessMap !== undefined ) {
+
+				var metalnessMapEnabled = materialMetalnessMapEnabled.getValue() === true;
+
+				if ( objectHasUvs ) {
+
+					var metalnessMap = metalnessMapEnabled ? materialMetalnessMap.getValue() : null;
+					if ( material.metalnessMap !== metalnessMap ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'metalnessMap', metalnessMap ) );
+
+					}
+
+					if ( material.displacementScale !== materialDisplacementScale.getValue() ) {
+
+						editor.execute( new SetMaterialValueCommand( currentObject, 'displacementScale', materialDisplacementScale.getValue() ) );
+
+					}
+
+				} else {
+
+					if ( metalnessMapEnabled ) textureWarning = true;
 
 				}
 
@@ -27056,8 +27126,12 @@ Sidebar.Material = function ( editor ) {
 
 				if ( objectHasUvs ) {
 
-					material.specularMap = specularMapEnabled ? materialSpecularMap.getValue() : null;
-					material.needsUpdate = true;
+					var specularMap = specularMapEnabled ? materialSpecularMap.getValue() : null;
+					if ( material.specularMap !== specularMap ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'specularMap', specularMap ) );
+
+					}
 
 				} else {
 
@@ -27071,12 +27145,21 @@ Sidebar.Material = function ( editor ) {
 
 				var envMapEnabled = materialEnvMapEnabled.getValue() === true;
 
-				material.envMap = envMapEnabled ? materialEnvMap.getValue() : null;
-				material.reflectivity = materialReflectivity.getValue();
-				material.needsUpdate = true;
+				var envMap = envMapEnabled ? materialEnvMap.getValue() : null;
+
+				if ( material.envMap !== envMap ) {
+
+					editor.execute( new SetMaterialMapCommand( currentObject, 'envMap', envMap ) );
+
+				}
+
+				if ( material.reflectivity !== materialReflectivity.getValue() ) {
+
+					editor.execute( new SetMaterialValueCommand( currentObject, 'reflectivity', materialReflectivity.getValue() ) );
+
+				}
 
 			}
-
 
 			if ( material.lightMap !== undefined ) {
 
@@ -27084,8 +27167,12 @@ Sidebar.Material = function ( editor ) {
 
 				if ( objectHasUvs ) {
 
-					material.lightMap = lightMapEnabled ? materialLightMap.getValue() : null;
-					material.needsUpdate = true;
+					var lightMap = lightMapEnabled ? materialLightMap.getValue() : null;
+					if ( material.lightMap !== lightMap ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'lightMap', lightMap ) );
+
+					}
 
 				} else {
 
@@ -27101,9 +27188,18 @@ Sidebar.Material = function ( editor ) {
 
 				if ( objectHasUvs ) {
 
-					material.aoMap = aoMapEnabled ? materialAOMap.getValue() : null;
-					material.aoMapIntensity = materialAOScale.getValue();
-					material.needsUpdate = true;
+					var aoMap = aoMapEnabled ? materialAOMap.getValue() : null;
+					if ( material.aoMap !== aoMap ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'aoMap', aoMap ) );
+
+					}
+
+					if ( material.aoMapIntensity !== materialAOScale.getValue() ) {
+
+						editor.execute( new SetMaterialValueCommand( currentObject, 'aoMapIntensity', materialAOScale.getValue() ) );
+
+					}
 
 				} else {
 
@@ -27113,55 +27209,92 @@ Sidebar.Material = function ( editor ) {
 
 			}
 
+			if ( material.emissiveMap !== undefined ) {
+
+				var emissiveMapEnabled = materialEmissiveMapEnabled.getValue() === true;
+
+				if ( objectHasUvs ) {
+
+					var emissiveMap = emissiveMapEnabled ? materialEmissiveMap.getValue() : null;
+					if ( material.emissiveMap !== emissiveMap ) {
+
+						editor.execute( new SetMaterialMapCommand( currentObject, 'emissiveMap', emissiveMap ) );
+
+					}
+
+				} else {
+
+					if ( emissiveMapEnabled ) textureWarning = true;
+
+				}
+
+			}
+
 			if ( material.side !== undefined ) {
 
-				material.side = parseInt( materialSide.getValue() );
+				var side = parseInt( materialSide.getValue() );
+				if ( material.side !== side ) {
+
+					editor.execute( new SetMaterialValueCommand( currentObject, 'side', side ) );
+
+				}
+
 
 			}
 
 			if ( material.shading !== undefined ) {
 
-				material.shading = parseInt( materialShading.getValue() );
+				var shading = parseInt( materialShading.getValue() );
+				if ( material.shading !== shading ) {
+
+					editor.execute( new SetMaterialValueCommand( currentObject, 'shading', shading ) );
+
+				}
 
 			}
 
 			if ( material.blending !== undefined ) {
 
-				material.blending = parseInt( materialBlending.getValue() );
+				var blending = parseInt( materialBlending.getValue() );
+				if ( material.blending !== blending ) {
+
+					editor.execute( new SetMaterialValueCommand( currentObject, 'blending', blending ) );
+
+				}
 
 			}
 
-			if ( material.opacity !== undefined ) {
+			if ( material.opacity !== undefined && Math.abs( material.opacity - materialOpacity.getValue() ) >= 0.01 ) {
 
-				material.opacity = materialOpacity.getValue();
-
-			}
-
-			if ( material.transparent !== undefined ) {
-
-				material.transparent = materialTransparent.getValue();
+				editor.execute( new SetMaterialValueCommand( currentObject, 'opacity', materialOpacity.getValue() ) );
 
 			}
 
-			if ( material.alphaTest !== undefined ) {
+			if ( material.transparent !== undefined && material.transparent !== materialTransparent.getValue() ) {
 
-				material.alphaTest = materialAlphaTest.getValue();
-
-			}
-
-			if ( material.wireframe !== undefined ) {
-
-				material.wireframe = materialWireframe.getValue();
+				editor.execute( new SetMaterialValueCommand( currentObject, 'transparent', materialTransparent.getValue() ) );
 
 			}
 
-			if ( material.wireframeLinewidth !== undefined ) {
+			if ( material.alphaTest !== undefined && Math.abs( material.alphaTest - materialAlphaTest.getValue() ) >= 0.01 ) {
 
-				material.wireframeLinewidth = materialWireframeLinewidth.getValue();
+				editor.execute( new SetMaterialValueCommand( currentObject, 'alphaTest', materialAlphaTest.getValue() ) );
 
 			}
 
-			refreshUi(false);
+			if ( material.wireframe !== undefined && material.wireframe !== materialWireframe.getValue() ) {
+
+				editor.execute( new SetMaterialValueCommand( currentObject, 'wireframe', materialWireframe.getValue() ) );
+
+			}
+
+			if ( material.wireframeLinewidth !== undefined && Math.abs( material.wireframeLinewidth - materialWireframeLinewidth.getValue() ) >= 0.01 ) {
+
+				editor.execute( new SetMaterialValueCommand( currentObject, 'wireframeLinewidth', materialWireframeLinewidth.getValue() ) );
+
+			}
+
+			refreshUI( false );
 
 			signals.materialChanged.dispatch( material );
 
@@ -27173,7 +27306,7 @@ Sidebar.Material = function ( editor ) {
 
 		}
 
-	};
+	}
 
 	//
 
@@ -27182,6 +27315,8 @@ Sidebar.Material = function ( editor ) {
 		var properties = {
 			'name': materialNameRow,
 			'color': materialColorRow,
+			'roughness': materialRoughnessRow,
+			'metalness': materialMetalnessRow,
 			'emissive': materialEmissiveRow,
 			'specular': materialSpecularRow,
 			'shininess': materialShininessRow,
@@ -27193,10 +27328,13 @@ Sidebar.Material = function ( editor ) {
 			'bumpMap': materialBumpMapRow,
 			'normalMap': materialNormalMapRow,
 			'displacementMap': materialDisplacementMapRow,
+			'roughnessMap': materialRoughnessMapRow,
+			'metalnessMap': materialMetalnessMapRow,
 			'specularMap': materialSpecularMapRow,
 			'envMap': materialEnvMapRow,
 			'lightMap': materialLightMapRow,
 			'aoMap': materialAOMapRow,
+			'emissiveMap': materialEmissiveMapRow,
 			'side': materialSideRow,
 			'shading': materialShadingRow,
 			'blending': materialBlendingRow,
@@ -27214,10 +27352,12 @@ Sidebar.Material = function ( editor ) {
 
 		}
 
-	};
+	}
 
 
-	function refreshUi( resetTextureSelectors ) {
+	function refreshUI( resetTextureSelectors ) {
+
+		if ( ! currentObject ) return;
 
 		var material = currentObject.material;
 
@@ -27238,6 +27378,18 @@ Sidebar.Material = function ( editor ) {
 		if ( material.color !== undefined ) {
 
 			materialColor.setHexValue( material.color.getHexString() );
+
+		}
+
+		if ( material.roughness !== undefined ) {
+
+			materialRoughness.setValue( material.roughness );
+
+		}
+
+		if ( material.metalness !== undefined ) {
+
+			materialMetalness.setValue( material.metalness );
 
 		}
 
@@ -27335,6 +27487,30 @@ Sidebar.Material = function ( editor ) {
 
 		}
 
+		if ( material.roughnessMap !== undefined ) {
+
+			materialRoughnessMapEnabled.setValue( material.roughnessMap !== null );
+
+			if ( material.roughnessMap !== null || resetTextureSelectors ) {
+
+				materialRoughnessMap.setValue( material.roughnessMap );
+
+			}
+
+		}
+
+		if ( material.metalnessMap !== undefined ) {
+
+			materialMetalnessMapEnabled.setValue( material.metalnessMap !== null );
+
+			if ( material.metalnessMap !== null || resetTextureSelectors ) {
+
+				materialMetalnessMap.setValue( material.metalnessMap );
+
+			}
+
+		}
+
 		if ( material.specularMap !== undefined ) {
 
 			materialSpecularMapEnabled.setValue( material.specularMap !== null );
@@ -27384,6 +27560,18 @@ Sidebar.Material = function ( editor ) {
 			}
 
 			materialAOScale.setValue( material.aoMapIntensity );
+
+		}
+
+		if ( material.emissiveMap !== undefined ) {
+
+			materialEmissiveMapEnabled.setValue( material.emissiveMap !== null );
+
+			if ( material.emissiveMap !== null || resetTextureSelectors ) {
+
+				materialEmissiveMap.setValue( material.emissiveMap );
+
+			}
 
 		}
 
@@ -27448,7 +27636,7 @@ Sidebar.Material = function ( editor ) {
 			var objectChanged = object !== currentObject;
 
 			currentObject = object;
-			refreshUi(objectChanged);
+			refreshUI( objectChanged );
 			container.setDisplay( '' );
 
 		} else {
@@ -27460,9 +27648,15 @@ Sidebar.Material = function ( editor ) {
 
 	} );
 
+	signals.materialChanged.add( function () {
+
+		refreshUI();
+
+	} );
+
 	return container;
 
-}
+};
 
 // File:editor/js/Sidebar.Script.js
 
@@ -27488,14 +27682,14 @@ Sidebar.Script = function ( editor ) {
 
 	//
 
-	var scriptsContainer = new UI.Panel();
+	var scriptsContainer = new UI.Row();
 	container.add( scriptsContainer );
 
 	var newScript = new UI.Button( 'New' );
 	newScript.onClick( function () {
 
 		var script = { name: '', source: 'function update( event ) {}' };
-		editor.addScript( editor.selected, script );
+		editor.execute( new AddScriptCommand( editor.selected, script ) );
 
 	} );
 	container.add( newScript );
@@ -27531,9 +27725,7 @@ Sidebar.Script = function ( editor ) {
 					var name = new UI.Input( script.name ).setWidth( '130px' ).setFontSize( '12px' );
 					name.onChange( function () {
 
-						script.name = this.getValue();
-
-						signals.scriptChanged.dispatch();
+						editor.execute( new SetScriptValueCommand( editor.selected, script, 'name', this.getValue() ) );
 
 					} );
 					scriptsContainer.add( name );
@@ -27553,7 +27745,7 @@ Sidebar.Script = function ( editor ) {
 
 						if ( confirm( 'Are you sure?' ) ) {
 
-							editor.removeScript( editor.selected, script );
+							editor.execute( new RemoveScriptCommand( editor.selected, script ) );
 
 						}
 
@@ -27590,6 +27782,7 @@ Sidebar.Script = function ( editor ) {
 
 	signals.scriptAdded.add( update );
 	signals.scriptRemoved.add( update );
+	signals.scriptChanged.add( update );
 
 	return container;
 
@@ -27613,60 +27806,49 @@ var Toolbar = function ( editor ) {
 
 	// translate / rotate / scale
 
-	// var translate = new UI.Button( 'translate' ).onClick( function () {
+	var translate = new UI.Button( 'translate' ).onClick( function () {
 
-	// 	signals.transformModeChanged.dispatch( 'translate' );
+		signals.transformModeChanged.dispatch( 'translate' );
 
-	// } );
-	// buttons.add( translate );
+	} );
+	buttons.add( translate );
 
-	// var rotate = new UI.Button( 'rotate' ).onClick( function () {
+	var rotate = new UI.Button( 'rotate' ).onClick( function () {
 
-	// 	signals.transformModeChanged.dispatch( 'rotate' );
+		signals.transformModeChanged.dispatch( 'rotate' );
 
-	// } );
-	// buttons.add( rotate );
+	} );
+	buttons.add( rotate );
 
-	// var scale = new UI.Button( 'scale' ).onClick( function () {
+	var scale = new UI.Button( 'scale' ).onClick( function () {
 
-	// 	signals.transformModeChanged.dispatch( 'scale' );
+		signals.transformModeChanged.dispatch( 'scale' );
 
-	// } );
-	// buttons.add( scale );
+	} );
+	buttons.add( scale );
 
 	// grid
 
-	var grid = new UI.Number( 25 ).onChange( update );
-	grid.dom.style.width = '42px';
-	buttons.add( new UI.Text( 'Grid: ' ) );
+	var grid = new UI.Number( 25 ).setWidth( '40px' ).onChange( update );
+	buttons.add( new UI.Text( 'grid: ' ) );
 	buttons.add( grid );
 
-	var snap = new UI.Checkbox( true ).onChange( update );
+	var snap = new UI.THREE.Boolean( false, 'snap' ).onChange( update );
 	buttons.add( snap );
-	buttons.add( new UI.Text( 'snap' ) );
 
-	// var local = new UI.Checkbox( false ).onChange( update );
-	// buttons.add( local );
-	// buttons.add( new UI.Text( 'local' ) );
+	var local = new UI.THREE.Boolean( false, 'local' ).onChange( update );
+	buttons.add( local );
 
-	var showGrid = new UI.Checkbox().onChange( update ).setValue( true );
+	var showGrid = new UI.THREE.Boolean( true, 'show' ).onChange( update );
 	buttons.add( showGrid );
-	buttons.add( new UI.Text( 'Grid' ) );
-
-	var showMan = new UI.Checkbox().onChange( update ).setValue( true );
-	buttons.add( showMan );
-	buttons.add( new UI.Text( 'Dummy' ) );
 
 	function update() {
 
 		signals.snapChanged.dispatch( snap.getValue() === true ? grid.getValue() : null );
-		// signals.spaceChanged.dispatch( local.getValue() === true ? "local" : "world" );
+		signals.spaceChanged.dispatch( local.getValue() === true ? "local" : "world" );
 		signals.showGridChanged.dispatch( showGrid.getValue() );
-		signals.showManChanged.dispatch( showMan.getValue() );
+
 	}
-
-	signals.snapChanged.dispatch( snap.getValue() === true ? grid.getValue() : null );
-
 
 	return container;
 
@@ -27695,32 +27877,17 @@ var Viewport = function ( editor ) {
 
 	// helpers
 
-	var grid = new THREE.GridHelper( 500, 25 );
+	var grid = new THREE.GridHelper( 30, 1 );
 	sceneHelpers.add( grid );
-
-	// instantiate a loader
-	var loader = new THREE.JSONLoader();
-	var vrHuman;
-
-	// load a resource
-	loader.load(
-		// resource URL
-		DUMMY,
-		// '3D/dummy.json',
-		// Function when resource is loaded
-		function ( geometry, materials ) {
-			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
-			sceneHelpers.add( vrHuman );
-
-			vrHuman.rotation.set(0,3.14,0);
-		}
-
-	);
-
 
 	//
 
 	var camera = editor.camera;
+	var perspCam = true;	
+
+	//
+
+	var renderer = null;
 
 	//
 
@@ -27730,7 +27897,9 @@ var Viewport = function ( editor ) {
 	selectionBox.visible = false;
 	sceneHelpers.add( selectionBox );
 
-	var matrix = new THREE.Matrix4();
+	var objectPositionOnDown = null;
+	var objectRotationOnDown = null;
+	var objectScaleOnDown = null;
 
 	var transformControls = new THREE.TransformControls( camera, container.dom );
 	transformControls.addEventListener( 'change', function () {
@@ -27747,6 +27916,8 @@ var Viewport = function ( editor ) {
 
 			}
 
+			signals.refreshSidebarObject3D.dispatch( object );
+
 		}
 
 		render();
@@ -27756,35 +27927,56 @@ var Viewport = function ( editor ) {
 
 		var object = transformControls.object;
 
-		matrix.copy( object.matrix );
+		objectPositionOnDown = object.position.clone();
+		objectRotationOnDown = object.rotation.clone();
+		objectScaleOnDown = object.scale.clone();
 
 		controls.enabled = false;
 
 	} );
+
 	transformControls.addEventListener( 'mouseUp', function () {
 
 		var object = transformControls.object;
 
-		if ( matrix.equals( object.matrix ) === false ) {
+		if ( object !== null ) {
 
-			( function ( matrix1, matrix2 ) {
+			switch ( transformControls.getMode() ) {
 
-				editor.history.add(
-					function () {
-						matrix1.decompose( object.position, object.quaternion, object.scale );
-						signals.objectChanged.dispatch( object );
-					},
-					function () {
-						matrix2.decompose( object.position, object.quaternion, object.scale );
-						signals.objectChanged.dispatch( object );
+				case 'translate':
+
+					if ( ! objectPositionOnDown.equals( object.position ) ) {
+
+						editor.execute( new SetPositionCommand( object, object.position, objectPositionOnDown ) );
+
 					}
-				);
 
-			} )( matrix.clone(), object.matrix.clone() );
+					break;
+
+				case 'rotate':
+
+					if ( ! objectRotationOnDown.equals( object.rotation ) ) {
+
+						editor.execute( new SetRotationCommand( object, object.rotation, objectRotationOnDown ) );
+
+					}
+
+					break;
+
+				case 'scale':
+
+					if ( ! objectScaleOnDown.equals( object.scale ) ) {
+
+						editor.execute( new SetScaleCommand( object, object.scale, objectScaleOnDown ) );
+
+					}
+
+					break;
+
+			}
 
 		}
 
-		signals.objectChanged.dispatch( object );
 		controls.enabled = true;
 
 	} );
@@ -27810,11 +28002,13 @@ var Viewport = function ( editor ) {
 
 		mouse.set( ( point.x * 2 ) - 1, - ( point.y * 2 ) + 1 );
 
+		// var usedCam = (camera.inPerspectiveMode) ? camera.cameraP : camera.cameraO;
+
 		raycaster.setFromCamera( mouse, camera );
 
 		return raycaster.intersectObjects( objects );
 
-	};
+	}
 
 	var onDownPosition = new THREE.Vector2();
 	var onUpPosition = new THREE.Vector2();
@@ -27825,11 +28019,11 @@ var Viewport = function ( editor ) {
 		var rect = dom.getBoundingClientRect();
 		return [ ( x - rect.left ) / rect.width, ( y - rect.top ) / rect.height ];
 
-	};
+	}
 
 	function handleClick() {
 
-		if ( onDownPosition.distanceTo( onUpPosition ) == 0 ) {
+		if ( onDownPosition.distanceTo( onUpPosition ) === 0 ) {
 
 			var intersects = getIntersects( onUpPosition, objects );
 
@@ -27859,7 +28053,7 @@ var Viewport = function ( editor ) {
 
 		}
 
-	};
+	}
 
 	function onMouseDown( event ) {
 
@@ -27870,7 +28064,7 @@ var Viewport = function ( editor ) {
 
 		document.addEventListener( 'mouseup', onMouseUp, false );
 
-	};
+	}
 
 	function onMouseUp( event ) {
 
@@ -27881,7 +28075,7 @@ var Viewport = function ( editor ) {
 
 		document.removeEventListener( 'mouseup', onMouseUp, false );
 
-	};
+	}
 
 	function onTouchStart( event ) {
 
@@ -27892,7 +28086,7 @@ var Viewport = function ( editor ) {
 
 		document.addEventListener( 'touchend', onTouchEnd, false );
 
-	};
+	}
 
 	function onTouchEnd( event ) {
 
@@ -27905,7 +28099,7 @@ var Viewport = function ( editor ) {
 
 		document.removeEventListener( 'touchend', onTouchEnd, false );
 
-	};
+	}
 
 	function onDoubleClick( event ) {
 
@@ -27922,7 +28116,7 @@ var Viewport = function ( editor ) {
 
 		}
 
-	};
+	}
 
 	container.dom.addEventListener( 'mousedown', onMouseDown, false );
 	container.dom.addEventListener( 'touchstart', onTouchStart, false );
@@ -27954,20 +28148,11 @@ var Viewport = function ( editor ) {
 
 		switch ( value ) {
 
-			// case 'THEME_LIGHT':
-			// 	grid.setColors( 0x444444, 0x888888 );
-			// 	clearColor = 0xaaaaaa;
-			// 	break;
-			// case 'THEME_DARK':
-			// 	grid.setColors( 0xbbbbbb, 0x888888 );
-			// 	clearColor = 0x333333;
-			// 	break;
-
-			case 'THEME_LIGHT':
+			case 'css/light.css':
 				grid.setColors( 0x444444, 0x888888 );
 				clearColor = 0xaaaaaa;
 				break;
-			case 'THEME_DARK':
+			case 'css/dark.css':
 				grid.setColors( 0xbbbbbb, 0x888888 );
 				clearColor = 0x333333;
 				break;
@@ -27980,12 +28165,42 @@ var Viewport = function ( editor ) {
 
 	} );
 
+	console.log(signals);
+
+
+	signals.switchCameraMode.add( function () {
+
+		var position = camera.position;
+
+		if (camera instanceof THREE.PerspectiveCamera) {
+            camera = new THREE.OrthographicCamera(window.innerWidth / -16, window.innerWidth / 16, window.innerHeight / 16, window.innerHeight / -16, -200, 10000);
+
+        } else {
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
+
+        }
+
+      	camera.position.x = position.x;
+        camera.position.y = position.y;
+        camera.position.z = position.z;
+
+       
+        controls.controler = camera; // update
+        transformControls.controler = camera; // update
+
+        editor.focus(editor.selected);
+		// render();
+
+	} );
+
 	signals.cameraPositionSnap.add( function ( mode ) {
 
 		//Needs Update to work without selected object
 
-		var distance;
+		var distance = camera.position.length();
 		var newPos;
+
+		console.log(distance);
 
 		if(editor.selected)
 			distance = editor.selected.position.distanceTo(camera.position);
@@ -28030,8 +28245,15 @@ var Viewport = function ( editor ) {
 		else
 		{
 
-			controls.center.set( 0, 0, 0 );
-			render();
+			// console.log(newPos);
+			// controls.center.set( 0, 0, 0 );
+			// controls.focus
+			// render();
+			camera.position.set(newPos.x,  
+				newPos.y, 
+				newPos.z);
+
+			controls.focus(editor.scene);
 		}
 
 		signals.cameraChanged.dispatch( camera );
@@ -28056,8 +28278,6 @@ var Viewport = function ( editor ) {
 
 	} );
 
-
-
 	signals.rendererChanged.add( function ( newRenderer ) {
 
 		if ( renderer !== null ) {
@@ -28067,6 +28287,7 @@ var Viewport = function ( editor ) {
 		}
 
 		renderer = newRenderer;
+		editor.renderer = renderer;
 
 		renderer.autoClear = false;
 		renderer.autoUpdateScene = false;
@@ -28123,9 +28344,13 @@ var Viewport = function ( editor ) {
 
 	} );
 
-	signals.geometryChanged.add( function ( geometry ) {
+	signals.geometryChanged.add( function ( object ) {
 
-		selectionBox.update( editor.selected );
+		if ( object !== null ) {
+
+			selectionBox.update( object );
+
+		}
 
 		render();
 
@@ -28133,24 +28358,22 @@ var Viewport = function ( editor ) {
 
 	signals.objectAdded.add( function ( object ) {
 
-		var materialsNeedUpdate = false;
-
 		object.traverse( function ( child ) {
-
-			if ( child instanceof THREE.Light ) materialsNeedUpdate = true;
 
 			objects.push( child );
 
 		} );
 
-		if ( materialsNeedUpdate === true ) updateMaterials();
-
 	} );
 
 	signals.objectChanged.add( function ( object ) {
 
-		selectionBox.update( object );
-		transformControls.update();
+		if ( editor.selected === object ) {
+
+			selectionBox.update( object );
+			transformControls.update();
+
+		}
 
 		if ( object instanceof THREE.PerspectiveCamera ) {
 
@@ -28170,17 +28393,11 @@ var Viewport = function ( editor ) {
 
 	signals.objectRemoved.add( function ( object ) {
 
-		var materialsNeedUpdate = false;
-
 		object.traverse( function ( child ) {
-
-			if ( child instanceof THREE.Light ) materialsNeedUpdate = true;
 
 			objects.splice( objects.indexOf( child ), 1 );
 
 		} );
-
-		if ( materialsNeedUpdate === true ) updateMaterials();
 
 	} );
 
@@ -28202,15 +28419,19 @@ var Viewport = function ( editor ) {
 
 	} );
 
+	//@elephantatwork, changeable bgColor
+	signals.bgColorChanged.add(function ( bgColor ) {
 
+		renderer.setClearColor( bgColor, 1 );
+		editor.config.setKey( 'backgroundColor', bgColor);
+
+		render();
+
+	} );
 
 	signals.fogTypeChanged.add( function ( fogType ) {
 
-
 		if ( fogType !== oldFogType ) {
-
-			if(scene.fog !== null)
-				scene.fog.name = fogType;
 
 			if ( fogType === "None" ) {
 
@@ -28226,23 +28447,9 @@ var Viewport = function ( editor ) {
 
 			}
 
-			updateMaterials();
-
 			oldFogType = fogType;
 
 		}
-
-		render();
-
-		// console.log(scene.fog);
-
-	} );
-
-	//@elephantatwork, changeable bgColor
-	signals.bgColorChanged.add(function ( bgColor ) {
-
-		renderer.setClearColor( bgColor, 1 );
-		editor.config.setKey( 'backgroundColor', bgColor);
 
 		render();
 
@@ -28250,9 +28457,8 @@ var Viewport = function ( editor ) {
 
 	signals.fogColorChanged.add( function ( fogColor ) {
 
-		console.log(fogColor);
 		oldFogColor = fogColor;
-		editor.config.setKey( 'fogColor', fogColor);
+
 		updateFog( scene );
 
 		render();
@@ -28262,11 +28468,8 @@ var Viewport = function ( editor ) {
 	signals.fogParametersChanged.add( function ( near, far, density ) {
 
 		oldFogNear = near;
-		editor.config.setKey( 'fogNear', near);
 		oldFogFar = far;
-		editor.config.setKey( 'fogFar', far);
 		oldFogDensity = density;
-		editor.config.setKey( 'fogDensity', density);
 
 		updateFog( scene );
 
@@ -28275,6 +28478,7 @@ var Viewport = function ( editor ) {
 	} );
 
 	signals.windowResize.add( function () {
+
 
 		camera.aspect = container.dom.offsetWidth / container.dom.offsetHeight;
 		camera.updateProjectionMatrix();
@@ -28292,48 +28496,15 @@ var Viewport = function ( editor ) {
 
 	} );
 
-	signals.showManChanged.add( function ( showMan ) {
-
-		vrHuman.visible = showMan;
-		render();
-
-	} );
-
 	//
 
-	var renderer = null;
+	// var renderer = null;
 
 	animate();
 
 	//
 
-	function updateMaterials() {
-
-		editor.scene.traverse( function ( node ) {
-
-			if ( node.material ) {
-
-				node.material.needsUpdate = true;
-
-				if ( node.material instanceof THREE.MeshFaceMaterial ) {
-
-					for ( var i = 0; i < node.material.materials.length; i ++ ) {
-
-						node.material.materials[ i ].needsUpdate = true;
-
-					}
-
-				}
-
-			}
-
-		} );
-
-	}
-
 	function updateFog( root ) {
-
-
 
 		if ( root.fog ) {
 
@@ -28351,10 +28522,11 @@ var Viewport = function ( editor ) {
 
 		requestAnimationFrame( animate );
 
-		// animations
-		// console.log(snap)
+		// call each update function
+		
+		/*
 
-		// editor.storage.size();
+		// animations
 
 		if ( THREE.AnimationHandler.animations.length > 0 ) {
 
@@ -28376,12 +28548,49 @@ var Viewport = function ( editor ) {
 
 		}
 
+		*/
+
+		// render();
+
 	}
+
+	editor.onRenderFcts.push(function(delta, now){
+		
+		if(editor.mixerContext !== undefined)
+			editor.mixerContext.update();
+	})
+
+	editor.onRenderFcts.push(function(){
+		render();	
+	})
+	
+	//////////////////////////////////////////////////////////////////////////////////
+	//		loop runner							//
+	//////////////////////////////////////////////////////////////////////////////////
+	var lastTimeMsec= null
+	requestAnimationFrame(function animate(nowMsec){
+
+		// console.log(nowMsec);
+		// keep looping
+		requestAnimationFrame( animate );
+		// measure time
+		lastTimeMsec	= lastTimeMsec || nowMsec-1000/60
+		var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec)
+		lastTimeMsec	= nowMsec
+		// call each update function
+		editor.onRenderFcts.forEach(function(onRenderFct){
+			onRenderFct(deltaMsec/1000, nowMsec/1000)
+		})
+	})
 
 	function render() {
 
 		sceneHelpers.updateMatrixWorld();
 		scene.updateMatrixWorld();
+
+		// console.log(camera.matrixWorld);
+		// console.log(camera.cameraO.matrixWorld);
+		// console.log(camera.cameraP.matrixWorld);
 
 		renderer.clear();
 		renderer.render( scene, camera );
@@ -28396,7 +28605,7 @@ var Viewport = function ( editor ) {
 
 	return container;
 
-}
+};
 
 // File:editor/js/Viewport.Info.js
 
@@ -28489,7 +28698,7 @@ Viewport.Info = function ( editor ) {
 
 /**
  * @author elephantatwork, Samuel Vonäsch
- * keyboard reco code @author Jérome Etienne
+ * keyboard Recognition code @author Jérome Etienne
  */
 
 var EditorShortCuts = function (editor) {
@@ -28552,21 +28761,19 @@ EditorShortCuts.prototype = {
 
 	keyCheck: function( keyCode ){
 
-		//File
+		//Create the a json file and export it
 		if( this.pressed(this.shortcuts.getKey('file/exportscene' ))) {
 
 			var output = this.editor.scene.toJSON();
 			output = JSON.stringify( output, null, '\t' );
 			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-			// var details = this.editor.toJSON();
-			// details = JSON.stringify( details, null, '\t' );
-			// details = details.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
-
 			this.exportString( output, 'scene.json' );;
 
 		}
 		
+		//Create Raymond the raycast blocker.
+		if( this.pressed(this.shortcuts.getKey('history/undo' ))) this.editor.history.undo();
 
 
 		//History
@@ -28587,7 +28794,7 @@ EditorShortCuts.prototype = {
 		//Sccale
 		if( this.pressed(this.shortcuts.getKey('transform/scale' ))) this.editor.signals.transformModeChanged.dispatch( 'scale' );
 
-		//Delete Shortcut -HHACK IT ATM
+		//Delete Shortcut -HACK IT ATM, pressing x doesnt work
 		if( event.keyCode == 88 ) {
 			this.editor.destoryCurrent();
 		}
@@ -28607,14 +28814,8 @@ EditorShortCuts.prototype = {
 		//Focus object
 		if( this.pressed(this.shortcuts.getKey( 'view/focus' ))) this.editor.focus(this.editor.selected);
 
-		// //Camera Positions - Hack Style
-		// if(keyboard.pressed("7")) this.editor.signals.cameraPositionSnap.dispatch( 'top' );
-		// if(keyboard.pressed("3")) this.editor.signals.cameraPositionSnap.dispatch( 'left' );
-		// if(keyboard.pressed("1")) this.editor.signals.cameraPositionSnap.dispatch( 'front' );
 
-		// if(keyboard.pressed("alt+7")) this.editor.signals.cameraPositionSnap.dispatch( 'bottom' );
-		// if(keyboard.pressed("alt+3")) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
-		// if(keyboard.pressed("alt+1")) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
+		if( this.pressed(this.shortcuts.getKey( 'camera/switch' ))) this.editor.signals.switchCameraMode.dispatch();
 
 		//Camera Positions - Hack Style
 		if( this.pressed(this.shortcuts.getKey( 'camera/top' ))) this.editor.signals.cameraPositionSnap.dispatch( 'top' );
@@ -28627,6 +28828,7 @@ EditorShortCuts.prototype = {
 
 	},
 
+	//Ugly and should be here
 	exportString: function ( output, filename ) {
 		
 		//export scnee hack
@@ -28776,6 +28978,7 @@ var EditorShortCutsList = function () {
 		'camera/front':'1',
 		'camera/left':'3',
 		'camera/top':'7',
+		'camera/switch':'5'
 	};
 
 	if ( window.localStorage[ name ] === undefined ) {
@@ -28826,712 +29029,6 @@ var EditorShortCutsList = function () {
 
 };
 
-// File:editor/js/Menubar.Light.js
-
-/**
- * @author elephantatwork, Samuel Vonäsch
- */
-
-Menubar.Light = function ( editor ) {
-
-	var container = new UI.Panel();
-	container.setClass( 'menu' );
-
-	var title = new UI.Panel();
-	title.setClass( 'title' );
-	title.setTextContent( 'Light' );
-	container.add( title );
-
-	var options = new UI.Panel();
-	options.setClass( 'options' );
-	container.add( options );
-
-	var lightCount = 0;
-	// var cameraCount = 0;
-
-	editor.signals.editorCleared.add( function () {
-
-		// meshCount = 0;
-		lightCount = 0;
-		// cameraCount = 0;
-
-	} );
-
-	// PointLight
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'PointLight' );
-	option.onClick( function () {
-
-		var color = 0xffffff;
-		var intensity = 1;
-		var distance = 0;
-
-		var light = new THREE.PointLight( color, intensity, distance );
-		light.name = 'PointLight ' + ( ++ lightCount );
-
-		editor.addObject( light );
-		editor.select( light );
-
-	} );
-	options.add( option );
-
-	// // SpotLight
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'SpotLight' );
-	option.onClick( function () {
-
-		var color = 0xffffff;
-		var intensity = 1;
-		var distance = 0;
-		var angle = Math.PI * 0.1;
-		var exponent = 10;
-
-		var light = new THREE.SpotLight( color, intensity, distance, angle, exponent );
-		light.name = 'SpotLight ' + ( ++ lightCount );
-
-		//Add a target
-		var size = 100;
-
-		var segements = 1;
-
-		var geometry = new THREE.BoxGeometry( size, size, size, segements, segements, segements );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial() );
-		mesh.name = 'SpotLight ' + ( lightCount ) + ' Target';
-
-		editor.addObject( mesh );
-
-		light.target = mesh;
-
-
-		light.position.set( 0.5, 1, 0.75 ).multiplyScalar( 200 );
-
-		editor.addObject( light );
-		editor.select( light );
-
-	} );
-	options.add( option );
-
-	// DirectionalLight
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'DirectionalLight' );
-	option.onClick( function () {
-
-		var color = 0xffffff;
-		var intensity = 1;
-
-		var light = new THREE.DirectionalLight( color, intensity );
-		light.name = 'DirectionalLight ' + ( ++ lightCount );
-		light.target.name = 'DirectionalLight ' + ( lightCount ) + ' Target';
-
-		light.position.set( 0.5, 1, 0.75 ).multiplyScalar( 200 );
-
-		editor.addObject( light );
-		editor.select( light );
-
-	} );
-	options.add( option );
-
-	// HemisphereLight
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'HemisphereLight' );
-	option.onClick( function () {
-
-		var skyColor = 0x00aaff;
-		var groundColor = 0xffaa00;
-		var intensity = 1;
-
-		var light = new THREE.HemisphereLight( skyColor, groundColor, intensity );
-		light.name = 'HemisphereLight ' + ( ++ lightCount );
-
-		light.position.set( 0.5, 1, 0.75 ).multiplyScalar( 200 );
-
-		editor.addObject( light );
-		editor.select( light );
-
-	} );
-	options.add( option );
-
-	// AmbientLight
-
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'AmbientLight' );
-	option.onClick( function() {
-
-		var color = 0xf2f2f2;
-
-		var light = new THREE.AmbientLight( color );
-		light.name = 'AmbientLight ' + ( ++ lightCount );
-
-		editor.addObject( light );
-		editor.select( light );
-
-	} );
-	options.add( option );
-
-	return container;
-};
-
-// File:editor/js/Menubar.Navigation.js
-
-/**
- * @author mrdoob / http://mrdoob.com/
- */
-
-Menubar.Navigation = function ( editor ) {
-
-	var container = new UI.Panel();
-	container.setClass( 'menu' );
-
-	var title = new UI.Panel();
-	title.setClass( 'title' );
-	title.setTextContent( 'Navigation' );
-	container.add( title );
-
-	var options = new UI.Panel();
-	options.setClass( 'options' );
-	container.add( options );
-
-	//Need a huge overhaul
-	// SphereTarget
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'MoveTo' );
-	option.onClick( function () {
-
-		var radius = 15;
-		var widthSegments = 10;
-		var heightSegments = 10;
-		var phiStart = 0;
-		var phiLength = Math.PI * 2;
-		var thetaStart = 0;
-		var thetaLength = Math.PI;
-
-		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: false, depthWrite: false, needsUpdate: true}) );
-
-		mesh.name = 'MoveTo_name';
-
-		editor.addObject( mesh );
-		editor.select( mesh );
-
-	} );
-	options.add( option );
-
-	//Plane Pointer
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'JumpTo' );
-	option.onClick( function () {
-
-		// ParentGroup
-		var parent = new THREE.Group();
-		parent.name = 'JumpToPair ';
-
-		editor.addObject( parent );
-
-		var width = 100;
-		var height = 100;
-
-		var widthSegments = 1;
-		var heightSegments = 1;
-
-		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
-		var material = new THREE.MeshBasicMaterial({side: THREE.DoubleSide, transparent: true, depthTest: true, depthWrite: true, needsUpdate: true});
-		var mesh = new THREE.Mesh( geometry, material );
-		mesh.name = 'Pointer_name';
-		parent.add(mesh); 
-
-		var radius = 15;
-		var widthSegments = 10;
-		var heightSegments = 10;
-		var phiStart = 0;
-		var phiLength = Math.PI * 2;
-		var thetaStart = 0;
-		var thetaLength = Math.PI;
-
-		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: true, depthWrite: true, needsUpdate: true}) );
-		mesh.name = 'Target_name';
-		parent.add(mesh);
-
-		// var helper = new THREE.ArrowHelper( object, 10 );
-
-		editor.addObject( parent );
-		editor.select( parent );
-
-	} );
-	options.add( option );
-
-	//Plane Back home
-	var option = new UI.Panel();
-	option.setClass( 'option' );
-	option.setTextContent( 'Home Button' );
-	option.onClick( function () {
-
-		var width = 100;
-		var height = 100;
-
-		var widthSegments = 1;
-		var heightSegments = 1;
-
-		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
-		THREE.ImageUtils.crossOrigin = '';
-		var texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/mDlwfJw.png');
-
-		var material = new THREE.MeshBasicMaterial({map: texture, side: THREE.DoubleSide, transparent: true, depthTest: true, depthWrite: true, needsUpdate: true});
-		var mesh = new THREE.Mesh( geometry, material );
-		mesh.name = 'BackHome';
-
-		// var helper = new THREE.ArrowHelper( object, 10 );
-
-		editor.addObject( mesh );
-		editor.select( mesh );
-
-		mesh.position.set(0,-250,0);
-		mesh.rotation.set(-1.57,0,0);
-
-	} );
-	options.add( option );
-
-	// //Plane Target
-	// var option = new UI.Panel();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Sphere Target' );
-	// option.onClick( function () {
-
-	// 	var radius = 15;
-	// 	var widthSegments = 10;
-	// 	var heightSegments = 10;
-	// 	var phiStart = 0;
-	// 	var phiLength = Math.PI * 2;
-	// 	var thetaStart = 0;
-	// 	var thetaLength = Math.PI;
-
-	// 	var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-	// 	var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: true, depthWrite: true, needsUpdate: true}) );
-
-	// 	mesh.name = 'Target_name';
-
-	// 	editor.addObject( mesh );
-	// 	editor.select( mesh );
-
-	// } );
-	// options.add( option );
-
-	return container;
-
-};
-
-// File:editor/js/Sidebar.Sounds.js
-
-Sidebar.Sounds = function ( editor ) {
-
-	var signals = editor.signals;
-
-	var container = new UI.Panel();
-	container.setDisplay( 'none' );
-	//container.dom.classList.add( 'Material' );
-
-	container.add( new UI.Text( 'SOUNDS' ) );
-	container.add( new UI.Break(), new UI.Break() );
-
-	// constant sound
-
-	var soundsConstantRow = new UI.Panel();
-	var soundsConstant = new UI.Sound().onChange( function( event ) {
-		
-		if ( event.buffer ) {
-			
-			if ( editor.config.getKey('defaultColor') == 'RMS' ) {
-			
-				editor.signals.soundAdded.dispatch( event.buffer, editor.selected.material );
-				
-			}
-			
-		}
-		
-		update();
-		
-	} );
-
-	soundsConstantRow.add( new UI.Text( 'Constant' ).setWidth( '90px' ) );
-	soundsConstantRow.add( soundsConstant );
-
-	container.add( soundsConstantRow );
-
-
-	var playButton = new UI.Button( 'Play' );
-	playButton.onClick( function () {
-
-		editor.selected.sounds.play();		
-
-	} );
-
-	container.add( playButton );
-
-	//
-
-	function update() {
-		
-		if (editor.selected.sounds == undefined) editor.selected.sounds = {};
-		
-		var sounds = editor.selected.sounds;
-		
-		sounds.constant = soundsConstant.getValue();
-
-		updateRows();
-
-	};
-
-	function updateRows() {
-	
-		/*var properties = {
-			'constant': physicsFriction,
-			'restitution': physicsRestitution,
-			'massmodifier': physicsMassmodifier
-		};
-
-		var physics = editor.selected.material._physijs;
-		console.log(editor.selected);
-
-		for ( var property in properties ) {
-		
-			//properties[ property ].setDisplay( physics[ property ] !== undefined ? '' : 'none' );
-
-		}*/
-
-	};
-
-	// events
-
-	signals.objectSelected.add( function ( object ) {
-
-		if ( object ) {
-
-			container.setDisplay( '' );
-			
-			if ( !object.sounds ) object.sounds = {};
-
-			var sounds = object.sounds;
-			
-			soundsConstant.setValue( sounds.constant );
-
-			updateRows();
-
-		} else {
-
-			container.setDisplay( 'none' );
-
-		}
-
-	} );
-
-	return container;
-
-}
-
-// File:editor/js/SoundCollection.js
-
-/**
-* Class for creating an artwork cluster in space
-**/
-var SoundCollection = function(options){
-		
-    var AudioContext = window.AudioContext || window.webkitAudioContext;
-    var OfflineAudioContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-    this._context = new AudioContext();
-    this._loaderContext = new OfflineAudioContext(2, 1024, 44100); //22050 to 96000, CD = 44100
-		
-    this._listenerUpdater = new WebAudiox.ListenerObject3DUpdater(this._context, options.cam);
-		
-		
-    // Create lineOut
-    this._lineOut = new WebAudiox.LineOut(this._context);
-    this._lineOut.volume = 1;
-};
-	
-SoundCollection.prototype = {
-	//class options, set by the constructer or left default
-	options: {
-		cam: undefined
-	},
-	
-	_soundCollection: {
-		soundUrl: [],
-		//panner: [],
-		pannerUpdaters: [],
-		buffer: [],
-		source: [] //optional, filled when the sound is currently playing
-	},
-	
-    /**
-     * Adds a sound to the collection
-     * @param sound The sound url
-     */
-	add: function(sound, position, callback) {
-		var soundListIndex = this._findEmptySpotInSoundList();
-		//reserve spot so no overwrites will happen
-		if (soundListIndex != -1) this._soundCollection.soundUrl[soundListIndex] = 'reserved';
-		
-		WebAudiox.loadBuffer(this._loaderContext, sound, function(buffer){
-			/*var destination	= this._lineOut.destination;
-
-			// init AudioPannerNode
-			var panner	= this._context.createPanner();
-			panner.connect(destination);
-			//panner.setPosition(position.x, position.y, position.z);
-			panner.position = position;
-			destination	= panner;*/
-			
-			if (soundListIndex == -1) {
-				soundListIndex = this._soundCollection.soundUrl.push( sound ) - 1;
-				//this._soundCollection.panner.push( panner );
-				this._soundCollection.buffer.push( buffer );
-			} else {
-				this._soundCollection.soundUrl[soundListIndex] = sound;
-				//this._soundCollection.panner[soundListIndex] = panner;
-				this._soundCollection.buffer[soundListIndex] = buffer;
-			}
-			
-			if (callback) callback(buffer);
-			
-		}.bind(this));
-	},
-	
-	remove: function(sound) {
-		var index = this._getSoundIndex(sound);
-		if (index != -1) {
-			this.stop(sound);
-			delete this._soundCollection.soundUrl[index];
-			delete this._soundCollection.panner[index];
-			delete this._soundCollection.buffer[index];
-			delete this._soundCollection.source[index];
-		}
-	},
-	
-	play: function(sound /* Can be URL, panner or source */, object3d, offset, endedCallback) {
-		var playInitialized = 0;
-		if (sound) {
-			playInitialized++;
-			var soundIndex = this._getSoundIndex(sound);
-			if (soundIndex != -1) {
-				playInitialized++;
-				var buffer = this._soundCollection.buffer[soundIndex];
-				if (buffer != undefined) {
-					//loaded the sound source, start playing
-					
-					// init AudioBufferSourceNode
-					var source = this._context.createBufferSource();
-					source.buffer = buffer;
-					source.loop	= true;
-					source.connect(this._lineOut.destination);
-					if (endedCallback) source.onended = endedCallback;
-					
-					//stop the playback after 5 loops
-					setTimeout(function() {
-						if (this.playbackState == 1 || this.playbackState == 2) {
-							this.stop();
-						}
-					}.bind(source), source.buffer.duration * 1000 * 5);
-					
-					source.start(0, offset|0);
-					
-					this._soundCollection.source[soundIndex] = source;
-					playInitialized++;
-				} else {
-					console.log('source', source);
-				}
-			}
-		}
-		if (playInitialized < 3) {
-			console.log('play but not play', playInitialized, sound);
-		} else {
-			return true;
-		}
-		return false;
-	},
-	
-	addAudioPannerToMesh: function(object3d) {
-        var panner	= this._context.createPanner();
-        // panner.coneOuterGain	= 0.1
-        // panner.coneOuterAngle	= Math.PI *180/Math.PI
-        // panner.coneInnerAngle	= 0 *180/Math.PI
-		
-		// init AudioPannerNode
-		panner.connect(this._lineOut.destination);
-
-        var pannerUpdater	= new WebAudiox.PannerObject3DUpdater(panner, object3d);
-        this._soundCollection.pannerUpdaters.push(pannerUpdater);
-        object3d._panner = panner;
-		object3d._pannerUpdater = pannerUpdater;
-    },
-	
-    playAttachedSound: function(sound, object3d) {
-        var panner = object3d._panner;
-        if (!panner) {
-            this.addAudioPannerToMesh(object3d);
-            panner = object3d._panner;
-        }
-        var index = this._getSoundIndex(sound);
-        if (index != -1 && panner) {
-			var buffer = this._soundCollection.buffer[index];
-			if (buffer != undefined) {
-			
-				var source = this._context.createBufferSource();
-				source.buffer = buffer;
-				source.loop	= true;
-				source.connect(panner);
-				
-				this._soundCollection.source[index] = source;
-				source.start(0);
-				
-			}
-        } else {
-            console.log('can\'t play sound ' + sound, index, panner);
-        }
-    },
-	
-	/* play a sound collection, make sure every sound is loaded before */
-	playCollection: function(indexes) {
-		//TODO: Positions to indexes, timeouts to onload.
-		var self = this;
-		
-		var bufferResult = this._gatherPositionBuffers(
-			indexes,
-			[], 
-			function(positionBuffers) {
-				var x = 0;
-				var playBuffer = function () {
-					console.log('playBuffer', x);
-					var source = self._context.createBufferSource();
-					source.buffer = positionBuffers[x];
-					x++;
-					source.loop	= false;
-					source.connect(self._lineOut.destination);
-					//console.log('duration', source, source.buffer.duration * 1000);
-					//source.onended = playBuffer;
-					if (x < positionBuffers.length) setTimeout(playBuffer.bind(this), source.buffer.duration * 1000);
-					
-					source.start(0);
-					
-					//this._soundCollection.source[soundIndex] = source;
-				};
-				
-				if (x < positionBuffers.length) playBuffer();
-			},
-			function(positionBuffers) {
-				console.log('unable to load play collection', positionBuffers); 
-			}
-		);
-		
-		//gathering failed, invalid indexes
-		if (bufferResult == false) return false;
-	},
-	
-	stop: function(sound /* Can be URL, panner or source */, deleteAudioBufferSource) {
-		if (sound) {
-			var soundIndex = this._getSoundIndex(sound);
-			if (soundIndex != -1) {
-				var source = this._soundCollection.source[soundIndex];
-				if (source != undefined && (source.playbackState == 1 || source.playbackState == 2)) {
-					//loaded the sound source, stop it IF it is playing
-					source.stop();
-					if (deleteAudioBufferSource) this._soundCollection.source[soundIndex] = undefined;
-				}
-			}
-		}
-	},
-	
-	_getSoundIndex: function(sound) {
-		var soundIndex = -1;
-		//figure out index
-		if (sound) {
-		    if (typeof (sound) == 'string' || sound instanceof Blob) {
-				soundIndex = this._soundCollection.soundUrl.indexOf(sound);
-			} else if (sound instanceof THREE.Vector3) {
-				for (var x = 0; x < this._soundCollection.panner.length; x++) {
-					if (this._soundCollection.panner[x] && this._soundCollection.panner[x].position.distanceTo(sound) < 0.001) {
-						soundIndex = x;
-						break;
-					}
-				}
-			} else if (sound instanceof AudioBufferSourceNode) {
-				soundIndex = this._soundCollection.source.indexOf(sound);
-			}
-		}
-		if (soundIndex == -1) {
-			//console.log('-1!', sound);
-		}
-		return soundIndex
-	},
-	
-	_findEmptySpotInSoundList: function() {
-		for (var x = 0; x < this._soundCollection.soundUrl.length; x++) {
-			if (this._soundCollection.soundUrl[x] == undefined) return x;
-		}
-		return -1;
-	},
-	
-	_update: function(delta, now) {
-		this._listenerUpdater.update(delta, now);
-
-        for (var x = 0; x < this._soundCollection.pannerUpdaters.length; x++) {
-            this._soundCollection.pannerUpdaters[x].update(delta, now);
-        }
-	},
-	
-	_gatherPositionBuffers: function(indexes, positionBuffers, successCallback, errorCallback, tryCount, positions) {
-		if (!tryCount) tryCount = 1;
-		if (!positions) positions = focusedArtCluster.getPointsByIndexes(indexes);
-	
-		for (var x = 0; x < indexes.length; x++) {
-			console.log('try', tryCount, 'positionBuffer is', positionBuffers[x], 'position', indexes[x]);
-			if (positionBuffers[x]) continue;
-			if (!indexes[x] || !positions[x]) return false;
-			
-			var soundIndex = this._getSoundIndex(positions[x]);
-			if (soundIndex != -1) {
-				var buffer = this._soundCollection.buffer[soundIndex];
-				if (buffer != undefined) {
-					//loaded the sound source, add it to buffers
-					positionBuffers[x] = buffer;
-				}
-			} else {
-				//-1 = sound neither added nor loaded.
-				//initiate buffer loading
-				//this.add('sounds/sound' + (indexes[x] % 7) + '.ogg', positions[x]);
-				this.add('sounds/usage permitted only with a contimbre.com license ' + soundList[(indexes[x] % soundList.length)][0] + '.ogg', positions[x]);
-			}
-		}
-		
-		//do we have all buffers loaded?
-		var allLoaded = true;
-		for (var y = 0; y < indexes.length; y++) {
-			if (!positionBuffers[y]) {
-				//if not, set a new timeout with another call/check to see if all are loaded
-				setTimeout(function() {
-					if (tryCount < 5) this._gatherPositionBuffers(indexes, positionBuffers, successCallback, errorCallback, tryCount, positions);
-				}.bind(this), 200);
-				allLoaded = false;
-				break;
-			}
-		}
-		
-		tryCount++;
-		
-		if (allLoaded && successCallback) successCallback(positionBuffers);
-		else if (tryCount >= 5 && !allLoaded && errorCallback) errorCallback(positionBuffers);
-	}
-};
 // File:editor/fonts/helvetiker_regular.typeface.js
 
 if (_typeface_js && _typeface_js.loadFace) _typeface_js.loadFace({"glyphs":{"ο":{"x_min":0,"x_max":712,"ha":815,"o":"m 356 -25 q 96 88 192 -25 q 0 368 0 201 q 92 642 0 533 q 356 761 192 761 q 617 644 517 761 q 712 368 712 533 q 619 91 712 201 q 356 -25 520 -25 m 356 85 q 527 175 465 85 q 583 369 583 255 q 528 562 583 484 q 356 651 466 651 q 189 560 250 651 q 135 369 135 481 q 187 177 135 257 q 356 85 250 85 "},"S":{"x_min":0,"x_max":788,"ha":890,"o":"m 788 291 q 662 54 788 144 q 397 -26 550 -26 q 116 68 226 -26 q 0 337 0 168 l 131 337 q 200 152 131 220 q 384 85 269 85 q 557 129 479 85 q 650 270 650 183 q 490 429 650 379 q 194 513 341 470 q 33 739 33 584 q 142 964 33 881 q 388 1041 242 1041 q 644 957 543 1041 q 756 716 756 867 l 625 716 q 561 874 625 816 q 395 933 497 933 q 243 891 309 933 q 164 759 164 841 q 325 609 164 656 q 625 526 475 568 q 788 291 788 454 "},"¦":{"x_min":343,"x_max":449,"ha":792,"o":"m 449 462 l 343 462 l 343 986 l 449 986 l 449 462 m 449 -242 l 343 -242 l 343 280 l 449 280 l 449 -242 "},"/":{"x_min":183.25,"x_max":608.328125,"ha":792,"o":"m 608 1041 l 266 -129 l 183 -129 l 520 1041 l 608 1041 "},"Τ":{"x_min":-0.4375,"x_max":777.453125,"ha":839,"o":"m 777 893 l 458 893 l 458 0 l 319 0 l 319 892 l 0 892 l 0 1013 l 777 1013 l 777 893 "},"y":{"x_min":0,"x_max":684.78125,"ha":771,"o":"m 684 738 l 388 -83 q 311 -216 356 -167 q 173 -279 252 -279 q 97 -266 133 -279 l 97 -149 q 132 -155 109 -151 q 168 -160 155 -160 q 240 -114 213 -160 q 274 -26 248 -98 l 0 738 l 137 737 l 341 139 l 548 737 l 684 738 "},"Π":{"x_min":0,"x_max":803,"ha":917,"o":"m 803 0 l 667 0 l 667 886 l 140 886 l 140 0 l 0 0 l 0 1012 l 803 1012 l 803 0 "},"ΐ":{"x_min":-111,"x_max":339,"ha":361,"o":"m 339 800 l 229 800 l 229 925 l 339 925 l 339 800 m -1 800 l -111 800 l -111 925 l -1 925 l -1 800 m 284 3 q 233 -10 258 -5 q 182 -15 207 -15 q 85 26 119 -15 q 42 200 42 79 l 42 737 l 167 737 l 168 215 q 172 141 168 157 q 226 101 183 101 q 248 103 239 101 q 284 112 257 104 l 284 3 m 302 1040 l 113 819 l 30 819 l 165 1040 l 302 1040 "},"g":{"x_min":0,"x_max":686,"ha":838,"o":"m 686 34 q 586 -213 686 -121 q 331 -306 487 -306 q 131 -252 216 -306 q 31 -84 31 -190 l 155 -84 q 228 -174 166 -138 q 345 -207 284 -207 q 514 -109 454 -207 q 564 89 564 -27 q 461 6 521 36 q 335 -23 401 -23 q 88 100 184 -23 q 0 370 0 215 q 87 634 0 522 q 330 758 183 758 q 457 728 398 758 q 564 644 515 699 l 564 737 l 686 737 l 686 34 m 582 367 q 529 560 582 481 q 358 652 468 652 q 189 561 250 652 q 135 369 135 482 q 189 176 135 255 q 361 85 251 85 q 529 176 468 85 q 582 367 582 255 "},"²":{"x_min":0,"x_max":442,"ha":539,"o":"m 442 383 l 0 383 q 91 566 0 492 q 260 668 176 617 q 354 798 354 727 q 315 875 354 845 q 227 905 277 905 q 136 869 173 905 q 99 761 99 833 l 14 761 q 82 922 14 864 q 232 974 141 974 q 379 926 316 974 q 442 797 442 878 q 351 635 442 704 q 183 539 321 611 q 92 455 92 491 l 442 455 l 442 383 "},"–":{"x_min":0,"x_max":705.5625,"ha":803,"o":"m 705 334 l 0 334 l 0 410 l 705 410 l 705 334 "},"Κ":{"x_min":0,"x_max":819.5625,"ha":893,"o":"m 819 0 l 650 0 l 294 509 l 139 356 l 139 0 l 0 0 l 0 1013 l 139 1013 l 139 526 l 626 1013 l 809 1013 l 395 600 l 819 0 "},"ƒ":{"x_min":-46.265625,"x_max":392,"ha":513,"o":"m 392 651 l 259 651 l 79 -279 l -46 -278 l 134 651 l 14 651 l 14 751 l 135 751 q 151 948 135 900 q 304 1041 185 1041 q 334 1040 319 1041 q 392 1034 348 1039 l 392 922 q 337 931 360 931 q 271 883 287 931 q 260 793 260 853 l 260 751 l 392 751 l 392 651 "},"e":{"x_min":0,"x_max":714,"ha":813,"o":"m 714 326 l 140 326 q 200 157 140 227 q 359 87 260 87 q 488 130 431 87 q 561 245 545 174 l 697 245 q 577 48 670 123 q 358 -26 484 -26 q 97 85 195 -26 q 0 363 0 197 q 94 642 0 529 q 358 765 195 765 q 626 627 529 765 q 714 326 714 503 m 576 429 q 507 583 564 522 q 355 650 445 650 q 206 583 266 650 q 140 429 152 522 l 576 429 "},"ό":{"x_min":0,"x_max":712,"ha":815,"o":"m 356 -25 q 94 91 194 -25 q 0 368 0 202 q 92 642 0 533 q 356 761 192 761 q 617 644 517 761 q 712 368 712 533 q 619 91 712 201 q 356 -25 520 -25 m 356 85 q 527 175 465 85 q 583 369 583 255 q 528 562 583 484 q 356 651 466 651 q 189 560 250 651 q 135 369 135 481 q 187 177 135 257 q 356 85 250 85 m 576 1040 l 387 819 l 303 819 l 438 1040 l 576 1040 "},"J":{"x_min":0,"x_max":588,"ha":699,"o":"m 588 279 q 287 -26 588 -26 q 58 73 126 -26 q 0 327 0 158 l 133 327 q 160 172 133 227 q 288 96 198 96 q 426 171 391 96 q 449 336 449 219 l 449 1013 l 588 1013 l 588 279 "},"»":{"x_min":-1,"x_max":503,"ha":601,"o":"m 503 302 l 280 136 l 281 256 l 429 373 l 281 486 l 280 608 l 503 440 l 503 302 m 221 302 l 0 136 l 0 255 l 145 372 l 0 486 l -1 608 l 221 440 l 221 302 "},"©":{"x_min":-3,"x_max":1008,"ha":1106,"o":"m 502 -7 q 123 151 263 -7 q -3 501 -3 294 q 123 851 -3 706 q 502 1011 263 1011 q 881 851 739 1011 q 1008 501 1008 708 q 883 151 1008 292 q 502 -7 744 -7 m 502 60 q 830 197 709 60 q 940 501 940 322 q 831 805 940 681 q 502 944 709 944 q 174 805 296 944 q 65 501 65 680 q 173 197 65 320 q 502 60 294 60 m 741 394 q 661 246 731 302 q 496 190 591 190 q 294 285 369 190 q 228 497 228 370 q 295 714 228 625 q 499 813 370 813 q 656 762 588 813 q 733 625 724 711 l 634 625 q 589 704 629 673 q 498 735 550 735 q 377 666 421 735 q 334 504 334 597 q 374 340 334 408 q 490 272 415 272 q 589 304 549 272 q 638 394 628 337 l 741 394 "},"ώ":{"x_min":0,"x_max":922,"ha":1030,"o":"m 687 1040 l 498 819 l 415 819 l 549 1040 l 687 1040 m 922 339 q 856 97 922 203 q 650 -26 780 -26 q 538 9 587 -26 q 461 103 489 44 q 387 12 436 46 q 277 -22 339 -22 q 69 97 147 -22 q 0 338 0 202 q 45 551 0 444 q 161 737 84 643 l 302 737 q 175 552 219 647 q 124 336 124 446 q 155 179 124 248 q 275 88 197 88 q 375 163 341 88 q 400 294 400 219 l 400 572 l 524 572 l 524 294 q 561 135 524 192 q 643 88 591 88 q 762 182 719 88 q 797 341 797 257 q 745 555 797 450 q 619 737 705 637 l 760 737 q 874 551 835 640 q 922 339 922 444 "},"^":{"x_min":193.0625,"x_max":598.609375,"ha":792,"o":"m 598 772 l 515 772 l 395 931 l 277 772 l 193 772 l 326 1013 l 462 1013 l 598 772 "},"«":{"x_min":0,"x_max":507.203125,"ha":604,"o":"m 506 136 l 284 302 l 284 440 l 506 608 l 507 485 l 360 371 l 506 255 l 506 136 m 222 136 l 0 302 l 0 440 l 222 608 l 221 486 l 73 373 l 222 256 l 222 136 "},"D":{"x_min":0,"x_max":828,"ha":935,"o":"m 389 1013 q 714 867 593 1013 q 828 521 828 729 q 712 161 828 309 q 382 0 587 0 l 0 0 l 0 1013 l 389 1013 m 376 124 q 607 247 523 124 q 681 510 681 355 q 607 771 681 662 q 376 896 522 896 l 139 896 l 139 124 l 376 124 "},"∙":{"x_min":0,"x_max":142,"ha":239,"o":"m 142 585 l 0 585 l 0 738 l 142 738 l 142 585 "},"ÿ":{"x_min":0,"x_max":47,"ha":125,"o":"m 47 3 q 37 -7 47 -7 q 28 0 30 -7 q 39 -4 32 -4 q 45 3 45 -1 l 37 0 q 28 9 28 0 q 39 19 28 19 l 47 16 l 47 19 l 47 3 m 37 1 q 44 8 44 1 q 37 16 44 16 q 30 8 30 16 q 37 1 30 1 m 26 1 l 23 22 l 14 0 l 3 22 l 3 3 l 0 25 l 13 1 l 22 25 l 26 1 "},"w":{"x_min":0,"x_max":1009.71875,"ha":1100,"o":"m 1009 738 l 783 0 l 658 0 l 501 567 l 345 0 l 222 0 l 0 738 l 130 738 l 284 174 l 432 737 l 576 738 l 721 173 l 881 737 l 1009 738 "},"$":{"x_min":0,"x_max":700,"ha":793,"o":"m 664 717 l 542 717 q 490 825 531 785 q 381 872 450 865 l 381 551 q 620 446 540 522 q 700 241 700 370 q 618 45 700 116 q 381 -25 536 -25 l 381 -152 l 307 -152 l 307 -25 q 81 62 162 -25 q 0 297 0 149 l 124 297 q 169 146 124 204 q 307 81 215 89 l 307 441 q 80 536 148 469 q 13 725 13 603 q 96 910 13 839 q 307 982 180 982 l 307 1077 l 381 1077 l 381 982 q 574 917 494 982 q 664 717 664 845 m 307 565 l 307 872 q 187 831 233 872 q 142 724 142 791 q 180 618 142 656 q 307 565 218 580 m 381 76 q 562 237 562 96 q 517 361 562 313 q 381 423 472 409 l 381 76 "},"\\":{"x_min":-0.015625,"x_max":425.0625,"ha":522,"o":"m 425 -129 l 337 -129 l 0 1041 l 83 1041 l 425 -129 "},"µ":{"x_min":0,"x_max":697.21875,"ha":747,"o":"m 697 -4 q 629 -14 658 -14 q 498 97 513 -14 q 422 9 470 41 q 313 -23 374 -23 q 207 4 258 -23 q 119 81 156 32 l 119 -278 l 0 -278 l 0 738 l 124 738 l 124 343 q 165 173 124 246 q 308 83 216 83 q 452 178 402 83 q 493 359 493 255 l 493 738 l 617 738 l 617 214 q 623 136 617 160 q 673 92 637 92 q 697 96 684 92 l 697 -4 "},"Ι":{"x_min":42,"x_max":181,"ha":297,"o":"m 181 0 l 42 0 l 42 1013 l 181 1013 l 181 0 "},"Ύ":{"x_min":0,"x_max":1144.5,"ha":1214,"o":"m 1144 1012 l 807 416 l 807 0 l 667 0 l 667 416 l 325 1012 l 465 1012 l 736 533 l 1004 1012 l 1144 1012 m 277 1040 l 83 799 l 0 799 l 140 1040 l 277 1040 "},"’":{"x_min":0,"x_max":139,"ha":236,"o":"m 139 851 q 102 737 139 784 q 0 669 65 690 l 0 734 q 59 787 42 741 q 72 873 72 821 l 0 873 l 0 1013 l 139 1013 l 139 851 "},"Ν":{"x_min":0,"x_max":801,"ha":915,"o":"m 801 0 l 651 0 l 131 822 l 131 0 l 0 0 l 0 1013 l 151 1013 l 670 191 l 670 1013 l 801 1013 l 801 0 "},"-":{"x_min":8.71875,"x_max":350.390625,"ha":478,"o":"m 350 317 l 8 317 l 8 428 l 350 428 l 350 317 "},"Q":{"x_min":0,"x_max":968,"ha":1072,"o":"m 954 5 l 887 -79 l 744 35 q 622 -11 687 2 q 483 -26 556 -26 q 127 130 262 -26 q 0 504 0 279 q 127 880 0 728 q 484 1041 262 1041 q 841 884 708 1041 q 968 507 968 735 q 933 293 968 398 q 832 104 899 188 l 954 5 m 723 191 q 802 330 777 248 q 828 499 828 412 q 744 790 828 673 q 483 922 650 922 q 228 791 322 922 q 142 505 142 673 q 227 221 142 337 q 487 91 323 91 q 632 123 566 91 l 520 215 l 587 301 l 723 191 "},"ς":{"x_min":1,"x_max":676.28125,"ha":740,"o":"m 676 460 l 551 460 q 498 595 542 546 q 365 651 448 651 q 199 578 263 651 q 136 401 136 505 q 266 178 136 241 q 508 106 387 142 q 640 -50 640 62 q 625 -158 640 -105 q 583 -278 611 -211 l 465 -278 q 498 -182 490 -211 q 515 -80 515 -126 q 381 12 515 -15 q 134 91 197 51 q 1 388 1 179 q 100 651 1 542 q 354 761 199 761 q 587 680 498 761 q 676 460 676 599 "},"M":{"x_min":0,"x_max":954,"ha":1067,"o":"m 954 0 l 819 0 l 819 869 l 537 0 l 405 0 l 128 866 l 128 0 l 0 0 l 0 1013 l 200 1013 l 472 160 l 757 1013 l 954 1013 l 954 0 "},"Ψ":{"x_min":0,"x_max":1006,"ha":1094,"o":"m 1006 678 q 914 319 1006 429 q 571 200 814 200 l 571 0 l 433 0 l 433 200 q 92 319 194 200 q 0 678 0 429 l 0 1013 l 139 1013 l 139 679 q 191 417 139 492 q 433 326 255 326 l 433 1013 l 571 1013 l 571 326 l 580 326 q 813 423 747 326 q 868 679 868 502 l 868 1013 l 1006 1013 l 1006 678 "},"C":{"x_min":0,"x_max":886,"ha":944,"o":"m 886 379 q 760 87 886 201 q 455 -26 634 -26 q 112 136 236 -26 q 0 509 0 283 q 118 882 0 737 q 469 1041 245 1041 q 748 955 630 1041 q 879 708 879 859 l 745 708 q 649 862 724 805 q 473 920 573 920 q 219 791 312 920 q 136 509 136 675 q 217 229 136 344 q 470 99 311 99 q 672 179 591 99 q 753 379 753 259 l 886 379 "},"!":{"x_min":0,"x_max":138,"ha":236,"o":"m 138 684 q 116 409 138 629 q 105 244 105 299 l 33 244 q 16 465 33 313 q 0 684 0 616 l 0 1013 l 138 1013 l 138 684 m 138 0 l 0 0 l 0 151 l 138 151 l 138 0 "},"{":{"x_min":0,"x_max":480.5625,"ha":578,"o":"m 480 -286 q 237 -213 303 -286 q 187 -45 187 -159 q 194 48 187 -15 q 201 141 201 112 q 164 264 201 225 q 0 314 118 314 l 0 417 q 164 471 119 417 q 201 605 201 514 q 199 665 201 644 q 193 772 193 769 q 241 941 193 887 q 480 1015 308 1015 l 480 915 q 336 866 375 915 q 306 742 306 828 q 310 662 306 717 q 314 577 314 606 q 288 452 314 500 q 176 365 256 391 q 289 275 257 337 q 314 143 314 226 q 313 84 314 107 q 310 -11 310 -5 q 339 -131 310 -94 q 480 -182 377 -182 l 480 -286 "},"X":{"x_min":-0.015625,"x_max":854.15625,"ha":940,"o":"m 854 0 l 683 0 l 423 409 l 166 0 l 0 0 l 347 519 l 18 1013 l 186 1013 l 428 637 l 675 1013 l 836 1013 l 504 520 l 854 0 "},"#":{"x_min":0,"x_max":963.890625,"ha":1061,"o":"m 963 690 l 927 590 l 719 590 l 655 410 l 876 410 l 840 310 l 618 310 l 508 -3 l 393 -2 l 506 309 l 329 310 l 215 -2 l 102 -3 l 212 310 l 0 310 l 36 410 l 248 409 l 312 590 l 86 590 l 120 690 l 347 690 l 459 1006 l 573 1006 l 462 690 l 640 690 l 751 1006 l 865 1006 l 754 690 l 963 690 m 606 590 l 425 590 l 362 410 l 543 410 l 606 590 "},"ι":{"x_min":42,"x_max":284,"ha":361,"o":"m 284 3 q 233 -10 258 -5 q 182 -15 207 -15 q 85 26 119 -15 q 42 200 42 79 l 42 738 l 167 738 l 168 215 q 172 141 168 157 q 226 101 183 101 q 248 103 239 101 q 284 112 257 104 l 284 3 "},"Ά":{"x_min":0,"x_max":906.953125,"ha":982,"o":"m 283 1040 l 88 799 l 5 799 l 145 1040 l 283 1040 m 906 0 l 756 0 l 650 303 l 251 303 l 143 0 l 0 0 l 376 1012 l 529 1012 l 906 0 m 609 421 l 452 866 l 293 421 l 609 421 "},")":{"x_min":0,"x_max":318,"ha":415,"o":"m 318 365 q 257 25 318 191 q 87 -290 197 -141 l 0 -290 q 140 21 93 -128 q 193 360 193 189 q 141 704 193 537 q 0 1024 97 850 l 87 1024 q 257 706 197 871 q 318 365 318 542 "},"ε":{"x_min":0,"x_max":634.71875,"ha":714,"o":"m 634 234 q 527 38 634 110 q 300 -25 433 -25 q 98 29 183 -25 q 0 204 0 93 q 37 314 0 265 q 128 390 67 353 q 56 460 82 419 q 26 555 26 505 q 114 712 26 654 q 295 763 191 763 q 499 700 416 763 q 589 515 589 631 l 478 515 q 419 618 464 580 q 307 657 374 657 q 207 630 253 657 q 151 547 151 598 q 238 445 151 469 q 389 434 280 434 l 389 331 l 349 331 q 206 315 255 331 q 125 210 125 287 q 183 107 125 145 q 302 76 233 76 q 436 117 379 76 q 509 234 493 159 l 634 234 "},"Δ":{"x_min":0,"x_max":952.78125,"ha":1028,"o":"m 952 0 l 0 0 l 400 1013 l 551 1013 l 952 0 m 762 124 l 476 867 l 187 124 l 762 124 "},"}":{"x_min":0,"x_max":481,"ha":578,"o":"m 481 314 q 318 262 364 314 q 282 136 282 222 q 284 65 282 97 q 293 -58 293 -48 q 241 -217 293 -166 q 0 -286 174 -286 l 0 -182 q 143 -130 105 -182 q 171 -2 171 -93 q 168 81 171 22 q 165 144 165 140 q 188 275 165 229 q 306 365 220 339 q 191 455 224 391 q 165 588 165 505 q 168 681 165 624 q 171 742 171 737 q 141 865 171 827 q 0 915 102 915 l 0 1015 q 243 942 176 1015 q 293 773 293 888 q 287 675 293 741 q 282 590 282 608 q 318 466 282 505 q 481 417 364 417 l 481 314 "},"‰":{"x_min":-3,"x_max":1672,"ha":1821,"o":"m 846 0 q 664 76 732 0 q 603 244 603 145 q 662 412 603 344 q 846 489 729 489 q 1027 412 959 489 q 1089 244 1089 343 q 1029 76 1089 144 q 846 0 962 0 m 845 103 q 945 143 910 103 q 981 243 981 184 q 947 340 981 301 q 845 385 910 385 q 745 342 782 385 q 709 243 709 300 q 742 147 709 186 q 845 103 781 103 m 888 986 l 284 -25 l 199 -25 l 803 986 l 888 986 m 241 468 q 58 545 126 468 q -3 715 -3 615 q 56 881 -3 813 q 238 958 124 958 q 421 881 353 958 q 483 712 483 813 q 423 544 483 612 q 241 468 356 468 m 241 855 q 137 811 175 855 q 100 710 100 768 q 136 612 100 653 q 240 572 172 572 q 344 614 306 572 q 382 713 382 656 q 347 810 382 771 q 241 855 308 855 m 1428 0 q 1246 76 1314 0 q 1185 244 1185 145 q 1244 412 1185 344 q 1428 489 1311 489 q 1610 412 1542 489 q 1672 244 1672 343 q 1612 76 1672 144 q 1428 0 1545 0 m 1427 103 q 1528 143 1492 103 q 1564 243 1564 184 q 1530 340 1564 301 q 1427 385 1492 385 q 1327 342 1364 385 q 1291 243 1291 300 q 1324 147 1291 186 q 1427 103 1363 103 "},"a":{"x_min":0,"x_max":698.609375,"ha":794,"o":"m 698 0 q 661 -12 679 -7 q 615 -17 643 -17 q 536 12 564 -17 q 500 96 508 41 q 384 6 456 37 q 236 -25 312 -25 q 65 31 130 -25 q 0 194 0 88 q 118 390 0 334 q 328 435 180 420 q 488 483 476 451 q 495 523 495 504 q 442 619 495 584 q 325 654 389 654 q 209 617 257 654 q 152 513 161 580 l 33 513 q 123 705 33 633 q 332 772 207 772 q 528 712 448 772 q 617 531 617 645 l 617 163 q 624 108 617 126 q 664 90 632 90 l 698 94 l 698 0 m 491 262 l 491 372 q 272 329 350 347 q 128 201 128 294 q 166 113 128 144 q 264 83 205 83 q 414 130 346 83 q 491 262 491 183 "},"—":{"x_min":0,"x_max":941.671875,"ha":1039,"o":"m 941 334 l 0 334 l 0 410 l 941 410 l 941 334 "},"=":{"x_min":8.71875,"x_max":780.953125,"ha":792,"o":"m 780 510 l 8 510 l 8 606 l 780 606 l 780 510 m 780 235 l 8 235 l 8 332 l 780 332 l 780 235 "},"N":{"x_min":0,"x_max":801,"ha":914,"o":"m 801 0 l 651 0 l 131 823 l 131 0 l 0 0 l 0 1013 l 151 1013 l 670 193 l 670 1013 l 801 1013 l 801 0 "},"ρ":{"x_min":0,"x_max":712,"ha":797,"o":"m 712 369 q 620 94 712 207 q 362 -26 521 -26 q 230 2 292 -26 q 119 83 167 30 l 119 -278 l 0 -278 l 0 362 q 91 643 0 531 q 355 764 190 764 q 617 647 517 764 q 712 369 712 536 m 583 366 q 530 559 583 480 q 359 651 469 651 q 190 562 252 651 q 135 370 135 483 q 189 176 135 257 q 359 85 250 85 q 528 175 466 85 q 583 366 583 254 "},"2":{"x_min":59,"x_max":731,"ha":792,"o":"m 731 0 l 59 0 q 197 314 59 188 q 457 487 199 315 q 598 691 598 580 q 543 819 598 772 q 411 867 488 867 q 272 811 328 867 q 209 630 209 747 l 81 630 q 182 901 81 805 q 408 986 271 986 q 629 909 536 986 q 731 694 731 826 q 613 449 731 541 q 378 316 495 383 q 201 122 235 234 l 731 122 l 731 0 "},"¯":{"x_min":0,"x_max":941.671875,"ha":938,"o":"m 941 1033 l 0 1033 l 0 1109 l 941 1109 l 941 1033 "},"Z":{"x_min":0,"x_max":779,"ha":849,"o":"m 779 0 l 0 0 l 0 113 l 621 896 l 40 896 l 40 1013 l 779 1013 l 778 887 l 171 124 l 779 124 l 779 0 "},"u":{"x_min":0,"x_max":617,"ha":729,"o":"m 617 0 l 499 0 l 499 110 q 391 10 460 45 q 246 -25 322 -25 q 61 58 127 -25 q 0 258 0 136 l 0 738 l 125 738 l 125 284 q 156 148 125 202 q 273 82 197 82 q 433 165 369 82 q 493 340 493 243 l 493 738 l 617 738 l 617 0 "},"k":{"x_min":0,"x_max":612.484375,"ha":697,"o":"m 612 738 l 338 465 l 608 0 l 469 0 l 251 382 l 121 251 l 121 0 l 0 0 l 0 1013 l 121 1013 l 121 402 l 456 738 l 612 738 "},"Η":{"x_min":0,"x_max":803,"ha":917,"o":"m 803 0 l 667 0 l 667 475 l 140 475 l 140 0 l 0 0 l 0 1013 l 140 1013 l 140 599 l 667 599 l 667 1013 l 803 1013 l 803 0 "},"Α":{"x_min":0,"x_max":906.953125,"ha":985,"o":"m 906 0 l 756 0 l 650 303 l 251 303 l 143 0 l 0 0 l 376 1013 l 529 1013 l 906 0 m 609 421 l 452 866 l 293 421 l 609 421 "},"s":{"x_min":0,"x_max":604,"ha":697,"o":"m 604 217 q 501 36 604 104 q 292 -23 411 -23 q 86 43 166 -23 q 0 238 0 114 l 121 237 q 175 122 121 164 q 300 85 223 85 q 415 112 363 85 q 479 207 479 147 q 361 309 479 276 q 140 372 141 370 q 21 544 21 426 q 111 708 21 647 q 298 761 190 761 q 492 705 413 761 q 583 531 583 643 l 462 531 q 412 625 462 594 q 298 657 363 657 q 199 636 242 657 q 143 558 143 608 q 262 454 143 486 q 484 394 479 397 q 604 217 604 341 "},"B":{"x_min":0,"x_max":778,"ha":876,"o":"m 580 546 q 724 469 670 535 q 778 311 778 403 q 673 83 778 171 q 432 0 575 0 l 0 0 l 0 1013 l 411 1013 q 629 957 541 1013 q 732 768 732 892 q 691 633 732 693 q 580 546 650 572 m 393 899 l 139 899 l 139 588 l 379 588 q 521 624 462 588 q 592 744 592 667 q 531 859 592 819 q 393 899 471 899 m 419 124 q 566 169 504 124 q 635 303 635 219 q 559 436 635 389 q 402 477 494 477 l 139 477 l 139 124 l 419 124 "},"…":{"x_min":0,"x_max":614,"ha":708,"o":"m 142 0 l 0 0 l 0 151 l 142 151 l 142 0 m 378 0 l 236 0 l 236 151 l 378 151 l 378 0 m 614 0 l 472 0 l 472 151 l 614 151 l 614 0 "},"?":{"x_min":0,"x_max":607,"ha":704,"o":"m 607 777 q 543 599 607 674 q 422 474 482 537 q 357 272 357 391 l 236 272 q 297 487 236 395 q 411 619 298 490 q 474 762 474 691 q 422 885 474 838 q 301 933 371 933 q 179 880 228 933 q 124 706 124 819 l 0 706 q 94 963 0 872 q 302 1044 177 1044 q 511 973 423 1044 q 607 777 607 895 m 370 0 l 230 0 l 230 151 l 370 151 l 370 0 "},"H":{"x_min":0,"x_max":803,"ha":915,"o":"m 803 0 l 667 0 l 667 475 l 140 475 l 140 0 l 0 0 l 0 1013 l 140 1013 l 140 599 l 667 599 l 667 1013 l 803 1013 l 803 0 "},"ν":{"x_min":0,"x_max":675,"ha":761,"o":"m 675 738 l 404 0 l 272 0 l 0 738 l 133 738 l 340 147 l 541 738 l 675 738 "},"c":{"x_min":1,"x_max":701.390625,"ha":775,"o":"m 701 264 q 584 53 681 133 q 353 -26 487 -26 q 91 91 188 -26 q 1 370 1 201 q 92 645 1 537 q 353 761 190 761 q 572 688 479 761 q 690 493 666 615 l 556 493 q 487 606 545 562 q 356 650 428 650 q 186 563 246 650 q 134 372 134 487 q 188 179 134 258 q 359 88 250 88 q 492 136 437 88 q 566 264 548 185 l 701 264 "},"¶":{"x_min":0,"x_max":566.671875,"ha":678,"o":"m 21 892 l 52 892 l 98 761 l 145 892 l 176 892 l 178 741 l 157 741 l 157 867 l 108 741 l 88 741 l 40 871 l 40 741 l 21 741 l 21 892 m 308 854 l 308 731 q 252 691 308 691 q 227 691 240 691 q 207 696 213 695 l 207 712 l 253 706 q 288 733 288 706 l 288 763 q 244 741 279 741 q 193 797 193 741 q 261 860 193 860 q 287 860 273 860 q 308 854 302 855 m 288 842 l 263 843 q 213 796 213 843 q 248 756 213 756 q 288 796 288 756 l 288 842 m 566 988 l 502 988 l 502 -1 l 439 -1 l 439 988 l 317 988 l 317 -1 l 252 -1 l 252 602 q 81 653 155 602 q 0 805 0 711 q 101 989 0 918 q 309 1053 194 1053 l 566 1053 l 566 988 "},"β":{"x_min":0,"x_max":660,"ha":745,"o":"m 471 550 q 610 450 561 522 q 660 280 660 378 q 578 64 660 151 q 367 -22 497 -22 q 239 5 299 -22 q 126 82 178 32 l 126 -278 l 0 -278 l 0 593 q 54 903 0 801 q 318 1042 127 1042 q 519 964 436 1042 q 603 771 603 887 q 567 644 603 701 q 471 550 532 586 m 337 79 q 476 138 418 79 q 535 279 535 198 q 427 437 535 386 q 226 477 344 477 l 226 583 q 398 620 329 583 q 486 762 486 668 q 435 884 486 833 q 312 935 384 935 q 169 861 219 935 q 126 698 126 797 l 126 362 q 170 169 126 242 q 337 79 224 79 "},"Μ":{"x_min":0,"x_max":954,"ha":1068,"o":"m 954 0 l 819 0 l 819 868 l 537 0 l 405 0 l 128 865 l 128 0 l 0 0 l 0 1013 l 199 1013 l 472 158 l 758 1013 l 954 1013 l 954 0 "},"Ό":{"x_min":0.109375,"x_max":1120,"ha":1217,"o":"m 1120 505 q 994 132 1120 282 q 642 -29 861 -29 q 290 130 422 -29 q 167 505 167 280 q 294 883 167 730 q 650 1046 430 1046 q 999 882 868 1046 q 1120 505 1120 730 m 977 504 q 896 784 977 669 q 644 915 804 915 q 391 785 484 915 q 307 504 307 669 q 391 224 307 339 q 644 95 486 95 q 894 224 803 95 q 977 504 977 339 m 277 1040 l 83 799 l 0 799 l 140 1040 l 277 1040 "},"Ή":{"x_min":0,"x_max":1158,"ha":1275,"o":"m 1158 0 l 1022 0 l 1022 475 l 496 475 l 496 0 l 356 0 l 356 1012 l 496 1012 l 496 599 l 1022 599 l 1022 1012 l 1158 1012 l 1158 0 m 277 1040 l 83 799 l 0 799 l 140 1040 l 277 1040 "},"•":{"x_min":0,"x_max":663.890625,"ha":775,"o":"m 663 529 q 566 293 663 391 q 331 196 469 196 q 97 294 194 196 q 0 529 0 393 q 96 763 0 665 q 331 861 193 861 q 566 763 469 861 q 663 529 663 665 "},"¥":{"x_min":0.1875,"x_max":819.546875,"ha":886,"o":"m 563 561 l 697 561 l 696 487 l 520 487 l 482 416 l 482 380 l 697 380 l 695 308 l 482 308 l 482 0 l 342 0 l 342 308 l 125 308 l 125 380 l 342 380 l 342 417 l 303 487 l 125 487 l 125 561 l 258 561 l 0 1013 l 140 1013 l 411 533 l 679 1013 l 819 1013 l 563 561 "},"(":{"x_min":0,"x_max":318.0625,"ha":415,"o":"m 318 -290 l 230 -290 q 61 23 122 -142 q 0 365 0 190 q 62 712 0 540 q 230 1024 119 869 l 318 1024 q 175 705 219 853 q 125 360 125 542 q 176 22 125 187 q 318 -290 223 -127 "},"U":{"x_min":0,"x_max":796,"ha":904,"o":"m 796 393 q 681 93 796 212 q 386 -25 566 -25 q 101 95 208 -25 q 0 393 0 211 l 0 1013 l 138 1013 l 138 391 q 204 191 138 270 q 394 107 276 107 q 586 191 512 107 q 656 391 656 270 l 656 1013 l 796 1013 l 796 393 "},"γ":{"x_min":0.5,"x_max":744.953125,"ha":822,"o":"m 744 737 l 463 54 l 463 -278 l 338 -278 l 338 54 l 154 495 q 104 597 124 569 q 13 651 67 651 l 0 651 l 0 751 l 39 753 q 168 711 121 753 q 242 594 207 676 l 403 208 l 617 737 l 744 737 "},"α":{"x_min":0,"x_max":765.5625,"ha":809,"o":"m 765 -4 q 698 -14 726 -14 q 564 97 586 -14 q 466 7 525 40 q 337 -26 407 -26 q 88 98 186 -26 q 0 369 0 212 q 88 637 0 525 q 337 760 184 760 q 465 728 407 760 q 563 637 524 696 l 563 739 l 685 739 l 685 222 q 693 141 685 168 q 748 94 708 94 q 765 96 760 94 l 765 -4 m 584 371 q 531 562 584 485 q 360 653 470 653 q 192 566 254 653 q 135 379 135 489 q 186 181 135 261 q 358 84 247 84 q 528 176 465 84 q 584 371 584 260 "},"F":{"x_min":0,"x_max":683.328125,"ha":717,"o":"m 683 888 l 140 888 l 140 583 l 613 583 l 613 458 l 140 458 l 140 0 l 0 0 l 0 1013 l 683 1013 l 683 888 "},"­":{"x_min":0,"x_max":705.5625,"ha":803,"o":"m 705 334 l 0 334 l 0 410 l 705 410 l 705 334 "},":":{"x_min":0,"x_max":142,"ha":239,"o":"m 142 585 l 0 585 l 0 738 l 142 738 l 142 585 m 142 0 l 0 0 l 0 151 l 142 151 l 142 0 "},"Χ":{"x_min":0,"x_max":854.171875,"ha":935,"o":"m 854 0 l 683 0 l 423 409 l 166 0 l 0 0 l 347 519 l 18 1013 l 186 1013 l 427 637 l 675 1013 l 836 1013 l 504 521 l 854 0 "},"*":{"x_min":116,"x_max":674,"ha":792,"o":"m 674 768 l 475 713 l 610 544 l 517 477 l 394 652 l 272 478 l 178 544 l 314 713 l 116 766 l 153 876 l 341 812 l 342 1013 l 446 1013 l 446 811 l 635 874 l 674 768 "},"†":{"x_min":0,"x_max":777,"ha":835,"o":"m 458 804 l 777 804 l 777 683 l 458 683 l 458 0 l 319 0 l 319 681 l 0 683 l 0 804 l 319 804 l 319 1015 l 458 1013 l 458 804 "},"°":{"x_min":0,"x_max":347,"ha":444,"o":"m 173 802 q 43 856 91 802 q 0 977 0 905 q 45 1101 0 1049 q 173 1153 90 1153 q 303 1098 255 1153 q 347 977 347 1049 q 303 856 347 905 q 173 802 256 802 m 173 884 q 238 910 214 884 q 262 973 262 937 q 239 1038 262 1012 q 173 1064 217 1064 q 108 1037 132 1064 q 85 973 85 1010 q 108 910 85 937 q 173 884 132 884 "},"V":{"x_min":0,"x_max":862.71875,"ha":940,"o":"m 862 1013 l 505 0 l 361 0 l 0 1013 l 143 1013 l 434 165 l 718 1012 l 862 1013 "},"Ξ":{"x_min":0,"x_max":734.71875,"ha":763,"o":"m 723 889 l 9 889 l 9 1013 l 723 1013 l 723 889 m 673 463 l 61 463 l 61 589 l 673 589 l 673 463 m 734 0 l 0 0 l 0 124 l 734 124 l 734 0 "}," ":{"x_min":0,"x_max":0,"ha":853},"Ϋ":{"x_min":0.328125,"x_max":819.515625,"ha":889,"o":"m 588 1046 l 460 1046 l 460 1189 l 588 1189 l 588 1046 m 360 1046 l 232 1046 l 232 1189 l 360 1189 l 360 1046 m 819 1012 l 482 416 l 482 0 l 342 0 l 342 416 l 0 1012 l 140 1012 l 411 533 l 679 1012 l 819 1012 "},"0":{"x_min":73,"x_max":715,"ha":792,"o":"m 394 -29 q 153 129 242 -29 q 73 479 73 272 q 152 829 73 687 q 394 989 241 989 q 634 829 545 989 q 715 479 715 684 q 635 129 715 270 q 394 -29 546 -29 m 394 89 q 546 211 489 89 q 598 479 598 322 q 548 748 598 640 q 394 871 491 871 q 241 748 298 871 q 190 479 190 637 q 239 211 190 319 q 394 89 296 89 "},"”":{"x_min":0,"x_max":347,"ha":454,"o":"m 139 851 q 102 737 139 784 q 0 669 65 690 l 0 734 q 59 787 42 741 q 72 873 72 821 l 0 873 l 0 1013 l 139 1013 l 139 851 m 347 851 q 310 737 347 784 q 208 669 273 690 l 208 734 q 267 787 250 741 q 280 873 280 821 l 208 873 l 208 1013 l 347 1013 l 347 851 "},"@":{"x_min":0,"x_max":1260,"ha":1357,"o":"m 1098 -45 q 877 -160 1001 -117 q 633 -203 752 -203 q 155 -29 327 -203 q 0 360 0 127 q 176 802 0 616 q 687 1008 372 1008 q 1123 854 969 1008 q 1260 517 1260 718 q 1155 216 1260 341 q 868 82 1044 82 q 772 106 801 82 q 737 202 737 135 q 647 113 700 144 q 527 82 594 82 q 367 147 420 82 q 314 312 314 212 q 401 565 314 452 q 639 690 498 690 q 810 588 760 690 l 849 668 l 938 668 q 877 441 900 532 q 833 226 833 268 q 853 182 833 198 q 902 167 873 167 q 1088 272 1012 167 q 1159 512 1159 372 q 1051 793 1159 681 q 687 925 925 925 q 248 747 415 925 q 97 361 97 586 q 226 26 97 159 q 627 -122 370 -122 q 856 -87 737 -122 q 1061 8 976 -53 l 1098 -45 m 786 488 q 738 580 777 545 q 643 615 700 615 q 483 517 548 615 q 425 322 425 430 q 457 203 425 250 q 552 156 490 156 q 722 273 665 156 q 786 488 738 309 "},"Ί":{"x_min":0,"x_max":499,"ha":613,"o":"m 277 1040 l 83 799 l 0 799 l 140 1040 l 277 1040 m 499 0 l 360 0 l 360 1012 l 499 1012 l 499 0 "},"i":{"x_min":14,"x_max":136,"ha":275,"o":"m 136 873 l 14 873 l 14 1013 l 136 1013 l 136 873 m 136 0 l 14 0 l 14 737 l 136 737 l 136 0 "},"Β":{"x_min":0,"x_max":778,"ha":877,"o":"m 580 545 q 724 468 671 534 q 778 310 778 402 q 673 83 778 170 q 432 0 575 0 l 0 0 l 0 1013 l 411 1013 q 629 957 541 1013 q 732 768 732 891 q 691 632 732 692 q 580 545 650 571 m 393 899 l 139 899 l 139 587 l 379 587 q 521 623 462 587 q 592 744 592 666 q 531 859 592 819 q 393 899 471 899 m 419 124 q 566 169 504 124 q 635 302 635 219 q 559 435 635 388 q 402 476 494 476 l 139 476 l 139 124 l 419 124 "},"υ":{"x_min":0,"x_max":617,"ha":725,"o":"m 617 352 q 540 94 617 199 q 308 -24 455 -24 q 76 94 161 -24 q 0 352 0 199 l 0 739 l 126 739 l 126 355 q 169 185 126 257 q 312 98 220 98 q 451 185 402 98 q 492 355 492 257 l 492 739 l 617 739 l 617 352 "},"]":{"x_min":0,"x_max":275,"ha":372,"o":"m 275 -281 l 0 -281 l 0 -187 l 151 -187 l 151 920 l 0 920 l 0 1013 l 275 1013 l 275 -281 "},"m":{"x_min":0,"x_max":1019,"ha":1128,"o":"m 1019 0 l 897 0 l 897 454 q 860 591 897 536 q 739 660 816 660 q 613 586 659 660 q 573 436 573 522 l 573 0 l 447 0 l 447 455 q 412 591 447 535 q 294 657 372 657 q 165 586 213 657 q 122 437 122 521 l 122 0 l 0 0 l 0 738 l 117 738 l 117 640 q 202 730 150 697 q 316 763 254 763 q 437 730 381 763 q 525 642 494 697 q 621 731 559 700 q 753 763 682 763 q 943 694 867 763 q 1019 512 1019 625 l 1019 0 "},"χ":{"x_min":8.328125,"x_max":780.5625,"ha":815,"o":"m 780 -278 q 715 -294 747 -294 q 616 -257 663 -294 q 548 -175 576 -227 l 379 133 l 143 -277 l 9 -277 l 313 254 l 163 522 q 127 586 131 580 q 36 640 91 640 q 8 637 27 640 l 8 752 l 52 757 q 162 719 113 757 q 236 627 200 690 l 383 372 l 594 737 l 726 737 l 448 250 l 625 -69 q 670 -153 647 -110 q 743 -188 695 -188 q 780 -184 759 -188 l 780 -278 "},"8":{"x_min":55,"x_max":736,"ha":792,"o":"m 571 527 q 694 424 652 491 q 736 280 736 358 q 648 71 736 158 q 395 -26 551 -26 q 142 69 238 -26 q 55 279 55 157 q 96 425 55 359 q 220 527 138 491 q 120 615 153 562 q 88 726 88 668 q 171 904 88 827 q 395 986 261 986 q 618 905 529 986 q 702 727 702 830 q 670 616 702 667 q 571 527 638 565 m 394 565 q 519 610 475 565 q 563 717 563 655 q 521 823 563 781 q 392 872 474 872 q 265 824 312 872 q 224 720 224 783 q 265 613 224 656 q 394 565 312 565 m 395 91 q 545 150 488 91 q 597 280 597 204 q 546 408 597 355 q 395 465 492 465 q 244 408 299 465 q 194 280 194 356 q 244 150 194 203 q 395 91 299 91 "},"ί":{"x_min":42,"x_max":326.71875,"ha":361,"o":"m 284 3 q 233 -10 258 -5 q 182 -15 207 -15 q 85 26 119 -15 q 42 200 42 79 l 42 737 l 167 737 l 168 215 q 172 141 168 157 q 226 101 183 101 q 248 102 239 101 q 284 112 257 104 l 284 3 m 326 1040 l 137 819 l 54 819 l 189 1040 l 326 1040 "},"Ζ":{"x_min":0,"x_max":779.171875,"ha":850,"o":"m 779 0 l 0 0 l 0 113 l 620 896 l 40 896 l 40 1013 l 779 1013 l 779 887 l 170 124 l 779 124 l 779 0 "},"R":{"x_min":0,"x_max":781.953125,"ha":907,"o":"m 781 0 l 623 0 q 587 242 590 52 q 407 433 585 433 l 138 433 l 138 0 l 0 0 l 0 1013 l 396 1013 q 636 946 539 1013 q 749 731 749 868 q 711 597 749 659 q 608 502 674 534 q 718 370 696 474 q 729 207 722 352 q 781 26 736 62 l 781 0 m 373 551 q 533 594 465 551 q 614 731 614 645 q 532 859 614 815 q 373 896 465 896 l 138 896 l 138 551 l 373 551 "},"o":{"x_min":0,"x_max":713,"ha":821,"o":"m 357 -25 q 94 91 194 -25 q 0 368 0 202 q 93 642 0 533 q 357 761 193 761 q 618 644 518 761 q 713 368 713 533 q 619 91 713 201 q 357 -25 521 -25 m 357 85 q 528 175 465 85 q 584 369 584 255 q 529 562 584 484 q 357 651 467 651 q 189 560 250 651 q 135 369 135 481 q 187 177 135 257 q 357 85 250 85 "},"5":{"x_min":54.171875,"x_max":738,"ha":792,"o":"m 738 314 q 626 60 738 153 q 382 -23 526 -23 q 155 47 248 -23 q 54 256 54 125 l 183 256 q 259 132 204 174 q 382 91 314 91 q 533 149 471 91 q 602 314 602 213 q 538 469 602 411 q 386 528 475 528 q 284 506 332 528 q 197 439 237 484 l 81 439 l 159 958 l 684 958 l 684 840 l 254 840 l 214 579 q 306 627 258 612 q 407 643 354 643 q 636 552 540 643 q 738 314 738 457 "},"7":{"x_min":58.71875,"x_max":730.953125,"ha":792,"o":"m 730 839 q 469 448 560 641 q 335 0 378 255 l 192 0 q 328 441 235 252 q 593 830 421 630 l 58 830 l 58 958 l 730 958 l 730 839 "},"K":{"x_min":0,"x_max":819.46875,"ha":906,"o":"m 819 0 l 649 0 l 294 509 l 139 355 l 139 0 l 0 0 l 0 1013 l 139 1013 l 139 526 l 626 1013 l 809 1013 l 395 600 l 819 0 "},",":{"x_min":0,"x_max":142,"ha":239,"o":"m 142 -12 q 105 -132 142 -82 q 0 -205 68 -182 l 0 -138 q 57 -82 40 -124 q 70 0 70 -51 l 0 0 l 0 151 l 142 151 l 142 -12 "},"d":{"x_min":0,"x_max":683,"ha":796,"o":"m 683 0 l 564 0 l 564 93 q 456 6 516 38 q 327 -25 395 -25 q 87 100 181 -25 q 0 365 0 215 q 90 639 0 525 q 343 763 187 763 q 564 647 486 763 l 564 1013 l 683 1013 l 683 0 m 582 373 q 529 562 582 484 q 361 653 468 653 q 190 561 253 653 q 135 365 135 479 q 189 175 135 254 q 358 85 251 85 q 529 178 468 85 q 582 373 582 258 "},"¨":{"x_min":-109,"x_max":247,"ha":232,"o":"m 247 1046 l 119 1046 l 119 1189 l 247 1189 l 247 1046 m 19 1046 l -109 1046 l -109 1189 l 19 1189 l 19 1046 "},"E":{"x_min":0,"x_max":736.109375,"ha":789,"o":"m 736 0 l 0 0 l 0 1013 l 725 1013 l 725 889 l 139 889 l 139 585 l 677 585 l 677 467 l 139 467 l 139 125 l 736 125 l 736 0 "},"Y":{"x_min":0,"x_max":820,"ha":886,"o":"m 820 1013 l 482 416 l 482 0 l 342 0 l 342 416 l 0 1013 l 140 1013 l 411 534 l 679 1012 l 820 1013 "},"\"":{"x_min":0,"x_max":299,"ha":396,"o":"m 299 606 l 203 606 l 203 988 l 299 988 l 299 606 m 96 606 l 0 606 l 0 988 l 96 988 l 96 606 "},"‹":{"x_min":17.984375,"x_max":773.609375,"ha":792,"o":"m 773 40 l 18 376 l 17 465 l 773 799 l 773 692 l 159 420 l 773 149 l 773 40 "},"„":{"x_min":0,"x_max":364,"ha":467,"o":"m 141 -12 q 104 -132 141 -82 q 0 -205 67 -182 l 0 -138 q 56 -82 40 -124 q 69 0 69 -51 l 0 0 l 0 151 l 141 151 l 141 -12 m 364 -12 q 327 -132 364 -82 q 222 -205 290 -182 l 222 -138 q 279 -82 262 -124 q 292 0 292 -51 l 222 0 l 222 151 l 364 151 l 364 -12 "},"δ":{"x_min":1,"x_max":710,"ha":810,"o":"m 710 360 q 616 87 710 196 q 356 -28 518 -28 q 99 82 197 -28 q 1 356 1 192 q 100 606 1 509 q 355 703 199 703 q 180 829 288 754 q 70 903 124 866 l 70 1012 l 643 1012 l 643 901 l 258 901 q 462 763 422 794 q 636 592 577 677 q 710 360 710 485 m 584 365 q 552 501 584 447 q 451 602 521 555 q 372 611 411 611 q 197 541 258 611 q 136 355 136 472 q 190 171 136 245 q 358 85 252 85 q 528 173 465 85 q 584 365 584 252 "},"έ":{"x_min":0,"x_max":634.71875,"ha":714,"o":"m 634 234 q 527 38 634 110 q 300 -25 433 -25 q 98 29 183 -25 q 0 204 0 93 q 37 313 0 265 q 128 390 67 352 q 56 459 82 419 q 26 555 26 505 q 114 712 26 654 q 295 763 191 763 q 499 700 416 763 q 589 515 589 631 l 478 515 q 419 618 464 580 q 307 657 374 657 q 207 630 253 657 q 151 547 151 598 q 238 445 151 469 q 389 434 280 434 l 389 331 l 349 331 q 206 315 255 331 q 125 210 125 287 q 183 107 125 145 q 302 76 233 76 q 436 117 379 76 q 509 234 493 159 l 634 234 m 520 1040 l 331 819 l 248 819 l 383 1040 l 520 1040 "},"ω":{"x_min":0,"x_max":922,"ha":1031,"o":"m 922 339 q 856 97 922 203 q 650 -26 780 -26 q 538 9 587 -26 q 461 103 489 44 q 387 12 436 46 q 277 -22 339 -22 q 69 97 147 -22 q 0 339 0 203 q 45 551 0 444 q 161 738 84 643 l 302 738 q 175 553 219 647 q 124 336 124 446 q 155 179 124 249 q 275 88 197 88 q 375 163 341 88 q 400 294 400 219 l 400 572 l 524 572 l 524 294 q 561 135 524 192 q 643 88 591 88 q 762 182 719 88 q 797 342 797 257 q 745 556 797 450 q 619 738 705 638 l 760 738 q 874 551 835 640 q 922 339 922 444 "},"´":{"x_min":0,"x_max":96,"ha":251,"o":"m 96 606 l 0 606 l 0 988 l 96 988 l 96 606 "},"±":{"x_min":11,"x_max":781,"ha":792,"o":"m 781 490 l 446 490 l 446 255 l 349 255 l 349 490 l 11 490 l 11 586 l 349 586 l 349 819 l 446 819 l 446 586 l 781 586 l 781 490 m 781 21 l 11 21 l 11 115 l 781 115 l 781 21 "},"|":{"x_min":343,"x_max":449,"ha":792,"o":"m 449 462 l 343 462 l 343 986 l 449 986 l 449 462 m 449 -242 l 343 -242 l 343 280 l 449 280 l 449 -242 "},"ϋ":{"x_min":0,"x_max":617,"ha":725,"o":"m 482 800 l 372 800 l 372 925 l 482 925 l 482 800 m 239 800 l 129 800 l 129 925 l 239 925 l 239 800 m 617 352 q 540 93 617 199 q 308 -24 455 -24 q 76 93 161 -24 q 0 352 0 199 l 0 738 l 126 738 l 126 354 q 169 185 126 257 q 312 98 220 98 q 451 185 402 98 q 492 354 492 257 l 492 738 l 617 738 l 617 352 "},"§":{"x_min":0,"x_max":593,"ha":690,"o":"m 593 425 q 554 312 593 369 q 467 233 516 254 q 537 83 537 172 q 459 -74 537 -12 q 288 -133 387 -133 q 115 -69 184 -133 q 47 96 47 -6 l 166 96 q 199 7 166 40 q 288 -26 232 -26 q 371 -5 332 -26 q 420 60 420 21 q 311 201 420 139 q 108 309 210 255 q 0 490 0 383 q 33 602 0 551 q 124 687 66 654 q 75 743 93 712 q 58 812 58 773 q 133 984 58 920 q 300 1043 201 1043 q 458 987 394 1043 q 529 814 529 925 l 411 814 q 370 908 404 877 q 289 939 336 939 q 213 911 246 939 q 180 841 180 883 q 286 720 180 779 q 484 612 480 615 q 593 425 593 534 m 467 409 q 355 544 467 473 q 196 630 228 612 q 146 587 162 609 q 124 525 124 558 q 239 387 124 462 q 398 298 369 315 q 448 345 429 316 q 467 409 467 375 "},"b":{"x_min":0,"x_max":685,"ha":783,"o":"m 685 372 q 597 99 685 213 q 347 -25 501 -25 q 219 5 277 -25 q 121 93 161 36 l 121 0 l 0 0 l 0 1013 l 121 1013 l 121 634 q 214 723 157 692 q 341 754 272 754 q 591 637 493 754 q 685 372 685 526 m 554 356 q 499 550 554 470 q 328 644 437 644 q 162 556 223 644 q 108 369 108 478 q 160 176 108 256 q 330 83 221 83 q 498 169 435 83 q 554 356 554 245 "},"q":{"x_min":0,"x_max":683,"ha":876,"o":"m 683 -278 l 564 -278 l 564 97 q 474 8 533 39 q 345 -23 415 -23 q 91 93 188 -23 q 0 364 0 203 q 87 635 0 522 q 337 760 184 760 q 466 727 408 760 q 564 637 523 695 l 564 737 l 683 737 l 683 -278 m 582 375 q 527 564 582 488 q 358 652 466 652 q 190 565 253 652 q 135 377 135 488 q 189 179 135 261 q 361 84 251 84 q 530 179 469 84 q 582 375 582 260 "},"Ω":{"x_min":-0.171875,"x_max":969.5625,"ha":1068,"o":"m 969 0 l 555 0 l 555 123 q 744 308 675 194 q 814 558 814 423 q 726 812 814 709 q 484 922 633 922 q 244 820 334 922 q 154 567 154 719 q 223 316 154 433 q 412 123 292 199 l 412 0 l 0 0 l 0 124 l 217 124 q 68 327 122 210 q 15 572 15 444 q 144 911 15 781 q 484 1041 274 1041 q 822 909 691 1041 q 953 569 953 777 q 899 326 953 443 q 750 124 846 210 l 969 124 l 969 0 "},"ύ":{"x_min":0,"x_max":617,"ha":725,"o":"m 617 352 q 540 93 617 199 q 308 -24 455 -24 q 76 93 161 -24 q 0 352 0 199 l 0 738 l 126 738 l 126 354 q 169 185 126 257 q 312 98 220 98 q 451 185 402 98 q 492 354 492 257 l 492 738 l 617 738 l 617 352 m 535 1040 l 346 819 l 262 819 l 397 1040 l 535 1040 "},"z":{"x_min":-0.015625,"x_max":613.890625,"ha":697,"o":"m 613 0 l 0 0 l 0 100 l 433 630 l 20 630 l 20 738 l 594 738 l 593 636 l 163 110 l 613 110 l 613 0 "},"™":{"x_min":0,"x_max":894,"ha":1000,"o":"m 389 951 l 229 951 l 229 503 l 160 503 l 160 951 l 0 951 l 0 1011 l 389 1011 l 389 951 m 894 503 l 827 503 l 827 939 l 685 503 l 620 503 l 481 937 l 481 503 l 417 503 l 417 1011 l 517 1011 l 653 580 l 796 1010 l 894 1011 l 894 503 "},"ή":{"x_min":0.78125,"x_max":697,"ha":810,"o":"m 697 -278 l 572 -278 l 572 454 q 540 587 572 536 q 425 650 501 650 q 271 579 337 650 q 206 420 206 509 l 206 0 l 81 0 l 81 489 q 73 588 81 562 q 0 644 56 644 l 0 741 q 68 755 38 755 q 158 721 124 755 q 200 630 193 687 q 297 726 234 692 q 434 761 359 761 q 620 692 544 761 q 697 516 697 624 l 697 -278 m 479 1040 l 290 819 l 207 819 l 341 1040 l 479 1040 "},"Θ":{"x_min":0,"x_max":960,"ha":1056,"o":"m 960 507 q 833 129 960 280 q 476 -32 698 -32 q 123 129 255 -32 q 0 507 0 280 q 123 883 0 732 q 476 1045 255 1045 q 832 883 696 1045 q 960 507 960 732 m 817 500 q 733 789 817 669 q 476 924 639 924 q 223 792 317 924 q 142 507 142 675 q 222 222 142 339 q 476 89 315 89 q 730 218 636 89 q 817 500 817 334 m 716 449 l 243 449 l 243 571 l 716 571 l 716 449 "},"®":{"x_min":-3,"x_max":1008,"ha":1106,"o":"m 503 532 q 614 562 566 532 q 672 658 672 598 q 614 747 672 716 q 503 772 569 772 l 338 772 l 338 532 l 503 532 m 502 -7 q 123 151 263 -7 q -3 501 -3 294 q 123 851 -3 706 q 502 1011 263 1011 q 881 851 739 1011 q 1008 501 1008 708 q 883 151 1008 292 q 502 -7 744 -7 m 502 60 q 830 197 709 60 q 940 501 940 322 q 831 805 940 681 q 502 944 709 944 q 174 805 296 944 q 65 501 65 680 q 173 197 65 320 q 502 60 294 60 m 788 146 l 678 146 q 653 316 655 183 q 527 449 652 449 l 338 449 l 338 146 l 241 146 l 241 854 l 518 854 q 688 808 621 854 q 766 658 766 755 q 739 563 766 607 q 668 497 713 519 q 751 331 747 472 q 788 164 756 190 l 788 146 "},"~":{"x_min":0,"x_max":833,"ha":931,"o":"m 833 958 q 778 753 833 831 q 594 665 716 665 q 402 761 502 665 q 240 857 302 857 q 131 795 166 857 q 104 665 104 745 l 0 665 q 54 867 0 789 q 237 958 116 958 q 429 861 331 958 q 594 765 527 765 q 704 827 670 765 q 729 958 729 874 l 833 958 "},"Ε":{"x_min":0,"x_max":736.21875,"ha":778,"o":"m 736 0 l 0 0 l 0 1013 l 725 1013 l 725 889 l 139 889 l 139 585 l 677 585 l 677 467 l 139 467 l 139 125 l 736 125 l 736 0 "},"³":{"x_min":0,"x_max":450,"ha":547,"o":"m 450 552 q 379 413 450 464 q 220 366 313 366 q 69 414 130 366 q 0 567 0 470 l 85 567 q 126 470 85 504 q 225 437 168 437 q 320 467 280 437 q 360 552 360 498 q 318 632 360 608 q 213 657 276 657 q 195 657 203 657 q 176 657 181 657 l 176 722 q 279 733 249 722 q 334 815 334 752 q 300 881 334 856 q 220 907 267 907 q 133 875 169 907 q 97 781 97 844 l 15 781 q 78 926 15 875 q 220 972 135 972 q 364 930 303 972 q 426 817 426 888 q 344 697 426 733 q 421 642 392 681 q 450 552 450 603 "},"[":{"x_min":0,"x_max":273.609375,"ha":371,"o":"m 273 -281 l 0 -281 l 0 1013 l 273 1013 l 273 920 l 124 920 l 124 -187 l 273 -187 l 273 -281 "},"L":{"x_min":0,"x_max":645.828125,"ha":696,"o":"m 645 0 l 0 0 l 0 1013 l 140 1013 l 140 126 l 645 126 l 645 0 "},"σ":{"x_min":0,"x_max":803.390625,"ha":894,"o":"m 803 628 l 633 628 q 713 368 713 512 q 618 93 713 204 q 357 -25 518 -25 q 94 91 194 -25 q 0 368 0 201 q 94 644 0 533 q 356 761 194 761 q 481 750 398 761 q 608 739 564 739 l 803 739 l 803 628 m 360 85 q 529 180 467 85 q 584 374 584 262 q 527 566 584 490 q 352 651 463 651 q 187 559 247 651 q 135 368 135 478 q 189 175 135 254 q 360 85 251 85 "},"ζ":{"x_min":0,"x_max":573,"ha":642,"o":"m 573 -40 q 553 -162 573 -97 q 510 -278 543 -193 l 400 -278 q 441 -187 428 -219 q 462 -90 462 -132 q 378 -14 462 -14 q 108 45 197 -14 q 0 290 0 117 q 108 631 0 462 q 353 901 194 767 l 55 901 l 55 1012 l 561 1012 l 561 924 q 261 669 382 831 q 128 301 128 489 q 243 117 128 149 q 458 98 350 108 q 573 -40 573 80 "},"θ":{"x_min":0,"x_max":674,"ha":778,"o":"m 674 496 q 601 160 674 304 q 336 -26 508 -26 q 73 153 165 -26 q 0 485 0 296 q 72 840 0 683 q 343 1045 166 1045 q 605 844 516 1045 q 674 496 674 692 m 546 579 q 498 798 546 691 q 336 935 437 935 q 178 798 237 935 q 126 579 137 701 l 546 579 m 546 475 l 126 475 q 170 233 126 348 q 338 80 230 80 q 504 233 447 80 q 546 475 546 346 "},"Ο":{"x_min":0,"x_max":958,"ha":1054,"o":"m 485 1042 q 834 883 703 1042 q 958 511 958 735 q 834 136 958 287 q 481 -26 701 -26 q 126 130 261 -26 q 0 504 0 279 q 127 880 0 729 q 485 1042 263 1042 m 480 98 q 731 225 638 98 q 815 504 815 340 q 733 783 815 670 q 480 913 640 913 q 226 785 321 913 q 142 504 142 671 q 226 224 142 339 q 480 98 319 98 "},"Γ":{"x_min":0,"x_max":705.28125,"ha":749,"o":"m 705 886 l 140 886 l 140 0 l 0 0 l 0 1012 l 705 1012 l 705 886 "}," ":{"x_min":0,"x_max":0,"ha":375},"%":{"x_min":-3,"x_max":1089,"ha":1186,"o":"m 845 0 q 663 76 731 0 q 602 244 602 145 q 661 412 602 344 q 845 489 728 489 q 1027 412 959 489 q 1089 244 1089 343 q 1029 76 1089 144 q 845 0 962 0 m 844 103 q 945 143 909 103 q 981 243 981 184 q 947 340 981 301 q 844 385 909 385 q 744 342 781 385 q 708 243 708 300 q 741 147 708 186 q 844 103 780 103 m 888 986 l 284 -25 l 199 -25 l 803 986 l 888 986 m 241 468 q 58 545 126 468 q -3 715 -3 615 q 56 881 -3 813 q 238 958 124 958 q 421 881 353 958 q 483 712 483 813 q 423 544 483 612 q 241 468 356 468 m 241 855 q 137 811 175 855 q 100 710 100 768 q 136 612 100 653 q 240 572 172 572 q 344 614 306 572 q 382 713 382 656 q 347 810 382 771 q 241 855 308 855 "},"P":{"x_min":0,"x_max":726,"ha":806,"o":"m 424 1013 q 640 931 555 1013 q 726 719 726 850 q 637 506 726 587 q 413 426 548 426 l 140 426 l 140 0 l 0 0 l 0 1013 l 424 1013 m 379 889 l 140 889 l 140 548 l 372 548 q 522 589 459 548 q 593 720 593 637 q 528 845 593 801 q 379 889 463 889 "},"Έ":{"x_min":0,"x_max":1078.21875,"ha":1118,"o":"m 1078 0 l 342 0 l 342 1013 l 1067 1013 l 1067 889 l 481 889 l 481 585 l 1019 585 l 1019 467 l 481 467 l 481 125 l 1078 125 l 1078 0 m 277 1040 l 83 799 l 0 799 l 140 1040 l 277 1040 "},"Ώ":{"x_min":0.125,"x_max":1136.546875,"ha":1235,"o":"m 1136 0 l 722 0 l 722 123 q 911 309 842 194 q 981 558 981 423 q 893 813 981 710 q 651 923 800 923 q 411 821 501 923 q 321 568 321 720 q 390 316 321 433 q 579 123 459 200 l 579 0 l 166 0 l 166 124 l 384 124 q 235 327 289 210 q 182 572 182 444 q 311 912 182 782 q 651 1042 441 1042 q 989 910 858 1042 q 1120 569 1120 778 q 1066 326 1120 443 q 917 124 1013 210 l 1136 124 l 1136 0 m 277 1040 l 83 800 l 0 800 l 140 1041 l 277 1040 "},"_":{"x_min":0,"x_max":705.5625,"ha":803,"o":"m 705 -334 l 0 -334 l 0 -234 l 705 -234 l 705 -334 "},"Ϊ":{"x_min":-110,"x_max":246,"ha":275,"o":"m 246 1046 l 118 1046 l 118 1189 l 246 1189 l 246 1046 m 18 1046 l -110 1046 l -110 1189 l 18 1189 l 18 1046 m 136 0 l 0 0 l 0 1012 l 136 1012 l 136 0 "},"+":{"x_min":23,"x_max":768,"ha":792,"o":"m 768 372 l 444 372 l 444 0 l 347 0 l 347 372 l 23 372 l 23 468 l 347 468 l 347 840 l 444 840 l 444 468 l 768 468 l 768 372 "},"½":{"x_min":0,"x_max":1050,"ha":1149,"o":"m 1050 0 l 625 0 q 712 178 625 108 q 878 277 722 187 q 967 385 967 328 q 932 456 967 429 q 850 484 897 484 q 759 450 798 484 q 721 352 721 416 l 640 352 q 706 502 640 448 q 851 551 766 551 q 987 509 931 551 q 1050 385 1050 462 q 976 251 1050 301 q 829 179 902 215 q 717 68 740 133 l 1050 68 l 1050 0 m 834 985 l 215 -28 l 130 -28 l 750 984 l 834 985 m 224 422 l 142 422 l 142 811 l 0 811 l 0 867 q 104 889 62 867 q 164 973 157 916 l 224 973 l 224 422 "},"Ρ":{"x_min":0,"x_max":720,"ha":783,"o":"m 424 1013 q 637 933 554 1013 q 720 723 720 853 q 633 508 720 591 q 413 426 546 426 l 140 426 l 140 0 l 0 0 l 0 1013 l 424 1013 m 378 889 l 140 889 l 140 548 l 371 548 q 521 589 458 548 q 592 720 592 637 q 527 845 592 801 q 378 889 463 889 "},"'":{"x_min":0,"x_max":139,"ha":236,"o":"m 139 851 q 102 737 139 784 q 0 669 65 690 l 0 734 q 59 787 42 741 q 72 873 72 821 l 0 873 l 0 1013 l 139 1013 l 139 851 "},"ª":{"x_min":0,"x_max":350,"ha":397,"o":"m 350 625 q 307 616 328 616 q 266 631 281 616 q 247 673 251 645 q 190 628 225 644 q 116 613 156 613 q 32 641 64 613 q 0 722 0 669 q 72 826 0 800 q 247 866 159 846 l 247 887 q 220 934 247 916 q 162 953 194 953 q 104 934 129 953 q 76 882 80 915 l 16 882 q 60 976 16 941 q 166 1011 104 1011 q 266 979 224 1011 q 308 891 308 948 l 308 706 q 311 679 308 688 q 331 670 315 670 l 350 672 l 350 625 m 247 757 l 247 811 q 136 790 175 798 q 64 726 64 773 q 83 682 64 697 q 132 667 103 667 q 207 690 174 667 q 247 757 247 718 "},"΅":{"x_min":0,"x_max":450,"ha":553,"o":"m 450 800 l 340 800 l 340 925 l 450 925 l 450 800 m 406 1040 l 212 800 l 129 800 l 269 1040 l 406 1040 m 110 800 l 0 800 l 0 925 l 110 925 l 110 800 "},"T":{"x_min":0,"x_max":777,"ha":835,"o":"m 777 894 l 458 894 l 458 0 l 319 0 l 319 894 l 0 894 l 0 1013 l 777 1013 l 777 894 "},"Φ":{"x_min":0,"x_max":915,"ha":997,"o":"m 527 0 l 389 0 l 389 122 q 110 231 220 122 q 0 509 0 340 q 110 785 0 677 q 389 893 220 893 l 389 1013 l 527 1013 l 527 893 q 804 786 693 893 q 915 509 915 679 q 805 231 915 341 q 527 122 696 122 l 527 0 m 527 226 q 712 310 641 226 q 779 507 779 389 q 712 705 779 627 q 527 787 641 787 l 527 226 m 389 226 l 389 787 q 205 698 275 775 q 136 505 136 620 q 206 308 136 391 q 389 226 276 226 "},"⁋":{"x_min":0,"x_max":0,"ha":694},"j":{"x_min":-77.78125,"x_max":167,"ha":349,"o":"m 167 871 l 42 871 l 42 1013 l 167 1013 l 167 871 m 167 -80 q 121 -231 167 -184 q -26 -278 76 -278 l -77 -278 l -77 -164 l -41 -164 q 26 -143 11 -164 q 42 -65 42 -122 l 42 737 l 167 737 l 167 -80 "},"Σ":{"x_min":0,"x_max":756.953125,"ha":819,"o":"m 756 0 l 0 0 l 0 107 l 395 523 l 22 904 l 22 1013 l 745 1013 l 745 889 l 209 889 l 566 523 l 187 125 l 756 125 l 756 0 "},"1":{"x_min":215.671875,"x_max":574,"ha":792,"o":"m 574 0 l 442 0 l 442 697 l 215 697 l 215 796 q 386 833 330 796 q 475 986 447 875 l 574 986 l 574 0 "},"›":{"x_min":18.0625,"x_max":774,"ha":792,"o":"m 774 376 l 18 40 l 18 149 l 631 421 l 18 692 l 18 799 l 774 465 l 774 376 "},"<":{"x_min":17.984375,"x_max":773.609375,"ha":792,"o":"m 773 40 l 18 376 l 17 465 l 773 799 l 773 692 l 159 420 l 773 149 l 773 40 "},"£":{"x_min":0,"x_max":704.484375,"ha":801,"o":"m 704 41 q 623 -10 664 5 q 543 -26 583 -26 q 359 15 501 -26 q 243 36 288 36 q 158 23 197 36 q 73 -21 119 10 l 6 76 q 125 195 90 150 q 175 331 175 262 q 147 443 175 383 l 0 443 l 0 512 l 108 512 q 43 734 43 623 q 120 929 43 854 q 358 1010 204 1010 q 579 936 487 1010 q 678 729 678 857 l 678 684 l 552 684 q 504 838 552 780 q 362 896 457 896 q 216 852 263 896 q 176 747 176 815 q 199 627 176 697 q 248 512 217 574 l 468 512 l 468 443 l 279 443 q 297 356 297 398 q 230 194 297 279 q 153 107 211 170 q 227 133 190 125 q 293 142 264 142 q 410 119 339 142 q 516 96 482 96 q 579 105 550 96 q 648 142 608 115 l 704 41 "},"t":{"x_min":0,"x_max":367,"ha":458,"o":"m 367 0 q 312 -5 339 -2 q 262 -8 284 -8 q 145 28 183 -8 q 108 143 108 64 l 108 638 l 0 638 l 0 738 l 108 738 l 108 944 l 232 944 l 232 738 l 367 738 l 367 638 l 232 638 l 232 185 q 248 121 232 140 q 307 102 264 102 q 345 104 330 102 q 367 107 360 107 l 367 0 "},"¬":{"x_min":0,"x_max":706,"ha":803,"o":"m 706 411 l 706 158 l 630 158 l 630 335 l 0 335 l 0 411 l 706 411 "},"λ":{"x_min":0,"x_max":750,"ha":803,"o":"m 750 -7 q 679 -15 716 -15 q 538 59 591 -15 q 466 214 512 97 l 336 551 l 126 0 l 0 0 l 270 705 q 223 837 247 770 q 116 899 190 899 q 90 898 100 899 l 90 1004 q 152 1011 125 1011 q 298 938 244 1011 q 373 783 326 901 l 605 192 q 649 115 629 136 q 716 95 669 95 l 736 95 q 750 97 745 97 l 750 -7 "},"W":{"x_min":0,"x_max":1263.890625,"ha":1351,"o":"m 1263 1013 l 995 0 l 859 0 l 627 837 l 405 0 l 265 0 l 0 1013 l 136 1013 l 342 202 l 556 1013 l 701 1013 l 921 207 l 1133 1012 l 1263 1013 "},">":{"x_min":18.0625,"x_max":774,"ha":792,"o":"m 774 376 l 18 40 l 18 149 l 631 421 l 18 692 l 18 799 l 774 465 l 774 376 "},"v":{"x_min":0,"x_max":675.15625,"ha":761,"o":"m 675 738 l 404 0 l 272 0 l 0 738 l 133 737 l 340 147 l 541 737 l 675 738 "},"τ":{"x_min":0.28125,"x_max":644.5,"ha":703,"o":"m 644 628 l 382 628 l 382 179 q 388 120 382 137 q 436 91 401 91 q 474 94 447 91 q 504 97 501 97 l 504 0 q 454 -9 482 -5 q 401 -14 426 -14 q 278 67 308 -14 q 260 233 260 118 l 260 628 l 0 628 l 0 739 l 644 739 l 644 628 "},"ξ":{"x_min":0,"x_max":624.9375,"ha":699,"o":"m 624 -37 q 608 -153 624 -96 q 563 -278 593 -211 l 454 -278 q 491 -183 486 -200 q 511 -83 511 -126 q 484 -23 511 -44 q 370 1 452 1 q 323 0 354 1 q 283 -1 293 -1 q 84 76 169 -1 q 0 266 0 154 q 56 431 0 358 q 197 538 108 498 q 94 613 134 562 q 54 730 54 665 q 77 823 54 780 q 143 901 101 867 l 27 901 l 27 1012 l 576 1012 l 576 901 l 380 901 q 244 863 303 901 q 178 745 178 820 q 312 600 178 636 q 532 582 380 582 l 532 479 q 276 455 361 479 q 118 281 118 410 q 165 173 118 217 q 274 120 208 133 q 494 101 384 110 q 624 -37 624 76 "},"&":{"x_min":-3,"x_max":894.25,"ha":992,"o":"m 894 0 l 725 0 l 624 123 q 471 0 553 40 q 306 -41 390 -41 q 168 -7 231 -41 q 62 92 105 26 q 14 187 31 139 q -3 276 -3 235 q 55 433 -3 358 q 248 581 114 508 q 170 689 196 640 q 137 817 137 751 q 214 985 137 922 q 384 1041 284 1041 q 548 988 483 1041 q 622 824 622 928 q 563 666 622 739 q 431 556 516 608 l 621 326 q 649 407 639 361 q 663 493 653 426 l 781 493 q 703 229 781 352 l 894 0 m 504 818 q 468 908 504 877 q 384 940 433 940 q 293 907 331 940 q 255 818 255 875 q 289 714 255 767 q 363 628 313 678 q 477 729 446 682 q 504 818 504 771 m 556 209 l 314 499 q 179 395 223 449 q 135 283 135 341 q 146 222 135 253 q 183 158 158 192 q 333 80 241 80 q 556 209 448 80 "},"Λ":{"x_min":0,"x_max":862.5,"ha":942,"o":"m 862 0 l 719 0 l 426 847 l 143 0 l 0 0 l 356 1013 l 501 1013 l 862 0 "},"I":{"x_min":41,"x_max":180,"ha":293,"o":"m 180 0 l 41 0 l 41 1013 l 180 1013 l 180 0 "},"G":{"x_min":0,"x_max":921,"ha":1011,"o":"m 921 0 l 832 0 l 801 136 q 655 15 741 58 q 470 -28 568 -28 q 126 133 259 -28 q 0 499 0 284 q 125 881 0 731 q 486 1043 259 1043 q 763 957 647 1043 q 905 709 890 864 l 772 709 q 668 866 747 807 q 486 926 589 926 q 228 795 322 926 q 142 507 142 677 q 228 224 142 342 q 483 94 323 94 q 712 195 625 94 q 796 435 796 291 l 477 435 l 477 549 l 921 549 l 921 0 "},"ΰ":{"x_min":0,"x_max":617,"ha":725,"o":"m 524 800 l 414 800 l 414 925 l 524 925 l 524 800 m 183 800 l 73 800 l 73 925 l 183 925 l 183 800 m 617 352 q 540 93 617 199 q 308 -24 455 -24 q 76 93 161 -24 q 0 352 0 199 l 0 738 l 126 738 l 126 354 q 169 185 126 257 q 312 98 220 98 q 451 185 402 98 q 492 354 492 257 l 492 738 l 617 738 l 617 352 m 489 1040 l 300 819 l 216 819 l 351 1040 l 489 1040 "},"`":{"x_min":0,"x_max":138.890625,"ha":236,"o":"m 138 699 l 0 699 l 0 861 q 36 974 0 929 q 138 1041 72 1020 l 138 977 q 82 931 95 969 q 69 839 69 893 l 138 839 l 138 699 "},"·":{"x_min":0,"x_max":142,"ha":239,"o":"m 142 585 l 0 585 l 0 738 l 142 738 l 142 585 "},"Υ":{"x_min":0.328125,"x_max":819.515625,"ha":889,"o":"m 819 1013 l 482 416 l 482 0 l 342 0 l 342 416 l 0 1013 l 140 1013 l 411 533 l 679 1013 l 819 1013 "},"r":{"x_min":0,"x_max":355.5625,"ha":432,"o":"m 355 621 l 343 621 q 179 569 236 621 q 122 411 122 518 l 122 0 l 0 0 l 0 737 l 117 737 l 117 604 q 204 719 146 686 q 355 753 262 753 l 355 621 "},"x":{"x_min":0,"x_max":675,"ha":764,"o":"m 675 0 l 525 0 l 331 286 l 144 0 l 0 0 l 256 379 l 12 738 l 157 737 l 336 473 l 516 738 l 661 738 l 412 380 l 675 0 "},"μ":{"x_min":0,"x_max":696.609375,"ha":747,"o":"m 696 -4 q 628 -14 657 -14 q 498 97 513 -14 q 422 8 470 41 q 313 -24 374 -24 q 207 3 258 -24 q 120 80 157 31 l 120 -278 l 0 -278 l 0 738 l 124 738 l 124 343 q 165 172 124 246 q 308 82 216 82 q 451 177 402 82 q 492 358 492 254 l 492 738 l 616 738 l 616 214 q 623 136 616 160 q 673 92 636 92 q 696 95 684 92 l 696 -4 "},"h":{"x_min":0,"x_max":615,"ha":724,"o":"m 615 472 l 615 0 l 490 0 l 490 454 q 456 590 490 535 q 338 654 416 654 q 186 588 251 654 q 122 436 122 522 l 122 0 l 0 0 l 0 1013 l 122 1013 l 122 633 q 218 727 149 694 q 362 760 287 760 q 552 676 484 760 q 615 472 615 600 "},".":{"x_min":0,"x_max":142,"ha":239,"o":"m 142 0 l 0 0 l 0 151 l 142 151 l 142 0 "},"φ":{"x_min":-2,"x_max":878,"ha":974,"o":"m 496 -279 l 378 -279 l 378 -17 q 101 88 204 -17 q -2 367 -2 194 q 68 626 -2 510 q 283 758 151 758 l 283 646 q 167 537 209 626 q 133 373 133 462 q 192 177 133 254 q 378 93 259 93 l 378 758 q 445 764 426 763 q 476 765 464 765 q 765 659 653 765 q 878 377 878 553 q 771 96 878 209 q 496 -17 665 -17 l 496 -279 m 496 93 l 514 93 q 687 183 623 93 q 746 380 746 265 q 691 569 746 491 q 522 658 629 658 l 496 656 l 496 93 "},";":{"x_min":0,"x_max":142,"ha":239,"o":"m 142 585 l 0 585 l 0 738 l 142 738 l 142 585 m 142 -12 q 105 -132 142 -82 q 0 -206 68 -182 l 0 -138 q 58 -82 43 -123 q 68 0 68 -56 l 0 0 l 0 151 l 142 151 l 142 -12 "},"f":{"x_min":0,"x_max":378,"ha":472,"o":"m 378 638 l 246 638 l 246 0 l 121 0 l 121 638 l 0 638 l 0 738 l 121 738 q 137 935 121 887 q 290 1028 171 1028 q 320 1027 305 1028 q 378 1021 334 1026 l 378 908 q 323 918 346 918 q 257 870 273 918 q 246 780 246 840 l 246 738 l 378 738 l 378 638 "},"“":{"x_min":1,"x_max":348.21875,"ha":454,"o":"m 140 670 l 1 670 l 1 830 q 37 943 1 897 q 140 1011 74 990 l 140 947 q 82 900 97 940 q 68 810 68 861 l 140 810 l 140 670 m 348 670 l 209 670 l 209 830 q 245 943 209 897 q 348 1011 282 990 l 348 947 q 290 900 305 940 q 276 810 276 861 l 348 810 l 348 670 "},"A":{"x_min":0.03125,"x_max":906.953125,"ha":1008,"o":"m 906 0 l 756 0 l 648 303 l 251 303 l 142 0 l 0 0 l 376 1013 l 529 1013 l 906 0 m 610 421 l 452 867 l 293 421 l 610 421 "},"6":{"x_min":53,"x_max":739,"ha":792,"o":"m 739 312 q 633 62 739 162 q 400 -31 534 -31 q 162 78 257 -31 q 53 439 53 206 q 178 859 53 712 q 441 986 284 986 q 643 912 559 986 q 732 713 732 833 l 601 713 q 544 830 594 786 q 426 875 494 875 q 268 793 331 875 q 193 517 193 697 q 301 597 240 570 q 427 624 362 624 q 643 540 552 624 q 739 312 739 451 m 603 298 q 540 461 603 400 q 404 516 484 516 q 268 461 323 516 q 207 300 207 401 q 269 137 207 198 q 405 83 325 83 q 541 137 486 83 q 603 298 603 197 "},"‘":{"x_min":1,"x_max":139.890625,"ha":236,"o":"m 139 670 l 1 670 l 1 830 q 37 943 1 897 q 139 1011 74 990 l 139 947 q 82 900 97 940 q 68 810 68 861 l 139 810 l 139 670 "},"ϊ":{"x_min":-70,"x_max":283,"ha":361,"o":"m 283 800 l 173 800 l 173 925 l 283 925 l 283 800 m 40 800 l -70 800 l -70 925 l 40 925 l 40 800 m 283 3 q 232 -10 257 -5 q 181 -15 206 -15 q 84 26 118 -15 q 41 200 41 79 l 41 737 l 166 737 l 167 215 q 171 141 167 157 q 225 101 182 101 q 247 103 238 101 q 283 112 256 104 l 283 3 "},"π":{"x_min":-0.21875,"x_max":773.21875,"ha":857,"o":"m 773 -7 l 707 -11 q 575 40 607 -11 q 552 174 552 77 l 552 226 l 552 626 l 222 626 l 222 0 l 97 0 l 97 626 l 0 626 l 0 737 l 773 737 l 773 626 l 676 626 l 676 171 q 695 103 676 117 q 773 90 714 90 l 773 -7 "},"ά":{"x_min":0,"x_max":765.5625,"ha":809,"o":"m 765 -4 q 698 -14 726 -14 q 564 97 586 -14 q 466 7 525 40 q 337 -26 407 -26 q 88 98 186 -26 q 0 369 0 212 q 88 637 0 525 q 337 760 184 760 q 465 727 407 760 q 563 637 524 695 l 563 738 l 685 738 l 685 222 q 693 141 685 168 q 748 94 708 94 q 765 95 760 94 l 765 -4 m 584 371 q 531 562 584 485 q 360 653 470 653 q 192 566 254 653 q 135 379 135 489 q 186 181 135 261 q 358 84 247 84 q 528 176 465 84 q 584 371 584 260 m 604 1040 l 415 819 l 332 819 l 466 1040 l 604 1040 "},"O":{"x_min":0,"x_max":958,"ha":1057,"o":"m 485 1041 q 834 882 702 1041 q 958 512 958 734 q 834 136 958 287 q 481 -26 702 -26 q 126 130 261 -26 q 0 504 0 279 q 127 880 0 728 q 485 1041 263 1041 m 480 98 q 731 225 638 98 q 815 504 815 340 q 733 783 815 669 q 480 912 640 912 q 226 784 321 912 q 142 504 142 670 q 226 224 142 339 q 480 98 319 98 "},"n":{"x_min":0,"x_max":615,"ha":724,"o":"m 615 463 l 615 0 l 490 0 l 490 454 q 453 592 490 537 q 331 656 410 656 q 178 585 240 656 q 117 421 117 514 l 117 0 l 0 0 l 0 738 l 117 738 l 117 630 q 218 728 150 693 q 359 764 286 764 q 552 675 484 764 q 615 463 615 593 "},"3":{"x_min":54,"x_max":737,"ha":792,"o":"m 737 284 q 635 55 737 141 q 399 -25 541 -25 q 156 52 248 -25 q 54 308 54 140 l 185 308 q 245 147 185 202 q 395 96 302 96 q 539 140 484 96 q 602 280 602 190 q 510 429 602 390 q 324 454 451 454 l 324 565 q 487 584 441 565 q 565 719 565 617 q 515 835 565 791 q 395 879 466 879 q 255 824 307 879 q 203 661 203 769 l 78 661 q 166 909 78 822 q 387 992 250 992 q 603 921 513 992 q 701 723 701 844 q 669 607 701 656 q 578 524 637 558 q 696 434 655 499 q 737 284 737 369 "},"9":{"x_min":53,"x_max":739,"ha":792,"o":"m 739 524 q 619 94 739 241 q 362 -32 516 -32 q 150 47 242 -32 q 59 244 59 126 l 191 244 q 246 129 191 176 q 373 82 301 82 q 526 161 466 82 q 597 440 597 255 q 363 334 501 334 q 130 432 216 334 q 53 650 53 521 q 134 880 53 786 q 383 986 226 986 q 659 841 566 986 q 739 524 739 719 m 388 449 q 535 514 480 449 q 585 658 585 573 q 535 805 585 744 q 388 873 480 873 q 242 809 294 873 q 191 658 191 745 q 239 514 191 572 q 388 449 292 449 "},"l":{"x_min":41,"x_max":166,"ha":279,"o":"m 166 0 l 41 0 l 41 1013 l 166 1013 l 166 0 "},"¤":{"x_min":40.09375,"x_max":728.796875,"ha":825,"o":"m 728 304 l 649 224 l 512 363 q 383 331 458 331 q 256 363 310 331 l 119 224 l 40 304 l 177 441 q 150 553 150 493 q 184 673 150 621 l 40 818 l 119 898 l 267 749 q 321 766 291 759 q 384 773 351 773 q 447 766 417 773 q 501 749 477 759 l 649 898 l 728 818 l 585 675 q 612 618 604 648 q 621 553 621 587 q 591 441 621 491 l 728 304 m 384 682 q 280 643 318 682 q 243 551 243 604 q 279 461 243 499 q 383 423 316 423 q 487 461 449 423 q 525 553 525 500 q 490 641 525 605 q 384 682 451 682 "},"κ":{"x_min":0,"x_max":632.328125,"ha":679,"o":"m 632 0 l 482 0 l 225 384 l 124 288 l 124 0 l 0 0 l 0 738 l 124 738 l 124 446 l 433 738 l 596 738 l 312 466 l 632 0 "},"4":{"x_min":48,"x_max":742.453125,"ha":792,"o":"m 742 243 l 602 243 l 602 0 l 476 0 l 476 243 l 48 243 l 48 368 l 476 958 l 602 958 l 602 354 l 742 354 l 742 243 m 476 354 l 476 792 l 162 354 l 476 354 "},"p":{"x_min":0,"x_max":685,"ha":786,"o":"m 685 364 q 598 96 685 205 q 350 -23 504 -23 q 121 89 205 -23 l 121 -278 l 0 -278 l 0 738 l 121 738 l 121 633 q 220 726 159 691 q 351 761 280 761 q 598 636 504 761 q 685 364 685 522 m 557 371 q 501 560 557 481 q 330 651 437 651 q 162 559 223 651 q 108 366 108 479 q 162 177 108 254 q 333 87 224 87 q 502 178 441 87 q 557 371 557 258 "},"‡":{"x_min":0,"x_max":777,"ha":835,"o":"m 458 238 l 458 0 l 319 0 l 319 238 l 0 238 l 0 360 l 319 360 l 319 681 l 0 683 l 0 804 l 319 804 l 319 1015 l 458 1013 l 458 804 l 777 804 l 777 683 l 458 683 l 458 360 l 777 360 l 777 238 l 458 238 "},"ψ":{"x_min":0,"x_max":808,"ha":907,"o":"m 465 -278 l 341 -278 l 341 -15 q 87 102 180 -15 q 0 378 0 210 l 0 739 l 133 739 l 133 379 q 182 195 133 275 q 341 98 242 98 l 341 922 l 465 922 l 465 98 q 623 195 563 98 q 675 382 675 278 l 675 742 l 808 742 l 808 381 q 720 104 808 213 q 466 -13 627 -13 l 465 -278 "},"η":{"x_min":0.78125,"x_max":697,"ha":810,"o":"m 697 -278 l 572 -278 l 572 454 q 540 587 572 536 q 425 650 501 650 q 271 579 337 650 q 206 420 206 509 l 206 0 l 81 0 l 81 489 q 73 588 81 562 q 0 644 56 644 l 0 741 q 68 755 38 755 q 158 720 124 755 q 200 630 193 686 q 297 726 234 692 q 434 761 359 761 q 620 692 544 761 q 697 516 697 624 l 697 -278 "}},"cssFontWeight":"normal","ascender":1189,"underlinePosition":-100,"cssFontStyle":"normal","boundingBox":{"yMin":-334,"xMin":-111,"yMax":1189,"xMax":1672},"resolution":1000,"original_font_information":{"postscript_name":"Helvetiker-Regular","version_string":"Version 1.00 2004 initial release","vendor_url":"http://www.magenta.gr/","full_font_name":"Helvetiker","font_family_name":"Helvetiker","copyright":"Copyright (c) Μagenta ltd, 2004","description":"","trademark":"","designer":"","designer_url":"","unique_font_identifier":"Μagenta ltd:Helvetiker:22-10-104","license_url":"http://www.ellak.gr/fonts/MgOpen/license.html","license_description":"Copyright (c) 2004 by MAGENTA Ltd. All Rights Reserved.\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy of the fonts accompanying this license (\"Fonts\") and associated documentation files (the \"Font Software\"), to reproduce and distribute the Font Software, including without limitation the rights to use, copy, merge, publish, distribute, and/or sell copies of the Font Software, and to permit persons to whom the Font Software is furnished to do so, subject to the following conditions: \r\n\r\nThe above copyright and this permission notice shall be included in all copies of one or more of the Font Software typefaces.\r\n\r\nThe Font Software may be modified, altered, or added to, and in particular the designs of glyphs or characters in the Fonts may be modified and additional glyphs or characters may be added to the Fonts, only if the fonts are renamed to names not containing the word \"MgOpen\", or if the modifications are accepted for inclusion in the Font Software itself by the each appointed Administrator.\r\n\r\nThis License becomes null and void to the extent applicable to Fonts or Font Software that has been modified and is distributed under the \"MgOpen\" name.\r\n\r\nThe Font Software may be sold as part of a larger software package but no copy of one or more of the Font Software typefaces may be sold by itself. \r\n\r\nTHE FONT SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL MAGENTA OR PERSONS OR BODIES IN CHARGE OF ADMINISTRATION AND MAINTENANCE OF THE FONT SOFTWARE BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM OTHER DEALINGS IN THE FONT SOFTWARE.","manufacturer_name":"Μagenta ltd","font_sub_family_name":"Regular"},"descender":-334,"familyName":"Helvetiker","lineHeight":1522,"underlineThickness":50});
@@ -29544,120 +29041,3 @@ if (_typeface_js && _typeface_js.loadFace) _typeface_js.loadFace({"glyphs":{"ợ
 // File:editor/fonts/optimer_regular.typeface.js
 
 if (_typeface_js && _typeface_js.loadFace) _typeface_js.loadFace({"glyphs":{"ο":{"x_min":41,"x_max":710,"ha":753,"o":"m 371 -15 q 131 78 222 -15 q 41 322 41 172 q 133 573 41 474 q 378 672 225 672 q 619 574 528 672 q 710 326 710 477 q 617 80 710 175 q 371 -15 525 -15 m 377 619 q 226 530 272 619 q 180 327 180 441 q 227 125 180 216 q 375 35 274 35 q 524 123 478 35 q 570 326 570 211 q 524 529 570 440 q 377 619 479 619 "},"S":{"x_min":50,"x_max":639,"ha":699,"o":"m 88 208 q 179 88 122 131 q 318 46 237 46 q 457 98 397 46 q 518 227 518 150 q 401 400 518 336 q 184 498 293 448 q 68 688 68 566 q 156 880 68 811 q 370 950 244 950 q 480 936 430 950 q 597 891 530 922 q 570 822 583 858 q 553 756 558 786 l 539 756 q 354 897 502 897 q 231 855 282 897 q 181 742 181 813 q 298 580 181 640 q 519 483 408 531 q 639 286 639 413 q 538 68 639 152 q 301 -15 438 -15 q 166 2 229 -15 q 50 59 104 19 q 68 135 62 104 q 75 205 75 166 l 88 208 "},"/":{"x_min":-36.03125,"x_max":404.15625,"ha":383,"o":"m -36 -125 l 340 1025 l 404 1024 l 28 -126 l -36 -125 "},"Τ":{"x_min":11,"x_max":713,"ha":725,"o":"m 11 839 l 15 884 l 11 932 q 194 927 72 932 q 361 922 316 922 q 544 927 421 922 q 713 932 668 932 q 707 883 707 911 q 707 861 707 870 q 713 834 707 852 q 609 850 666 843 q 504 857 552 857 l 428 857 q 426 767 428 830 q 424 701 424 704 l 428 220 q 442 0 428 122 q 362 8 401 3 q 323 5 344 8 q 282 0 301 2 q 289 132 282 40 q 296 259 296 225 l 296 683 l 296 857 q 11 839 164 857 "},"ϕ":{"x_min":41,"x_max":960,"ha":1006,"o":"m 441 -10 q 162 76 283 -10 q 41 316 41 163 q 162 562 41 470 q 441 654 283 654 q 434 838 441 719 q 427 971 427 957 q 464 965 443 968 q 503 962 485 962 q 540 965 519 962 q 578 970 560 968 q 563 654 563 824 q 839 567 719 654 q 960 324 960 481 q 841 79 960 169 q 563 -10 722 -10 q 570 -201 563 -68 q 578 -371 578 -334 q 505 -362 539 -362 q 465 -365 483 -362 q 427 -372 446 -368 q 434 -161 427 -297 q 441 -10 441 -26 m 563 39 q 757 118 690 39 q 824 330 824 198 q 750 523 824 445 q 564 601 677 601 l 563 319 l 563 39 m 441 319 l 441 601 q 253 523 326 601 q 180 330 180 446 q 245 117 180 195 q 439 39 310 39 l 441 319 "},"y":{"x_min":4.171875,"x_max":665.28125,"ha":664,"o":"m 4 654 l 86 647 l 165 654 q 202 536 188 577 q 241 431 215 495 l 363 129 l 473 413 q 552 654 519 537 q 606 647 583 647 q 665 654 633 647 q 416 125 531 388 q 223 -372 301 -137 l 187 -366 q 141 -366 163 -366 q 112 -372 122 -370 l 290 -22 q 4 654 170 294 "},"≈":{"x_min":118.0625,"x_max":1019.453125,"ha":1139,"o":"m 765 442 q 564 487 700 442 q 376 533 429 533 q 250 506 298 533 q 118 427 202 480 l 118 501 q 245 572 180 545 q 376 600 311 600 q 574 553 438 600 q 765 507 709 507 q 888 534 829 507 q 1019 614 947 562 l 1019 538 q 892 467 954 493 q 765 442 830 442 m 759 214 q 568 260 702 214 q 376 307 433 307 q 236 272 300 307 q 118 202 173 238 l 118 277 q 247 346 181 320 q 380 372 312 372 q 570 326 445 372 q 765 281 695 281 q 883 306 830 281 q 1019 388 936 331 l 1019 313 q 894 240 959 266 q 759 214 829 214 "},"Π":{"x_min":108,"x_max":927.453125,"ha":1036,"o":"m 432 846 l 263 846 q 260 634 263 781 q 257 475 257 486 q 262 236 257 395 q 268 0 268 77 q 229 3 255 0 q 188 8 202 8 q 149 3 177 8 q 108 0 121 0 q 117 239 108 70 q 126 465 126 408 q 122 711 126 620 q 108 932 119 803 q 285 926 166 932 q 464 921 405 921 q 695 926 541 921 q 927 932 849 932 q 915 793 921 871 q 909 659 909 716 l 909 504 q 917 245 909 427 q 926 0 926 62 q 887 4 913 0 q 847 8 860 8 q 810 5 827 8 q 768 0 792 2 q 773 259 768 94 q 778 469 778 423 l 778 731 l 773 846 l 432 846 "},"ΐ":{"x_min":-41,"x_max":384,"ha":342,"o":"m 105 333 l 105 520 q 104 566 105 544 q 97 654 103 588 q 141 647 131 648 q 166 647 152 647 q 234 654 196 647 q 225 555 226 599 q 224 437 224 510 l 224 406 q 229 194 224 337 q 234 0 234 51 q 202 3 217 1 q 166 5 186 5 q 128 3 149 5 q 97 0 108 1 q 101 165 97 51 q 105 333 105 279 m 18 865 q 61 846 43 865 q 80 804 80 828 q 61 761 80 779 q 18 743 43 743 q -22 761 -4 743 q -41 804 -41 779 q -22 846 -41 828 q 18 865 -4 865 m 172 929 q 189 969 179 956 q 225 982 199 982 q 256 971 243 982 q 270 941 270 961 q 257 904 270 919 l 149 743 l 117 743 l 172 929 m 324 865 q 366 846 348 865 q 384 804 384 828 q 366 761 384 779 q 324 743 348 743 q 281 761 298 743 q 265 804 265 779 q 281 846 265 828 q 324 865 298 865 "},"g":{"x_min":32,"x_max":672,"ha":688,"o":"m 81 123 q 112 201 81 169 q 193 252 144 233 l 193 262 q 97 329 130 277 q 64 447 64 380 q 141 610 64 549 q 323 672 218 672 q 421 661 357 672 q 500 650 486 651 l 672 654 l 672 582 q 599 592 635 587 q 537 597 563 597 q 607 458 607 548 q 527 294 607 356 q 342 232 447 232 q 291 235 319 232 q 255 239 262 239 q 208 220 228 239 q 188 173 188 201 q 221 120 188 136 q 296 104 254 104 l 427 104 q 603 56 534 104 q 672 -93 672 9 q 560 -299 672 -226 q 309 -372 448 -372 q 115 -327 199 -372 q 32 -183 32 -283 q 76 -62 32 -110 q 193 8 121 -13 q 112 51 143 25 q 81 123 81 77 m 332 278 q 439 332 401 278 q 478 457 478 386 q 441 575 478 525 q 338 625 404 625 q 232 570 271 625 q 194 447 194 515 q 230 328 194 379 q 332 278 266 278 m 337 -316 q 491 -270 423 -316 q 559 -141 559 -224 q 500 -29 559 -62 q 353 3 441 3 q 199 -36 263 3 q 136 -162 136 -76 q 195 -277 136 -238 q 337 -316 255 -316 "},"²":{"x_min":15.28125,"x_max":412.5,"ha":496,"o":"m 297 744 q 270 830 297 795 q 197 866 244 866 q 120 837 149 866 q 83 761 90 808 l 76 759 q 54 802 68 780 q 31 837 40 824 q 210 901 108 901 q 334 862 278 901 q 390 758 390 824 q 282 568 390 656 q 111 428 174 479 l 293 428 q 350 431 316 428 q 412 439 384 434 l 406 397 l 412 356 l 304 361 l 111 361 l 15 355 l 15 378 q 220 567 144 484 q 297 744 297 651 "},"Κ":{"x_min":108,"x_max":856.625,"ha":821,"o":"m 255 314 q 261 132 255 250 q 268 0 268 13 q 229 4 255 0 q 188 8 202 8 q 148 4 174 8 q 108 0 121 0 q 117 239 108 70 q 126 465 126 408 q 122 712 126 621 q 108 932 119 803 q 153 928 124 932 q 188 925 183 925 q 231 928 203 925 q 267 932 259 932 l 255 671 l 255 499 q 480 693 375 586 q 687 932 585 800 q 732 932 710 932 q 777 932 753 932 l 837 932 q 606 727 720 830 q 389 522 493 623 q 525 358 465 426 q 666 202 586 290 q 856 0 747 115 l 746 0 q 692 -1 716 0 q 644 -8 669 -2 q 571 92 610 44 q 477 204 532 140 l 255 459 l 255 314 "},"ë":{"x_min":40,"x_max":646.9375,"ha":681,"o":"m 406 42 q 602 130 523 42 l 621 130 q 613 93 617 112 q 609 47 609 73 q 496 0 558 14 q 369 -15 435 -15 q 130 73 220 -15 q 40 311 40 162 q 126 562 40 456 q 355 669 212 669 q 564 590 481 669 q 646 386 646 512 l 644 331 q 438 333 562 331 q 313 335 315 335 l 179 331 q 235 127 179 212 q 406 42 291 42 m 219 929 q 271 906 249 929 q 294 854 294 884 q 273 800 294 822 q 221 778 252 778 q 166 800 190 778 q 143 854 143 822 q 165 906 143 884 q 219 929 187 929 m 460 929 q 513 906 492 929 q 534 854 534 884 q 513 799 534 820 q 461 778 493 778 q 407 800 429 778 q 385 854 385 822 q 407 906 385 884 q 460 929 429 929 m 513 392 l 513 437 q 470 563 513 509 q 356 618 427 618 q 233 552 271 618 q 183 390 195 487 l 513 392 "},"e":{"x_min":41,"x_max":645.15625,"ha":681,"o":"m 406 42 q 602 130 523 42 l 618 125 q 611 86 614 104 q 609 44 609 67 q 497 0 561 14 q 370 -15 434 -15 q 130 73 220 -15 q 41 311 41 161 q 127 563 41 455 q 356 672 214 672 q 563 592 482 672 q 645 385 645 512 l 643 331 l 313 335 l 179 331 q 235 126 179 210 q 406 42 291 42 m 511 392 l 513 436 q 470 563 513 509 q 356 618 427 618 q 230 553 268 618 q 179 388 191 488 l 511 392 "},"ό":{"x_min":41,"x_max":710,"ha":753,"o":"m 371 -15 q 131 78 222 -15 q 41 322 41 172 q 133 573 41 474 q 378 672 225 672 q 619 574 528 672 q 710 326 710 477 q 617 80 710 175 q 371 -15 525 -15 m 524 943 q 558 974 542 964 q 595 985 574 985 q 632 969 618 985 q 646 932 646 954 q 632 897 646 911 q 591 866 618 883 l 390 743 l 341 743 l 524 943 m 377 619 q 226 530 272 619 q 180 327 180 441 q 227 125 180 216 q 375 35 274 35 q 524 123 478 35 q 570 326 570 211 q 524 529 570 440 q 377 619 479 619 "},"J":{"x_min":-71,"x_max":277,"ha":385,"o":"m 118 -40 q 131 62 128 9 q 135 184 135 115 q 132 462 135 325 q 127 690 130 598 q 111 932 123 782 q 159 928 129 932 q 193 925 189 925 q 238 927 221 925 q 277 932 256 929 q 268 665 277 843 q 260 457 260 487 l 260 165 q 260 107 260 147 q 260 48 260 68 q 169 -155 260 -88 q -62 -222 79 -222 l -71 -180 q 50 -134 1 -166 q 118 -40 100 -102 "},"»":{"x_min":43,"x_max":543,"ha":607,"o":"m 196 322 l 43 607 l 81 645 l 303 322 l 81 0 l 43 37 l 196 322 m 436 322 l 283 607 l 322 645 l 543 322 l 322 0 l 283 37 l 436 322 "},"©":{"x_min":80,"x_max":1058,"ha":1139,"o":"m 816 905 q 992 726 927 841 q 1058 481 1058 611 q 912 138 1058 283 q 567 -6 766 -6 q 225 139 370 -6 q 80 481 80 284 q 224 826 80 681 q 569 971 368 971 q 816 905 698 971 m 569 918 q 263 788 392 918 q 134 481 134 659 q 261 175 134 306 q 566 45 389 45 q 872 174 741 45 q 1004 478 1004 304 q 947 699 1004 596 q 787 859 890 801 q 569 918 684 918 m 570 724 q 441 652 483 724 q 399 490 399 581 q 438 320 399 396 q 560 245 478 245 q 664 278 621 245 q 723 370 707 311 l 798 370 q 720 232 788 283 q 561 181 653 181 q 379 268 446 181 q 313 476 313 355 q 380 694 313 604 q 571 785 447 785 q 717 738 656 785 q 793 610 779 691 l 715 610 q 664 692 705 660 q 570 724 624 724 "},"ώ":{"x_min":39.71875,"x_max":1028.9375,"ha":1068,"o":"m 534 528 l 596 528 l 594 305 q 616 117 594 193 q 722 42 638 42 q 850 118 811 42 q 888 293 888 194 q 829 502 888 409 q 664 654 769 594 l 717 648 q 805 654 766 648 q 967 510 905 606 q 1028 304 1028 413 q 948 81 1028 177 q 744 -15 867 -15 q 622 16 678 -15 q 534 104 566 47 q 445 16 500 48 q 323 -15 389 -15 q 118 83 196 -15 q 39 311 39 182 q 100 511 39 419 q 262 654 161 604 q 303 650 278 651 q 349 648 327 648 l 402 654 q 238 501 296 593 q 179 291 179 409 q 218 116 179 191 q 348 42 257 42 q 419 68 390 42 q 461 138 448 94 q 472 216 469 175 q 475 303 475 257 q 472 420 475 353 q 469 529 470 486 l 534 528 m 681 943 q 714 974 699 964 q 751 985 730 985 q 788 969 774 985 q 802 932 802 954 q 787 896 802 912 q 746 866 773 880 l 547 743 l 498 743 l 681 943 "},"≥":{"x_min":176.1875,"x_max":963,"ha":1139,"o":"m 963 462 l 176 196 l 176 266 l 850 491 l 176 718 l 176 788 l 963 522 l 963 462 m 963 26 l 176 26 l 176 93 l 963 93 l 963 26 "},"^":{"x_min":0,"x_max":390,"ha":403,"o":"m 150 978 l 239 978 l 390 743 l 344 743 l 195 875 l 49 743 l 0 743 l 150 978 "},"«":{"x_min":48,"x_max":549.390625,"ha":607,"o":"m 152 326 l 309 42 l 268 3 l 48 326 l 268 649 l 309 611 l 152 326 m 394 326 l 549 42 l 509 3 l 288 326 l 509 649 l 549 611 l 394 326 "},"D":{"x_min":108,"x_max":991,"ha":1043,"o":"m 126 465 q 117 704 126 536 q 108 931 108 872 l 210 929 q 350 934 251 929 q 477 939 449 939 q 579 936 553 939 q 709 917 605 934 q 902 775 814 900 q 991 483 991 650 q 852 130 991 261 q 491 0 713 0 l 378 0 l 228 7 l 203 7 q 148 4 173 7 q 108 0 123 1 q 117 239 108 70 q 126 465 126 408 m 402 64 q 724 168 609 64 q 840 479 840 273 q 730 774 840 671 q 428 878 621 878 q 345 873 400 878 q 262 869 289 869 l 255 497 l 255 376 l 262 76 q 332 68 292 72 q 402 64 373 64 "},"w":{"x_min":4.171875,"x_max":1052.78125,"ha":1047,"o":"m 4 655 q 55 648 41 648 q 86 647 69 647 q 165 654 120 647 q 190 540 176 587 q 238 394 204 492 l 329 141 q 498 654 419 386 q 551 647 526 647 q 609 654 577 647 q 637 544 620 601 q 677 420 654 487 l 770 135 l 872 413 q 911 532 893 472 q 944 654 930 592 q 979 647 970 648 q 1000 647 988 647 q 1052 654 1022 647 q 961 457 1002 555 q 871 235 919 359 q 782 0 824 110 q 755 3 772 0 q 733 6 738 6 q 708 3 724 6 q 686 0 692 0 q 650 127 667 72 q 611 239 632 183 l 518 494 q 432 258 475 382 q 348 0 390 134 q 325 3 336 1 q 297 5 313 5 q 269 3 284 5 q 245 0 254 1 q 162 244 200 140 q 86 447 125 347 q 4 655 47 546 "},"$":{"x_min":89,"x_max":666,"ha":749,"o":"m 139 186 l 146 186 q 213 91 165 119 q 342 50 261 63 l 342 416 q 142 515 196 458 q 89 648 89 573 q 164 819 89 752 q 342 886 239 886 q 330 985 342 936 l 359 979 l 404 984 q 400 924 401 945 q 399 886 399 904 q 510 874 457 886 q 605 834 562 862 q 582 788 592 808 q 555 729 572 768 l 547 729 q 495 810 535 783 q 399 837 455 837 l 399 520 q 610 419 554 479 q 666 277 666 359 q 588 87 666 164 q 399 0 511 9 l 399 -32 q 399 -63 399 -48 q 405 -125 400 -78 l 368 -121 l 329 -125 l 342 0 q 210 13 273 0 q 98 58 147 27 l 139 186 m 342 836 q 237 787 278 826 q 196 686 196 748 q 237 588 196 626 q 342 537 279 551 l 342 836 m 553 231 q 513 337 553 300 q 399 402 473 375 l 399 51 q 512 113 471 66 q 553 231 553 159 "},"‧":{"x_min":134,"x_max":309,"ha":446,"o":"m 222 636 q 284 611 259 636 q 309 548 309 586 q 284 486 309 512 q 222 461 260 461 q 160 486 186 461 q 134 548 134 511 q 159 610 134 584 q 222 636 185 636 "},"\\":{"x_min":-36,"x_max":403.140625,"ha":383,"o":"m -36 1025 l 28 1025 l 403 -125 l 340 -125 l -36 1025 "},"Ι":{"x_min":109,"x_max":271,"ha":385,"o":"m 127 465 q 123 711 127 620 q 109 932 120 803 q 154 927 129 929 q 190 925 179 925 q 238 928 209 925 q 271 931 266 931 q 263 788 271 887 q 256 659 256 690 l 256 448 l 256 283 q 263 135 256 238 q 271 0 271 31 q 231 3 258 0 q 190 8 204 8 q 151 5 172 8 q 109 0 129 2 q 118 239 109 70 q 127 465 127 408 "},"Ύ":{"x_min":-1,"x_max":1204.5625,"ha":1165,"o":"m 758 177 l 758 386 q 651 570 717 458 q 543 750 585 681 q 431 931 501 819 q 483 928 449 931 q 522 925 518 925 q 572 927 550 925 q 606 931 593 930 q 666 800 633 866 q 735 676 699 734 l 849 475 q 968 688 910 575 q 1086 931 1027 801 l 1142 926 q 1174 927 1160 926 q 1204 931 1187 929 q 1014 627 1099 769 l 891 415 l 891 240 q 894 101 891 198 q 897 0 897 5 q 860 4 885 1 q 820 6 835 6 q 778 4 793 6 q 743 0 763 2 q 753 88 748 36 q 758 177 758 140 m 182 943 q 215 974 200 964 q 252 985 231 985 q 289 969 274 985 q 305 932 305 954 q 290 896 305 911 q 248 866 275 882 l 48 743 l -1 743 l 182 943 "},"’":{"x_min":90.28125,"x_max":305.5625,"ha":374,"o":"m 169 859 q 197 923 177 894 q 250 953 218 953 q 288 939 272 953 q 305 902 305 925 q 295 857 305 882 q 269 811 284 833 l 120 568 l 90 576 l 169 859 "},"Ν":{"x_min":98,"x_max":911.890625,"ha":1011,"o":"m 112 230 q 114 486 112 315 q 117 741 117 656 l 117 950 l 166 950 q 326 766 239 865 q 468 606 413 667 q 610 451 524 544 l 821 227 l 821 604 q 816 765 821 685 q 803 931 812 845 l 855 927 l 911 931 q 901 831 906 884 q 897 741 897 779 q 894 413 897 619 q 892 165 892 207 l 892 -15 l 849 -15 q 730 125 796 50 q 589 281 664 201 l 193 702 l 193 330 q 212 -1 193 169 l 149 2 l 98 -1 q 108 125 105 79 q 112 230 112 170 "},"-":{"x_min":58.328125,"x_max":388.890625,"ha":449,"o":"m 58 390 l 388 390 l 388 273 l 58 273 l 58 390 "},"Q":{"x_min":51,"x_max":1074.609375,"ha":1119,"o":"m 566 -14 q 194 113 338 -14 q 51 465 51 241 q 192 820 51 690 q 559 950 333 950 q 892 853 754 950 q 1047 654 1031 756 q 1065 525 1062 551 q 1068 462 1068 499 q 1065 405 1068 429 q 1050 305 1062 381 q 960 144 1038 229 q 748 6 881 59 l 930 -112 q 1004 -161 963 -136 q 1074 -200 1045 -186 q 1008 -228 1035 -214 q 951 -267 980 -243 q 876 -208 912 -234 q 803 -154 841 -182 l 606 -14 l 566 -14 m 202 468 q 290 163 202 283 q 559 43 379 43 q 826 163 738 43 q 915 468 915 284 q 825 770 915 651 q 559 889 735 889 q 348 826 429 889 q 225 638 267 763 q 202 468 202 552 "},"ς":{"x_min":44,"x_max":613.453125,"ha":644,"o":"m 305 -206 q 350 -218 325 -218 q 447 -177 407 -218 q 487 -79 487 -136 q 376 55 487 4 q 159 156 266 106 q 44 365 44 231 q 143 585 44 499 q 380 672 242 672 q 506 658 448 672 q 613 616 564 645 q 587 500 595 559 l 562 500 q 501 586 549 557 q 391 616 453 616 q 233 551 296 616 q 170 393 170 486 q 216 271 170 320 q 339 196 263 223 l 467 149 q 569 76 531 119 q 608 -27 608 34 q 522 -206 608 -136 q 321 -293 437 -276 l 305 -206 "},"M":{"x_min":55,"x_max":1165,"ha":1238,"o":"m 190 950 l 243 950 q 331 772 291 851 q 412 612 370 693 q 504 436 454 532 l 626 214 q 742 435 671 298 q 882 711 813 572 q 1001 950 952 850 l 1052 950 q 1082 649 1067 791 q 1118 341 1098 508 q 1165 0 1139 174 q 1121 8 1139 5 q 1088 11 1103 11 q 1049 6 1071 11 q 1008 0 1027 2 q 998 226 1008 109 q 974 461 989 343 q 944 695 959 579 l 748 312 q 610 0 665 152 l 594 1 l 576 0 q 227 685 402 364 l 188 307 q 172 128 175 179 q 168 0 168 77 q 138 4 157 1 q 110 6 118 6 q 81 4 93 6 q 55 0 68 2 q 121 333 89 168 q 171 652 152 498 q 190 950 190 805 "},"Ψ":{"x_min":73,"x_max":995.609375,"ha":1071,"o":"m 609 0 q 561 5 585 2 q 532 8 536 8 q 494 5 515 8 q 456 0 474 2 q 463 151 456 45 q 470 297 470 258 q 180 383 287 297 q 73 650 73 469 l 73 817 l 73 932 q 139 925 110 925 q 180 928 155 925 q 212 931 206 931 q 200 818 204 861 q 197 723 197 774 l 197 688 l 197 638 q 268 438 197 508 q 472 368 340 368 l 473 481 q 464 736 473 566 q 456 932 456 905 q 499 927 481 929 q 532 925 518 925 q 577 927 557 925 q 609 931 596 930 q 601 635 609 841 q 594 368 594 429 l 645 372 q 816 465 765 372 q 868 691 868 559 q 861 829 868 740 q 855 932 855 919 q 896 927 878 929 q 924 925 913 925 q 971 927 955 925 q 995 931 987 930 l 994 839 l 994 675 q 894 388 994 480 q 594 297 794 297 q 601 142 594 249 q 609 0 609 35 "},"C":{"x_min":51,"x_max":881.5625,"ha":913,"o":"m 828 737 q 552 889 733 889 q 295 768 383 889 q 207 469 207 647 q 299 177 207 305 q 551 50 391 50 q 710 86 637 50 q 855 189 783 122 l 870 183 q 858 122 862 147 q 855 69 855 97 q 521 -15 699 -15 q 180 116 309 -15 q 51 462 51 248 q 189 820 51 690 q 556 950 327 950 q 719 930 638 950 q 881 875 799 911 q 857 809 867 843 q 845 737 847 775 l 828 737 "},"œ":{"x_min":39,"x_max":1195.9375,"ha":1226,"o":"m 359 -15 q 125 76 212 -15 q 39 318 39 167 q 125 571 39 470 q 362 672 212 672 q 514 640 441 672 q 641 551 588 608 q 897 672 741 672 q 1110 593 1024 672 q 1195 390 1195 515 l 1193 331 q 1022 332 1108 331 q 851 334 935 333 l 708 331 q 765 124 708 206 q 944 42 822 42 q 1145 130 1068 42 l 1162 130 q 1155 85 1158 110 q 1151 47 1152 60 q 1036 0 1100 14 q 904 -15 973 -15 q 754 12 819 -15 q 641 106 689 40 q 514 14 584 44 q 359 -15 444 -15 m 376 625 q 224 534 270 625 q 179 328 179 443 q 224 124 179 215 q 369 34 269 34 q 521 127 470 34 q 573 328 573 221 q 526 534 573 443 q 376 625 480 625 m 1061 392 l 1061 423 q 1017 561 1061 504 q 894 618 973 618 q 756 549 805 618 q 708 390 708 480 l 1061 392 "},"!":{"x_min":136,"x_max":312,"ha":449,"o":"m 223 156 q 285 130 259 156 q 312 68 312 105 q 285 8 312 32 q 223 -15 259 -15 q 161 9 187 -15 q 136 68 136 33 q 160 130 136 105 q 223 156 185 156 m 150 752 l 144 841 q 161 919 144 888 q 223 950 178 950 q 282 925 260 950 q 304 863 304 901 q 299 808 304 845 q 295 752 295 770 l 246 250 q 223 250 238 250 q 199 250 206 250 l 150 752 "},"ç":{"x_min":34,"x_max":614.5625,"ha":644,"o":"m 607 119 l 592 41 q 490 -2 549 10 q 363 -15 431 -15 q 130 80 227 -15 q 34 313 34 175 q 132 576 34 480 q 397 672 231 672 q 511 659 456 672 q 614 617 565 647 q 597 558 604 587 q 584 492 589 528 l 570 492 q 507 587 547 553 q 406 622 467 622 q 234 534 293 622 q 176 329 176 447 q 238 126 176 211 q 414 42 300 42 q 592 124 521 42 l 607 119 m 202 -212 q 350 -246 273 -246 q 414 -232 388 -246 q 440 -186 440 -219 q 421 -142 440 -158 q 373 -126 402 -126 l 323 -126 l 323 0 l 367 0 l 367 -77 l 404 -73 q 495 -102 457 -73 q 533 -183 533 -132 q 494 -270 533 -237 q 402 -303 456 -303 q 286 -294 335 -303 q 184 -261 238 -286 l 202 -212 "},"{":{"x_min":116,"x_max":567.390625,"ha":683,"o":"m 491 909 q 421 874 445 909 q 397 792 397 839 l 397 744 l 397 583 q 368 434 397 493 q 263 354 339 376 q 367 272 338 332 q 397 125 397 212 l 397 -35 q 414 -149 397 -108 q 471 -197 431 -191 q 529 -204 511 -204 q 567 -204 548 -204 l 567 -276 q 387 -239 459 -276 q 315 -105 315 -203 l 315 -28 l 315 132 q 296 244 315 194 q 240 303 277 294 q 176 314 204 312 q 116 317 148 317 l 116 389 q 270 429 225 389 q 315 576 315 469 l 315 737 q 348 918 315 870 q 450 977 381 966 q 567 983 503 983 l 567 912 l 491 909 "},"X":{"x_min":0,"x_max":739,"ha":739,"o":"m 200 285 l 318 456 q 18 932 159 718 q 63 929 33 932 q 109 926 94 926 q 168 929 147 926 q 198 932 188 932 q 296 743 244 841 q 391 568 348 644 l 489 726 q 597 932 548 825 q 627 927 614 929 q 661 926 641 926 q 693 929 671 926 q 728 932 715 932 q 616 781 673 862 q 524 652 558 700 l 427 512 q 523 347 480 419 q 614 197 566 275 q 739 0 662 119 q 686 3 719 0 q 647 6 652 6 q 595 4 618 6 q 558 0 572 1 q 459 197 512 97 q 353 398 405 298 l 265 249 q 174 96 193 130 q 127 0 155 62 q 89 3 113 0 q 62 6 65 6 q 26 4 43 6 q 0 0 9 1 l 200 285 "},"ô":{"x_min":40,"x_max":712,"ha":753,"o":"m 371 -15 q 131 79 223 -15 q 40 322 40 173 q 133 572 40 473 q 380 672 227 672 q 621 575 530 672 q 712 327 712 479 q 619 80 712 175 q 371 -15 527 -15 m 332 978 l 421 978 l 572 743 l 525 743 l 376 875 l 229 743 l 180 743 l 332 978 m 377 622 q 227 532 274 622 q 180 327 180 442 q 227 125 180 216 q 375 35 274 35 q 524 124 478 35 q 570 327 570 214 q 524 531 570 441 q 377 622 479 622 "},"#":{"x_min":78,"x_max":972.4375,"ha":1050,"o":"m 497 647 l 675 647 l 791 969 l 877 968 l 761 647 l 972 647 l 948 576 l 736 576 l 671 390 l 896 390 l 873 319 l 644 319 l 531 0 l 446 0 l 559 319 l 382 319 l 266 0 l 182 0 l 294 319 l 78 319 l 102 390 l 320 390 l 386 576 l 151 576 l 176 647 l 410 647 l 526 969 l 610 969 l 497 647 m 472 576 l 407 390 l 587 390 l 650 576 l 472 576 "},"ι":{"x_min":96,"x_max":233.5,"ha":342,"o":"m 104 333 l 104 521 q 103 567 104 545 q 96 655 102 589 q 141 648 130 648 q 165 647 151 647 q 233 654 196 647 q 224 555 226 599 q 223 437 223 511 l 223 406 q 228 194 223 337 q 233 0 233 51 q 201 3 216 1 q 165 5 185 5 q 127 3 148 5 q 96 0 107 1 q 100 165 96 51 q 104 333 104 279 "},"Ά":{"x_min":12,"x_max":910.609375,"ha":896,"o":"m 328 639 l 458 950 q 489 944 464 947 q 522 950 507 944 q 655 613 602 745 q 770 331 709 480 q 910 0 832 181 q 859 3 891 0 q 823 6 827 6 q 772 4 795 6 q 735 0 749 1 q 672 195 692 135 q 613 353 652 255 l 449 358 l 285 353 l 233 205 q 173 0 194 94 l 116 5 q 76 2 91 5 q 55 0 62 0 q 146 211 101 105 q 229 404 192 317 q 328 639 266 490 m 195 943 q 228 974 213 964 q 265 985 244 985 q 302 969 287 985 q 318 932 318 954 q 303 896 318 911 q 261 866 288 882 l 61 743 l 12 743 l 195 943 m 450 419 l 585 425 l 451 761 l 318 425 l 450 419 "},")":{"x_min":65.671875,"x_max":332,"ha":449,"o":"m 332 376 q 271 81 332 217 q 96 -183 211 -54 q 65 -151 83 -164 q 193 104 155 -16 q 232 386 232 226 q 191 661 232 533 q 65 918 150 789 q 96 950 87 933 q 273 681 215 816 q 332 376 332 545 "},"ε":{"x_min":53,"x_max":567,"ha":628,"o":"m 506 516 q 433 591 467 566 q 353 616 400 616 q 261 580 298 616 q 225 492 225 545 q 268 406 225 437 q 372 375 311 375 l 418 375 l 417 349 l 417 310 l 343 317 q 236 282 280 317 q 193 183 193 247 q 238 77 193 117 q 352 38 284 38 q 460 66 410 38 q 543 144 510 94 q 553 99 547 121 q 567 54 558 76 q 452 2 515 19 q 321 -15 388 -15 q 134 31 216 -15 q 53 175 53 78 q 95 286 53 246 q 214 355 137 326 q 127 408 162 370 q 93 497 93 445 q 165 625 93 579 q 323 672 237 672 q 430 654 378 672 q 541 604 481 637 q 522 564 529 584 q 506 516 514 545 "},"Δ":{"x_min":0,"x_max":899,"ha":899,"o":"m 899 0 q 701 5 833 0 q 501 11 569 11 q 251 5 418 11 q 0 0 84 0 q 225 473 126 251 q 407 932 323 696 q 432 929 415 932 q 457 926 448 926 q 482 927 471 926 q 505 932 493 929 q 691 449 601 664 q 899 0 782 234 m 281 429 q 158 90 212 259 q 290 84 201 90 q 423 79 379 79 l 456 79 q 587 81 550 79 q 692 90 625 83 l 651 188 l 576 383 l 422 778 l 281 429 "},"â":{"x_min":43,"x_max":655.5,"ha":649,"o":"m 234 -15 q 98 33 153 -15 q 43 162 43 82 q 106 303 43 273 q 303 364 169 333 q 444 448 437 395 q 403 568 444 521 q 288 616 362 616 q 191 587 233 616 q 124 507 149 559 l 95 520 l 104 591 q 202 651 144 631 q 323 672 261 672 q 500 622 444 672 q 557 455 557 573 l 557 133 q 567 69 557 84 q 618 54 577 54 q 655 58 643 54 l 655 26 q 594 5 626 14 q 537 -6 562 -3 q 438 85 453 -6 q 342 10 388 35 q 234 -15 296 -15 m 279 978 l 368 978 l 522 743 l 471 743 l 323 875 l 176 743 l 126 743 l 279 978 m 176 186 q 204 98 176 133 q 284 64 232 64 q 390 107 342 64 q 438 212 438 151 l 438 345 q 239 293 303 319 q 176 186 176 268 "},"}":{"x_min":114,"x_max":567,"ha":683,"o":"m 369 576 q 405 438 369 487 q 527 389 441 389 l 567 389 l 567 317 q 415 278 461 317 q 369 132 369 239 l 369 -28 q 319 -229 369 -182 q 114 -276 270 -276 l 114 -204 q 252 -172 218 -204 q 286 -83 286 -141 l 286 -35 l 286 125 q 314 271 286 212 q 418 354 342 329 q 311 435 337 382 q 286 584 286 488 l 286 745 q 268 860 286 818 q 191 913 251 903 l 114 913 l 114 983 l 186 982 q 287 960 242 982 q 346 900 331 938 q 365 822 362 862 q 369 737 369 783 l 369 576 "},"‰":{"x_min":28,"x_max":1511,"ha":1536,"o":"m 799 0 q 647 62 708 0 q 586 218 586 124 q 647 372 586 309 q 799 436 709 436 q 949 373 888 436 q 1011 223 1011 311 q 995 130 1011 176 q 918 35 972 70 q 799 0 865 0 m 1298 0 q 1146 62 1206 0 q 1087 218 1087 124 q 1148 372 1087 308 q 1299 436 1209 436 q 1449 373 1388 436 q 1511 223 1511 311 q 1494 130 1511 169 q 1418 34 1472 69 q 1298 0 1365 0 m 241 448 q 89 510 150 448 q 28 663 28 573 q 89 820 28 755 q 241 885 151 885 q 391 823 329 885 q 453 672 453 761 q 434 580 453 620 q 359 483 412 518 q 241 448 307 448 m 863 1015 l 227 -125 l 158 -125 l 793 1015 l 863 1015 m 897 260 q 872 353 897 310 q 798 397 847 397 q 718 340 737 397 q 700 202 700 283 q 719 86 700 133 q 798 40 738 40 q 866 73 840 40 q 892 149 892 106 q 895 206 894 169 q 897 260 897 242 m 339 684 q 319 797 339 750 q 244 845 300 845 q 161 784 182 845 q 141 645 141 723 q 165 540 141 590 q 237 490 189 490 q 303 524 278 490 q 334 598 329 558 q 339 684 339 638 m 1397 260 q 1373 356 1397 315 q 1297 397 1349 397 q 1218 340 1237 397 q 1200 202 1200 283 q 1219 87 1200 134 q 1297 40 1238 40 q 1366 73 1340 40 q 1392 149 1392 106 q 1395 206 1394 169 q 1397 260 1397 242 "},"Ä":{"x_min":-16,"x_max":839.5625,"ha":826,"o":"m 258 638 l 389 951 q 420 945 395 948 q 453 951 438 945 q 570 651 500 826 q 688 360 640 477 q 839 0 736 242 q 788 3 820 0 q 752 6 756 6 q 702 3 728 6 q 665 0 675 0 q 599 204 615 158 q 542 357 584 251 l 378 357 l 214 357 l 161 207 q 130 109 147 170 q 102 0 113 47 l 45 5 q 20 4 29 5 q -16 0 10 4 q 72 203 29 105 q 169 427 115 301 q 258 638 222 552 m 293 1208 q 345 1186 325 1208 q 366 1133 366 1164 q 345 1080 366 1102 q 293 1058 324 1058 q 239 1080 261 1058 q 217 1133 217 1102 q 239 1185 217 1163 q 293 1208 261 1208 m 535 1208 q 587 1186 565 1208 q 609 1133 609 1164 q 587 1080 609 1103 q 535 1058 565 1058 q 481 1080 503 1058 q 459 1133 459 1102 q 481 1185 459 1163 q 535 1208 503 1208 m 378 421 l 515 425 l 381 762 l 247 425 l 378 421 "},"a":{"x_min":44,"x_max":653.734375,"ha":647,"o":"m 233 -15 q 99 33 154 -15 q 44 162 44 82 q 105 302 44 273 q 302 363 167 331 q 444 448 437 395 q 401 567 444 519 q 287 615 359 615 q 190 587 231 615 q 124 508 149 560 l 95 519 l 103 591 q 204 651 148 631 q 323 672 260 672 q 499 623 443 672 q 555 457 555 574 l 555 132 q 566 70 555 86 q 616 55 578 55 l 653 55 l 653 26 q 594 4 624 15 q 536 -6 564 -6 q 468 15 492 -6 q 436 83 445 38 q 341 9 387 34 q 233 -15 294 -15 m 175 185 q 204 99 175 135 q 282 63 234 63 q 389 106 343 63 q 436 211 436 150 l 436 344 q 239 294 304 320 q 175 185 175 268 "},"—":{"x_min":226.390625,"x_max":1138.890625,"ha":1367,"o":"m 226 375 l 1138 375 l 1138 292 l 226 292 l 226 375 "},"=":{"x_min":169.4375,"x_max":969.453125,"ha":1139,"o":"m 969 499 l 169 499 l 169 564 l 969 564 l 969 499 m 969 248 l 169 248 l 169 315 l 969 315 l 969 248 "},"N":{"x_min":98,"x_max":911.890625,"ha":1011,"o":"m 112 230 q 114 486 112 315 q 117 741 117 656 l 117 950 l 166 950 q 326 766 239 865 q 468 606 413 667 q 610 451 524 544 l 821 227 l 821 604 q 816 765 821 685 q 803 931 812 845 l 855 927 l 911 931 q 901 831 906 884 q 897 741 897 779 q 894 413 897 619 q 892 165 892 207 l 892 -15 l 849 -15 q 730 125 796 50 q 589 281 664 201 l 193 702 l 193 330 q 212 -1 193 169 l 149 2 l 98 -1 q 108 125 105 79 q 112 230 112 170 "},"ρ":{"x_min":65,"x_max":711,"ha":758,"o":"m 191 -99 q 195 -235 191 -145 q 199 -371 199 -325 q 161 -367 169 -367 q 134 -366 153 -366 q 96 -368 116 -366 q 65 -372 76 -370 q 70 -190 65 -311 q 76 -8 76 -69 q 73 166 76 67 q 70 329 71 265 q 148 578 70 484 q 380 672 226 672 q 617 573 524 672 q 711 329 711 474 q 625 84 711 184 q 396 -15 539 -15 q 285 7 334 -15 q 191 78 236 30 l 191 -99 m 377 619 q 231 533 271 619 q 191 327 191 447 q 241 103 191 169 q 376 38 292 38 q 525 125 479 38 q 571 326 571 212 q 525 529 571 440 q 377 619 480 619 "},"2":{"x_min":22,"x_max":622,"ha":749,"o":"m 449 648 q 410 789 449 727 q 298 851 371 851 q 173 802 219 851 q 128 676 128 753 l 118 673 q 84 740 100 712 q 47 799 69 768 q 313 911 158 911 q 507 844 426 911 q 589 667 589 777 q 527 479 589 555 q 315 258 466 404 l 169 118 l 442 118 q 531 123 485 118 q 622 136 576 129 q 617 102 619 117 q 616 68 616 87 q 617 37 616 54 q 622 0 619 20 q 438 4 562 0 q 252 8 315 8 q 142 7 195 8 q 22 0 88 6 l 22 40 q 234 238 155 158 q 380 430 312 319 q 449 648 449 541 "},"ü":{"x_min":90,"x_max":664,"ha":754,"o":"m 653 498 q 653 329 653 443 q 653 158 653 215 q 664 0 653 82 q 631 3 647 1 q 598 5 616 5 q 563 3 583 5 q 533 0 544 1 l 538 118 q 440 18 494 52 q 312 -15 385 -15 q 148 50 201 -15 q 96 229 96 115 l 96 354 l 96 516 l 90 655 q 120 650 103 651 q 158 648 136 648 q 192 650 175 648 q 227 656 210 651 q 220 446 227 592 q 213 247 213 300 q 247 115 213 163 q 362 68 281 68 q 477 113 428 68 q 531 217 525 159 q 538 340 538 274 q 533 520 538 394 q 528 655 528 647 q 558 650 542 651 q 596 648 574 648 q 629 650 612 648 q 663 656 646 651 q 653 498 653 574 m 253 929 q 307 906 285 929 q 330 854 330 884 q 309 800 330 822 q 257 778 288 778 q 202 800 225 778 q 180 854 180 823 q 200 906 180 884 q 253 929 221 929 m 498 929 q 549 906 527 929 q 572 854 572 884 q 551 799 572 820 q 499 778 531 778 q 444 800 466 778 q 422 854 422 822 q 444 906 422 884 q 498 929 466 929 "},"Z":{"x_min":6.9375,"x_max":801.390625,"ha":828,"o":"m 6 36 q 222 324 112 176 q 425 605 333 473 l 597 857 l 433 857 q 59 836 247 857 l 65 883 l 59 932 q 262 927 134 932 q 427 922 390 922 q 622 927 491 922 q 801 932 754 932 l 801 904 q 594 629 709 785 q 399 361 479 473 q 201 77 319 249 l 427 77 q 581 82 520 77 q 801 103 643 87 l 797 68 l 795 54 l 797 34 l 801 0 q 504 4 683 0 q 325 8 326 8 q 166 4 272 8 q 6 0 61 0 l 6 36 "},"u":{"x_min":90,"x_max":662.21875,"ha":754,"o":"m 653 497 l 653 156 q 654 83 653 122 q 661 -1 656 44 q 623 3 632 2 q 596 4 615 4 q 572 3 581 4 q 533 -1 563 2 l 536 117 q 439 18 491 51 q 313 -15 386 -15 q 147 48 199 -15 q 96 227 96 112 l 96 352 l 96 516 l 90 654 q 158 647 125 647 q 189 648 178 647 q 226 654 200 650 q 220 450 226 586 q 215 246 215 314 q 248 114 215 163 q 361 66 281 66 q 473 112 426 66 q 527 225 520 158 q 536 340 536 282 q 531 497 536 393 q 527 654 527 601 q 572 647 563 647 q 595 647 581 647 q 626 648 616 647 q 662 654 637 650 l 653 497 "},"k":{"x_min":97,"x_max":677.5625,"ha":683,"o":"m 104 656 q 100 873 104 741 q 97 1025 97 1005 q 164 1018 134 1018 q 231 1025 196 1018 q 227 825 231 962 q 223 622 223 687 l 223 377 l 245 377 q 507 654 391 506 q 563 647 538 647 q 616 647 589 647 q 648 652 638 651 l 349 398 l 548 165 q 608 93 577 127 q 677 19 638 59 l 677 0 q 628 3 659 0 q 591 6 597 6 q 544 3 567 6 q 510 0 520 0 q 438 101 473 54 q 360 197 402 148 l 269 308 l 252 324 l 223 326 q 227 164 223 272 q 231 0 231 55 q 200 4 215 2 q 164 5 185 5 q 127 3 146 5 q 97 0 108 1 q 100 386 97 151 q 104 656 104 620 "},"Η":{"x_min":109,"x_max":928.453125,"ha":1039,"o":"m 257 317 q 262 142 257 253 q 267 0 267 30 q 226 3 253 0 q 188 8 200 8 q 147 3 174 8 q 109 0 121 0 q 116 243 109 72 q 124 465 124 415 q 116 710 124 540 q 109 932 109 880 q 152 929 121 932 q 188 926 183 926 q 231 929 200 926 q 267 932 262 932 q 262 719 267 854 q 257 547 257 584 q 406 544 301 547 q 517 541 511 541 q 666 544 562 541 q 777 547 770 547 q 773 786 777 641 q 769 932 769 930 q 813 929 781 932 q 849 926 845 926 q 893 929 861 926 q 928 932 924 932 q 914 795 920 866 q 909 659 909 723 l 909 505 q 918 252 909 420 q 927 0 927 84 q 887 4 913 0 q 848 8 861 8 q 811 5 829 8 q 769 0 793 2 q 773 103 769 41 q 777 176 777 166 l 777 317 l 777 465 q 604 466 692 465 q 430 469 517 467 l 257 465 l 257 317 "},"Α":{"x_min":-15.28125,"x_max":838.890625,"ha":825,"o":"m 257 639 l 387 950 q 402 945 395 947 q 417 944 409 944 q 452 950 437 944 q 576 629 536 733 q 686 359 617 526 q 838 0 755 192 q 789 3 820 0 q 751 6 758 6 q 700 4 723 6 q 663 0 677 1 q 600 199 622 137 q 543 353 579 260 l 377 358 l 215 353 l 162 205 q 130 110 145 160 q 101 0 115 59 l 44 5 q 6 2 20 5 q -15 0 -8 0 q 76 211 30 105 q 158 404 121 318 q 257 639 195 490 m 378 419 l 513 425 l 379 761 l 246 425 l 378 419 "},"ß":{"x_min":94,"x_max":726,"ha":765,"o":"m 107 431 l 107 611 l 107 761 q 200 948 118 872 q 395 1025 283 1025 q 543 979 478 1025 q 608 852 608 933 q 530 709 608 783 q 453 586 453 636 q 589 457 453 547 q 726 259 726 368 q 648 64 726 143 q 453 -15 570 -15 q 379 -6 418 -15 q 309 15 339 1 l 334 128 l 348 127 q 405 70 368 91 q 485 49 442 49 q 583 92 544 49 q 622 193 622 135 q 484 365 622 280 q 347 525 347 450 q 433 667 347 561 q 520 838 520 773 q 483 939 520 899 q 386 979 446 979 q 269 924 313 979 q 226 795 226 870 l 226 629 l 226 344 q 229 141 226 265 q 233 1 233 18 q 196 4 219 1 q 166 8 173 8 q 123 5 142 8 q 94 1 105 2 q 100 250 94 91 q 107 431 107 409 "},"é":{"x_min":40,"x_max":646.9375,"ha":681,"o":"m 406 42 q 602 130 523 42 l 621 130 q 613 93 617 112 q 609 47 609 73 q 496 0 558 14 q 369 -15 435 -15 q 130 73 220 -15 q 40 311 40 162 q 126 562 40 456 q 355 669 212 669 q 564 590 481 669 q 646 386 646 512 l 644 331 q 438 333 562 331 q 313 335 315 335 l 179 331 q 235 127 179 212 q 406 42 291 42 m 406 945 q 440 976 424 966 q 477 986 455 986 q 528 934 528 986 q 513 895 528 912 q 471 866 498 879 l 272 743 l 222 743 l 406 945 m 513 392 l 513 437 q 470 563 513 509 q 356 618 427 618 q 233 552 271 618 q 183 390 195 487 l 513 392 "},"s":{"x_min":68,"x_max":531,"ha":593,"o":"m 117 161 q 172 69 130 102 q 276 36 214 36 q 378 67 333 36 q 424 152 424 98 q 334 260 424 224 q 168 320 251 290 q 79 460 79 366 q 147 612 79 552 q 310 672 216 672 q 400 660 355 672 q 500 627 446 649 l 461 508 l 448 508 q 401 587 433 561 q 314 614 369 614 q 223 584 262 614 q 185 505 185 555 q 358 375 185 427 q 531 197 531 322 q 450 39 531 93 q 259 -15 369 -15 q 68 23 162 -15 l 103 161 l 117 161 "},"B":{"x_min":109,"x_max":751,"ha":801,"o":"m 127 559 q 109 931 127 759 l 203 929 q 338 932 244 929 q 438 935 432 935 q 629 883 549 935 q 709 726 709 832 q 638 579 709 633 q 464 504 567 524 q 673 438 595 490 q 751 268 751 387 q 639 66 751 133 q 382 0 528 0 l 232 6 q 162 3 211 6 q 109 0 113 0 q 118 287 109 86 q 127 559 127 488 m 256 257 l 256 149 l 261 61 l 337 57 q 526 108 450 57 q 602 266 602 159 q 523 428 602 386 q 312 471 444 471 l 256 471 l 256 257 m 569 706 q 507 834 569 788 q 361 879 446 879 l 261 875 q 252 709 252 798 l 252 522 q 476 558 384 522 q 569 706 569 595 "},"…":{"x_min":119,"x_max":1005,"ha":1160,"o":"m 191 130 q 244 108 223 130 q 266 55 266 87 q 244 5 266 25 q 191 -15 223 -15 q 139 4 160 -15 q 119 55 119 23 q 139 108 119 87 q 191 130 159 130 m 560 130 q 612 108 591 130 q 634 55 634 87 q 612 5 634 25 q 560 -15 591 -15 q 507 4 528 -15 q 487 55 487 23 q 507 109 487 88 q 560 130 528 130 m 930 130 q 983 108 962 130 q 1005 55 1005 87 q 983 5 1005 25 q 930 -15 962 -15 q 878 4 899 -15 q 858 55 858 23 q 878 108 858 87 q 930 130 898 130 "},"?":{"x_min":128,"x_max":520,"ha":601,"o":"m 307 156 q 367 130 342 156 q 392 68 392 105 q 367 7 392 30 q 307 -15 343 -15 q 244 8 269 -15 q 220 68 220 32 q 244 130 220 105 q 307 156 269 156 m 329 250 q 214 290 261 250 q 168 399 168 331 q 287 595 168 479 q 406 776 406 712 q 371 858 406 823 q 292 894 337 894 q 207 867 243 894 q 162 794 171 840 l 150 794 q 142 835 146 822 q 128 894 139 849 q 210 936 165 922 q 305 950 255 950 q 457 893 394 950 q 520 748 520 837 q 398 550 520 657 q 276 370 276 443 q 293 316 276 337 q 343 296 310 296 q 397 302 372 296 l 383 256 q 357 251 365 252 q 329 250 348 250 "},"H":{"x_min":108,"x_max":927.453125,"ha":1036,"o":"m 258 318 q 263 143 258 255 q 268 0 268 30 q 229 3 255 0 q 188 8 202 8 q 148 3 174 8 q 108 0 121 0 q 117 239 108 70 q 126 465 126 408 q 122 711 126 620 q 108 932 119 803 q 153 928 124 932 q 188 925 183 925 q 231 928 204 925 q 268 932 259 932 q 263 719 268 854 q 258 547 258 584 l 517 543 l 777 547 q 773 786 777 641 q 769 932 769 930 q 814 928 785 932 q 848 925 842 925 q 894 928 864 925 q 927 932 923 932 q 914 798 919 868 q 909 659 909 729 l 909 448 l 909 283 q 916 135 909 238 q 924 0 924 31 q 885 4 911 0 q 846 8 860 8 q 807 4 832 8 q 769 0 781 0 q 773 101 769 37 q 777 177 777 164 l 777 318 l 777 468 q 604 468 720 468 q 431 468 489 468 l 258 468 l 258 318 "},"ν":{"x_min":0,"x_max":632,"ha":654,"o":"m 319 8 q 296 5 309 8 q 272 0 283 2 q 200 206 234 120 q 0 654 165 291 q 84 647 45 647 q 113 647 98 647 q 168 654 127 648 q 252 402 204 529 l 360 131 q 469 358 440 267 q 499 520 499 448 q 492 579 499 543 q 477 641 486 615 q 552 649 527 645 q 613 661 576 652 q 628 611 625 623 q 632 576 632 598 q 621 501 632 536 q 560 373 611 466 q 461 190 509 280 q 372 0 412 99 q 345 3 363 0 q 319 8 327 8 "},"î":{"x_min":-25,"x_max":365.328125,"ha":340,"o":"m 104 144 l 104 522 l 97 655 q 138 650 113 651 q 167 649 162 649 q 233 655 206 649 q 225 506 225 581 q 229 254 225 423 q 233 0 233 84 q 201 3 216 1 q 164 5 186 5 q 127 3 146 5 q 97 0 108 1 l 104 144 m 125 978 l 214 978 l 365 743 l 319 743 l 170 875 l 24 743 l -25 743 l 125 978 "},"c":{"x_min":36,"x_max":613.78125,"ha":644,"o":"m 606 119 l 594 41 q 493 -3 548 7 q 365 -15 438 -15 q 131 79 227 -15 q 36 312 36 173 q 134 576 36 480 q 399 672 233 672 q 513 658 459 672 q 613 616 566 645 q 586 492 597 563 l 571 492 q 510 586 550 553 q 406 619 470 619 q 235 532 294 619 q 176 327 176 445 q 237 125 176 209 q 415 42 299 42 q 594 122 520 42 l 606 119 "},"¶":{"x_min":18,"x_max":531,"ha":590,"o":"m 298 968 l 531 968 l 531 910 l 473 910 l 473 4 l 415 4 l 415 910 l 305 910 l 305 4 l 247 4 l 247 558 q 99 602 163 558 q 27 690 36 645 q 18 744 18 734 q 90 896 18 824 q 298 968 163 968 "},"β":{"x_min":96,"x_max":737.671875,"ha":779,"o":"m 160 -365 q 129 -367 151 -365 q 96 -369 107 -369 q 100 -253 96 -325 q 104 -169 104 -182 l 104 101 l 104 565 q 168 898 104 771 q 419 1025 232 1025 q 605 960 525 1025 q 686 787 686 895 q 641 641 686 705 q 522 548 597 577 q 682 454 626 515 q 737 290 737 394 q 648 73 737 162 q 431 -15 559 -15 q 324 3 372 -15 q 226 61 276 22 q 224 -44 226 19 q 223 -110 223 -107 l 230 -369 q 193 -367 220 -369 q 160 -365 166 -365 m 356 564 q 507 618 458 564 q 557 779 557 673 q 520 917 557 859 q 407 975 483 975 q 279 906 323 975 q 234 752 234 838 q 232 613 234 701 q 230 506 230 524 l 226 355 l 230 230 q 275 94 230 147 q 406 41 321 41 q 552 116 504 41 q 600 297 600 192 q 550 443 600 386 q 412 499 500 499 q 361 497 384 499 q 327 493 337 494 l 329 516 l 329 565 l 356 564 "},"Μ":{"x_min":55,"x_max":1165,"ha":1238,"o":"m 190 950 l 243 950 q 331 772 291 851 q 412 612 370 693 q 504 436 454 532 l 626 214 q 742 435 671 298 q 882 711 813 572 q 1001 950 952 850 l 1052 950 q 1082 649 1067 791 q 1118 341 1098 508 q 1165 0 1139 174 q 1121 8 1139 5 q 1088 11 1103 11 q 1049 6 1071 11 q 1008 0 1027 2 q 998 226 1008 109 q 974 461 989 343 q 944 695 959 579 l 748 312 q 610 0 665 152 l 594 1 l 576 0 q 227 685 402 364 l 188 307 q 172 128 175 179 q 168 0 168 77 q 138 4 157 1 q 110 6 118 6 q 81 4 93 6 q 55 0 68 2 q 121 333 89 168 q 171 652 152 498 q 190 950 190 805 "},"Ό":{"x_min":-1,"x_max":1305,"ha":1356,"o":"m 288 465 q 429 820 288 690 q 796 950 570 950 q 1129 853 991 950 q 1284 654 1268 757 q 1302 525 1299 551 q 1305 462 1305 500 q 1302 402 1305 426 q 1284 277 1299 379 q 1131 80 1268 175 q 797 -15 993 -15 q 684 -10 733 -15 q 541 29 635 -5 q 367 186 447 64 q 288 465 288 308 m 182 943 q 215 974 200 964 q 251 985 230 985 q 289 969 274 985 q 304 932 304 954 q 290 896 304 911 q 247 866 275 882 l 48 743 l -1 743 l 182 943 m 439 468 q 527 162 439 282 q 796 42 616 42 q 1063 162 975 42 q 1152 468 1152 283 q 1062 770 1152 651 q 796 889 972 889 q 585 826 666 889 q 462 639 504 764 q 439 468 439 552 "},"Ή":{"x_min":-1.390625,"x_max":1233.046875,"ha":1341,"o":"m 564 316 q 569 142 564 254 q 574 0 574 30 q 535 4 561 0 q 494 8 508 8 q 454 4 480 8 q 414 0 427 0 q 423 239 414 70 q 432 465 432 408 q 428 711 432 620 q 414 931 425 802 q 459 928 430 931 q 494 924 489 924 q 537 928 510 924 q 574 931 565 931 q 569 719 574 854 q 564 547 564 584 l 823 543 l 1083 547 q 1078 786 1083 641 q 1074 931 1074 930 q 1119 928 1091 931 q 1153 924 1148 924 q 1199 928 1170 924 q 1233 931 1228 931 q 1221 798 1226 868 q 1217 659 1217 729 l 1215 448 l 1217 283 q 1225 135 1217 238 q 1233 0 1233 31 q 1194 4 1220 0 q 1154 8 1167 8 q 1113 4 1140 8 q 1075 0 1087 0 q 1078 100 1075 37 q 1082 176 1082 163 l 1083 316 l 1083 465 q 910 466 1026 465 q 737 468 795 468 l 564 465 l 564 316 m 181 943 q 215 974 200 964 q 251 985 230 985 q 288 969 273 985 q 304 932 304 954 q 289 896 304 911 q 247 866 275 882 l 47 743 l -1 743 l 181 943 "},"•":{"x_min":204.171875,"x_max":795.828125,"ha":1003,"o":"m 501 789 q 709 702 622 789 q 795 493 795 615 q 709 286 795 372 q 501 201 623 201 q 290 286 377 201 q 204 493 204 371 q 226 605 204 550 q 312 725 248 661 q 501 789 376 789 "},"¥":{"x_min":32,"x_max":699,"ha":750,"o":"m 313 278 q 176 273 268 278 q 50 268 83 268 l 50 335 q 147 332 82 335 q 246 329 213 329 l 313 329 l 313 436 l 176 436 l 50 432 l 50 495 q 182 492 90 495 q 281 490 275 490 l 126 743 l 32 888 l 91 883 l 191 887 q 225 814 208 845 q 287 699 241 783 l 397 512 q 477 653 433 570 q 592 887 521 736 l 643 883 l 699 887 l 625 773 l 554 655 l 454 490 q 593 492 496 490 q 697 495 690 495 l 697 431 l 434 436 l 434 330 l 572 329 q 636 332 595 329 q 697 335 678 335 l 697 268 l 568 278 l 434 278 q 434 143 434 208 q 442 0 435 77 l 365 5 l 299 0 q 310 131 307 54 q 313 278 313 208 "},"(":{"x_min":114,"x_max":380.5625,"ha":449,"o":"m 114 388 q 175 684 114 545 q 351 950 237 822 q 380 918 361 933 q 253 660 291 782 q 215 379 215 538 q 256 103 215 231 q 380 -151 297 -25 q 351 -183 361 -167 q 173 84 232 -50 q 114 388 114 219 "},"U":{"x_min":101,"x_max":919.0625,"ha":1015,"o":"m 181 926 q 228 929 195 926 q 263 932 262 932 q 251 804 255 853 q 248 697 248 755 l 248 457 q 315 134 248 212 q 515 57 382 57 q 733 129 654 57 q 813 334 813 201 l 813 458 l 813 655 q 810 797 813 733 q 798 931 807 862 q 827 927 813 929 q 859 926 841 926 q 888 929 868 926 q 919 932 907 932 q 905 779 909 853 q 902 600 902 705 l 902 366 q 793 81 902 178 q 492 -15 685 -15 q 211 66 307 -15 q 116 323 116 147 l 116 425 l 116 698 q 109 826 116 759 q 101 931 103 893 q 138 927 120 929 q 181 926 156 926 "},"γ":{"x_min":-12,"x_max":701,"ha":681,"o":"m 642 647 q 701 654 669 647 q 593 440 633 520 q 502 247 553 359 l 411 48 l 411 -90 q 415 -238 411 -138 q 419 -372 419 -337 l 372 -366 q 282 -372 325 -366 q 287 -195 282 -313 q 292 -33 292 -76 q 260 192 292 47 q 170 460 229 338 q 39 583 111 583 l -12 579 l -10 608 l -12 638 q 43 662 14 653 q 101 672 71 672 q 279 554 234 672 q 398 143 324 437 q 496 393 439 244 q 590 654 553 541 q 615 648 607 650 q 642 647 623 647 "},"α":{"x_min":41,"x_max":827.109375,"ha":846,"o":"m 705 352 q 803 -1 763 155 l 739 1 l 673 -1 l 632 172 q 521 36 593 87 q 356 -15 448 -15 q 129 81 217 -15 q 41 316 41 177 q 130 569 41 467 q 368 672 220 672 q 537 622 464 672 q 659 486 610 573 q 711 654 691 569 l 770 650 l 827 654 q 763 505 792 576 q 705 352 734 434 m 377 619 q 226 530 272 619 q 181 326 181 442 q 223 124 181 214 q 367 34 265 34 q 528 137 480 34 q 601 323 577 240 q 527 531 578 444 q 377 619 475 619 "},"F":{"x_min":108,"x_max":613.5625,"ha":671,"o":"m 258 316 q 263 142 258 254 q 268 0 268 30 q 229 3 255 0 q 188 8 202 8 q 148 3 174 8 q 108 0 121 0 q 117 239 108 70 q 126 465 126 408 q 122 711 126 620 q 108 932 119 802 l 358 928 l 613 931 l 610 886 l 613 836 q 505 855 549 851 q 388 860 460 860 l 260 860 l 258 671 l 258 528 l 398 528 q 587 541 480 528 l 584 497 l 587 451 l 394 463 l 258 463 l 258 316 "},"­":{"x_min":0,"x_max":683.328125,"ha":683,"o":"m 0 374 l 683 374 l 683 289 l 0 289 l 0 374 "},":":{"x_min":134,"x_max":309,"ha":446,"o":"m 222 636 q 284 611 259 636 q 309 548 309 586 q 284 486 309 512 q 222 461 260 461 q 160 486 186 461 q 134 548 134 511 q 159 610 134 584 q 222 636 185 636 m 221 156 q 283 131 257 156 q 309 69 309 107 q 284 8 309 32 q 221 -15 259 -15 q 159 9 185 -15 q 134 69 134 33 q 159 131 134 107 q 221 156 185 156 "},"Χ":{"x_min":0,"x_max":739,"ha":739,"o":"m 200 285 l 318 456 q 18 932 159 718 q 63 929 33 932 q 109 926 94 926 q 168 929 147 926 q 198 932 188 932 q 296 743 244 841 q 391 568 348 644 l 489 726 q 597 932 548 825 q 627 927 614 929 q 661 926 641 926 q 693 929 671 926 q 728 932 715 932 q 616 781 673 862 q 524 652 558 700 l 427 512 q 523 347 480 419 q 614 197 566 275 q 739 0 662 119 q 686 3 719 0 q 647 6 652 6 q 595 4 618 6 q 558 0 572 1 q 459 197 512 97 q 353 398 405 298 l 265 249 q 174 96 193 130 q 127 0 155 62 q 89 3 113 0 q 62 6 65 6 q 26 4 43 6 q 0 0 9 1 l 200 285 "},"*":{"x_min":94,"x_max":580,"ha":675,"o":"m 336 940 q 367 944 349 940 q 389 948 385 948 q 368 850 375 902 q 362 747 362 799 q 522 873 442 800 q 548 812 539 829 q 580 778 556 796 q 386 702 485 750 q 476 661 427 680 q 575 629 524 643 q 521 535 539 587 q 441 604 478 573 q 362 661 403 634 q 369 564 362 615 q 391 459 377 513 q 360 463 379 459 q 336 467 340 467 q 306 463 325 467 q 282 459 288 459 q 304 568 296 522 q 313 661 313 615 q 152 535 221 602 q 128 589 138 569 q 97 630 117 608 q 185 661 140 643 q 287 704 231 679 q 189 746 234 728 q 94 777 145 763 q 125 818 113 795 q 150 873 137 841 q 227 805 184 839 q 313 747 269 771 q 309 810 313 784 q 282 950 305 836 q 310 942 297 945 q 336 940 324 940 "},"°":{"x_min":176,"x_max":508,"ha":683,"o":"m 176 889 q 228 1010 176 961 q 355 1060 280 1060 q 460 1011 413 1060 q 508 904 508 962 q 455 785 508 839 q 337 731 402 731 q 222 776 269 731 q 176 889 176 821 m 241 880 q 266 805 241 836 q 336 775 292 775 q 413 811 386 775 q 441 899 441 847 q 417 985 441 952 q 343 1018 393 1018 q 281 995 307 1018 q 247 940 254 973 q 241 880 241 906 "},"V":{"x_min":0,"x_max":852.78125,"ha":853,"o":"m 190 477 l 74 759 l 0 932 l 83 926 q 134 929 98 926 q 173 931 170 931 q 206 829 187 884 q 248 704 224 773 l 308 548 l 454 153 l 586 502 q 729 931 666 713 l 790 927 l 852 931 q 643 467 748 720 q 470 0 538 215 q 445 4 457 1 q 418 6 432 6 q 384 3 399 6 q 366 0 368 0 q 279 256 331 123 q 190 477 226 389 "},"Ξ":{"x_min":58.328125,"x_max":818.0625,"ha":878,"o":"m 437 821 q 258 817 377 821 q 77 813 138 813 q 84 851 83 838 q 84 872 84 864 q 77 932 84 900 q 256 928 137 932 q 437 924 376 924 q 618 928 497 924 q 797 932 738 932 l 791 872 q 794 842 791 861 q 797 813 797 822 q 619 817 738 813 q 437 821 500 821 m 470 430 q 335 425 440 430 q 183 421 230 421 q 187 456 186 433 q 188 481 188 480 q 183 543 188 515 q 304 538 215 543 q 437 533 394 533 q 572 538 481 533 q 694 543 662 543 l 687 482 l 694 421 q 572 425 650 421 q 470 430 494 430 m 437 8 q 250 4 376 8 q 58 0 123 0 l 63 63 l 58 129 q 268 124 134 129 q 437 119 401 119 q 636 124 502 119 q 818 129 769 129 l 813 63 l 818 0 q 627 4 754 0 q 437 8 501 8 "}," ":{"x_min":0,"x_max":0,"ha":375},"Ϋ":{"x_min":-26,"x_max":746,"ha":708,"o":"m 299 177 l 299 387 q 190 577 235 501 q 87 747 146 652 q -26 931 29 841 q 23 929 -13 931 q 65 926 61 926 q 110 929 78 926 q 146 931 143 931 q 208 800 175 866 q 278 676 241 734 l 391 475 q 627 931 519 693 l 683 927 q 721 929 701 927 q 746 931 741 931 q 652 786 702 866 q 557 627 602 705 l 432 415 l 432 241 q 435 97 432 184 q 439 0 439 10 q 395 4 414 2 q 361 6 376 6 q 320 4 336 6 q 286 0 304 2 q 294 88 290 36 q 299 177 299 141 m 233 1208 q 286 1187 265 1208 q 307 1133 307 1166 q 285 1080 307 1103 q 233 1058 263 1058 q 179 1080 202 1058 q 157 1133 157 1103 q 179 1186 157 1164 q 233 1208 202 1208 m 475 1208 q 528 1186 506 1208 q 550 1133 550 1164 q 528 1080 550 1103 q 475 1058 506 1058 q 422 1080 444 1058 q 400 1133 400 1102 q 421 1186 400 1164 q 475 1208 443 1208 "},"0":{"x_min":48,"x_max":699,"ha":749,"o":"m 372 909 q 621 773 544 909 q 699 451 699 637 q 627 116 699 252 q 372 -19 556 -19 q 120 114 193 -19 q 48 444 48 247 q 120 774 48 639 q 372 909 193 909 m 187 365 q 226 137 187 238 q 373 37 266 37 q 457 62 421 37 q 519 142 494 88 q 552 271 545 196 q 559 455 559 346 q 526 736 559 622 q 371 851 493 851 q 245 783 280 851 q 198 647 210 716 q 187 444 187 577 l 187 365 "},"”":{"x_min":104.171875,"x_max":570.828125,"ha":625,"o":"m 184 858 q 211 924 193 898 q 265 951 230 951 q 320 903 316 951 q 310 856 320 881 q 283 812 300 831 l 136 568 l 104 576 l 184 858 m 433 858 q 468 928 452 905 q 516 951 483 951 q 555 938 540 951 q 570 903 570 926 q 561 859 570 881 q 536 812 552 837 l 387 568 l 355 576 l 433 858 "},"@":{"x_min":78,"x_max":1289,"ha":1367,"o":"m 906 640 l 970 640 l 876 266 l 864 203 q 886 157 864 172 q 940 142 908 142 q 1136 262 1062 142 q 1211 513 1211 383 q 1067 801 1211 693 q 735 909 923 909 q 324 753 495 909 q 154 362 154 598 q 301 1 154 135 q 679 -132 448 -132 q 904 -99 791 -132 q 1105 -6 1016 -67 l 1129 -43 q 923 -150 1033 -113 q 694 -188 812 -188 q 258 -43 439 -188 q 78 350 78 100 q 273 791 78 614 q 737 969 469 969 q 1122 843 955 969 q 1289 507 1289 717 q 1187 214 1289 346 q 930 82 1086 82 q 835 103 879 82 q 792 170 792 124 l 792 203 q 709 116 762 150 q 595 82 655 82 q 439 139 493 82 q 386 302 386 197 q 471 553 386 441 q 692 665 556 665 q 797 639 754 665 q 864 556 840 613 l 906 640 m 849 477 q 796 572 835 535 q 701 609 758 609 q 529 511 592 609 q 467 297 467 413 q 503 184 467 230 q 605 139 540 139 q 733 188 679 139 q 807 313 787 238 l 849 477 "},"Ί":{"x_min":-1.390625,"x_max":580.0625,"ha":690,"o":"m 433 465 q 429 711 433 620 q 414 931 426 802 q 461 927 435 929 q 498 925 487 925 q 546 928 517 925 q 580 931 575 931 q 572 788 580 887 q 564 659 564 690 l 562 448 l 564 283 q 572 135 564 238 q 580 0 580 31 q 539 4 567 0 q 498 8 512 8 q 457 5 480 8 q 414 0 435 2 q 423 239 414 70 q 433 465 433 408 m 181 943 q 215 974 200 964 q 251 985 230 985 q 288 969 273 985 q 304 932 304 954 q 289 896 304 911 q 247 866 275 882 l 47 743 l -1 743 l 181 943 "},"ö":{"x_min":40,"x_max":712,"ha":753,"o":"m 371 -15 q 131 79 223 -15 q 40 322 40 173 q 133 572 40 473 q 380 672 227 672 q 621 575 530 672 q 712 327 712 479 q 619 80 712 175 q 371 -15 527 -15 m 253 929 q 307 906 285 929 q 330 854 330 884 q 309 800 330 822 q 257 778 288 778 q 202 800 225 778 q 180 854 180 823 q 200 906 180 884 q 253 929 221 929 m 498 929 q 549 906 527 929 q 572 854 572 884 q 551 799 572 820 q 499 778 531 778 q 444 800 466 778 q 422 854 422 822 q 444 906 422 884 q 498 929 466 929 m 377 622 q 227 532 274 622 q 180 327 180 442 q 227 125 180 216 q 375 35 274 35 q 524 124 478 35 q 570 327 570 214 q 524 531 570 441 q 377 622 479 622 "},"i":{"x_min":91.765625,"x_max":244,"ha":342,"o":"m 100 144 l 100 520 l 93 654 q 161 648 130 648 q 194 649 182 648 q 229 654 207 650 q 221 579 224 616 q 219 505 219 543 q 224 240 219 417 q 229 0 229 63 q 197 3 212 1 q 161 5 181 5 q 116 2 131 5 q 91 0 100 0 l 100 144 m 168 963 q 223 940 202 963 q 244 881 244 917 q 222 831 244 849 q 168 813 200 813 q 115 833 137 813 q 93 885 93 853 q 113 941 93 919 q 168 963 134 963 "},"Β":{"x_min":109,"x_max":751,"ha":801,"o":"m 127 559 q 109 931 127 759 l 203 929 q 338 932 244 929 q 438 935 432 935 q 629 883 549 935 q 709 726 709 832 q 638 579 709 633 q 464 504 567 524 q 673 438 595 490 q 751 268 751 387 q 639 66 751 133 q 382 0 528 0 l 232 6 q 162 3 211 6 q 109 0 113 0 q 118 287 109 86 q 127 559 127 488 m 256 257 l 256 149 l 261 61 l 337 57 q 526 108 450 57 q 602 266 602 159 q 523 428 602 386 q 312 471 444 471 l 256 471 l 256 257 m 569 706 q 507 834 569 788 q 361 879 446 879 l 261 875 q 252 709 252 798 l 252 522 q 476 558 384 522 q 569 706 569 595 "},"≤":{"x_min":176,"x_max":962.703125,"ha":1139,"o":"m 288 491 l 962 266 l 962 196 l 176 462 l 176 521 l 962 788 l 962 718 l 288 491 m 962 26 l 176 26 l 176 93 l 962 93 l 962 26 "},"υ":{"x_min":79,"x_max":703,"ha":774,"o":"m 703 397 q 596 110 703 236 q 332 -15 489 -15 q 145 54 211 -15 q 79 244 79 123 l 83 430 q 81 542 83 486 q 79 654 80 598 l 146 650 l 217 654 q 209 503 217 608 q 202 366 202 398 l 202 261 q 240 105 202 168 q 369 43 279 43 q 523 133 476 43 q 571 341 571 223 q 548 493 571 418 q 488 645 526 568 q 550 648 529 645 q 627 659 571 650 q 703 397 703 538 "},"]":{"x_min":83,"x_max":332,"ha":449,"o":"m 209 -154 l 83 -158 l 85 -129 l 85 -98 q 183 -104 128 -104 l 229 -104 l 232 386 l 232 880 l 185 880 q 134 877 162 880 q 83 872 107 874 l 85 903 l 85 932 l 205 929 l 332 929 q 326 852 332 909 q 321 766 321 794 l 321 455 l 321 2 l 332 -158 l 209 -154 "},"m":{"x_min":91,"x_max":1075,"ha":1167,"o":"m 101 155 l 101 494 q 98 568 101 529 q 91 654 96 606 q 155 647 123 647 l 221 654 l 216 537 q 317 638 261 604 q 450 672 373 672 q 629 547 581 672 q 733 639 677 606 q 860 672 789 672 q 1018 606 968 672 q 1069 429 1069 540 l 1069 298 l 1069 136 l 1075 0 q 1038 3 1063 0 q 1006 6 1013 6 q 968 3 992 6 q 938 0 943 0 q 944 203 938 68 q 950 406 950 338 q 918 536 950 486 q 810 587 887 587 q 699 540 745 587 q 648 452 653 493 q 642 376 643 410 q 641 326 641 342 l 641 314 q 644 132 641 258 q 647 0 647 6 q 607 4 621 2 q 581 5 593 5 q 542 2 570 5 q 514 0 515 0 q 519 168 514 55 q 524 321 524 280 l 524 406 q 490 534 524 482 q 383 587 457 587 q 273 541 314 587 q 223 436 231 496 q 216 314 216 376 q 219 133 216 244 q 222 0 222 22 q 183 3 207 0 q 154 6 159 6 q 117 4 134 6 q 91 0 100 1 l 101 155 "},"χ":{"x_min":-1,"x_max":725.390625,"ha":713,"o":"m 500 426 q 554 536 528 476 q 607 654 580 595 l 675 650 l 725 652 q 623 507 672 586 q 519 330 573 427 l 444 197 q 575 -85 507 55 q 719 -371 643 -227 q 665 -371 701 -371 q 611 -371 629 -371 l 560 -371 q 444 -115 497 -230 q 358 72 392 -1 l 255 -95 q 178 -237 208 -174 q 125 -371 147 -299 l 62 -371 l 0 -371 q 125 -192 68 -278 q 240 -5 182 -106 l 324 136 l 201 402 q 146 519 174 460 q 43 587 103 587 l -1 584 l -1 638 q 128 672 57 672 q 222 627 181 672 q 292 522 264 583 l 359 374 l 411 260 l 500 426 "},"8":{"x_min":59,"x_max":689,"ha":749,"o":"m 110 696 q 187 853 110 797 q 370 909 264 909 q 558 854 480 909 q 636 694 636 800 q 589 575 636 621 q 467 510 543 529 l 467 499 q 630 413 572 475 q 689 247 689 351 q 597 51 689 120 q 374 -18 505 -18 q 149 48 239 -18 q 59 247 59 115 q 118 414 59 347 q 281 499 178 480 l 281 510 q 157 570 205 521 q 110 696 110 619 m 371 531 q 472 577 437 531 q 507 693 507 624 q 470 810 507 764 q 366 856 433 856 q 271 807 305 856 q 238 693 238 758 q 271 578 238 625 q 371 531 305 531 m 373 31 q 505 97 461 31 q 550 255 550 164 q 506 415 550 348 q 373 482 462 482 q 239 416 283 482 q 195 255 195 351 q 240 96 195 162 q 373 31 285 31 "},"ί":{"x_min":96,"x_max":429.34375,"ha":342,"o":"m 104 333 l 104 520 q 103 566 104 544 q 96 654 102 588 q 141 647 130 648 q 165 647 151 647 q 233 654 196 647 q 224 555 226 599 q 223 437 223 511 l 223 406 q 228 194 223 337 q 233 0 233 51 q 201 3 216 1 q 165 5 185 5 q 127 3 148 5 q 96 0 107 1 q 100 165 96 51 q 104 333 104 279 m 308 943 q 341 974 326 964 q 377 985 357 985 q 415 969 401 985 q 429 932 429 954 q 414 896 429 912 q 373 866 400 880 l 174 743 l 125 743 l 308 943 "},"Ζ":{"x_min":6.9375,"x_max":801.390625,"ha":828,"o":"m 6 36 q 222 324 112 176 q 425 605 333 473 l 597 857 l 433 857 q 59 836 247 857 l 65 883 l 59 932 q 262 927 134 932 q 427 922 390 922 q 622 927 491 922 q 801 932 754 932 l 801 904 q 594 629 709 785 q 399 361 479 473 q 201 77 319 249 l 427 77 q 581 82 520 77 q 801 103 643 87 l 797 68 l 795 54 l 797 34 l 801 0 q 504 4 683 0 q 325 8 326 8 q 166 4 272 8 q 6 0 61 0 l 6 36 "},"R":{"x_min":109,"x_max":806.234375,"ha":785,"o":"m 261 0 q 223 3 248 0 q 185 8 198 8 q 148 5 168 8 q 109 0 127 2 q 118 306 109 90 q 127 598 127 523 q 122 761 127 672 q 109 931 117 849 l 203 929 l 409 935 q 618 882 529 935 q 708 719 708 830 q 634 559 708 615 q 442 473 560 503 q 620 240 533 355 q 806 0 708 124 l 732 5 l 610 0 q 449 240 529 127 q 283 455 369 353 l 251 455 l 251 307 q 256 138 251 245 q 261 0 261 31 m 570 699 q 504 835 570 791 q 344 879 439 879 l 261 875 q 253 772 255 834 q 251 701 251 709 l 251 504 q 479 542 388 504 q 570 699 570 581 "},"×":{"x_min":203.984375,"x_max":938.015625,"ha":1139,"o":"m 892 775 l 938 729 l 616 406 l 938 86 l 892 38 l 571 361 l 247 38 l 203 86 l 525 407 l 204 729 l 247 775 l 570 453 l 892 775 "},"o":{"x_min":41,"x_max":710,"ha":753,"o":"m 371 -15 q 131 78 222 -15 q 41 322 41 172 q 133 573 41 474 q 378 672 225 672 q 619 574 528 672 q 710 326 710 477 q 617 80 710 175 q 371 -15 525 -15 m 377 619 q 226 530 272 619 q 180 327 180 441 q 227 125 180 216 q 375 35 274 35 q 524 123 478 35 q 570 326 570 211 q 524 529 570 440 q 377 619 479 619 "},"5":{"x_min":75,"x_max":654,"ha":749,"o":"m 116 201 q 176 77 131 120 q 303 35 221 35 q 454 98 396 35 q 512 255 512 161 q 457 407 512 346 q 313 469 403 469 q 170 417 227 469 l 150 428 l 158 526 q 158 662 158 570 q 158 801 158 754 l 147 888 l 383 879 l 412 879 q 628 887 520 879 q 624 848 626 870 q 622 818 622 826 l 626 760 l 425 761 l 227 761 q 221 631 227 717 q 216 500 216 544 q 375 536 296 536 q 572 465 491 536 q 654 279 654 394 q 550 60 654 139 q 304 -18 447 -18 q 179 -6 231 -18 q 75 34 127 4 q 101 201 87 118 l 116 201 "},"7":{"x_min":122.609375,"x_max":729.5625,"ha":749,"o":"m 461 553 l 586 770 l 362 770 q 129 755 232 770 q 133 786 132 769 q 135 820 135 804 q 128 888 135 853 l 408 883 l 729 887 l 729 871 q 463 429 582 641 q 251 0 344 216 l 194 8 q 153 5 169 8 q 122 0 137 2 q 214 146 179 91 q 333 339 249 201 q 461 553 417 477 "},"K":{"x_min":108,"x_max":856.625,"ha":821,"o":"m 255 314 q 261 132 255 250 q 268 0 268 13 q 229 4 255 0 q 188 8 202 8 q 148 4 174 8 q 108 0 121 0 q 117 239 108 70 q 126 465 126 408 q 122 712 126 621 q 108 932 119 803 q 153 928 124 932 q 188 925 183 925 q 231 928 203 925 q 267 932 259 932 l 255 671 l 255 499 q 480 693 375 586 q 687 932 585 800 q 732 932 710 932 q 777 932 753 932 l 837 932 q 606 727 720 830 q 389 522 493 623 q 525 358 465 426 q 666 202 586 290 q 856 0 747 115 l 746 0 q 692 -1 716 0 q 644 -8 669 -2 q 571 92 610 44 q 477 204 532 140 l 255 459 l 255 314 "},",":{"x_min":40.28125,"x_max":272.21875,"ha":374,"o":"m 131 75 q 160 147 144 120 q 213 175 176 175 q 272 119 272 175 q 259 67 272 91 q 231 18 245 43 l 73 -243 l 40 -231 l 131 75 "},"d":{"x_min":55,"x_max":676,"ha":758,"o":"m 668 762 l 672 137 l 676 -1 q 638 3 653 1 q 611 5 623 5 q 574 2 597 5 q 547 -1 551 -1 l 557 119 q 336 -15 484 -15 q 127 86 200 -15 q 55 330 55 187 q 127 569 55 467 q 332 672 199 672 q 457 643 402 672 q 551 556 513 615 l 551 756 l 551 789 l 551 818 q 542 1025 551 927 q 609 1018 576 1018 q 639 1019 628 1018 q 675 1025 651 1020 l 668 762 m 374 57 q 515 139 473 57 q 557 332 557 222 q 513 522 557 437 q 374 607 470 607 q 236 522 278 607 q 194 332 194 438 q 235 141 194 225 q 374 57 277 57 "},"¨":{"x_min":83.71875,"x_max":550.390625,"ha":625,"o":"m 471 659 q 441 593 458 618 q 389 568 424 568 q 350 579 365 568 q 335 613 335 591 q 346 660 335 633 q 371 706 358 687 l 519 950 l 550 940 l 471 659 m 221 659 q 192 593 211 618 q 137 568 174 568 q 83 613 83 568 q 93 658 83 637 q 119 706 103 680 l 268 950 l 300 940 l 221 659 "},"E":{"x_min":108,"x_max":613.5625,"ha":686,"o":"m 126 465 q 122 711 126 620 q 108 932 119 802 l 353 928 l 610 931 l 606 884 l 610 836 q 508 853 562 847 q 408 860 453 860 l 260 860 l 258 671 l 258 528 l 398 528 q 587 541 480 528 l 584 497 l 587 451 l 394 463 l 258 463 l 258 316 l 264 73 q 456 76 380 73 q 613 94 531 80 l 610 47 l 613 0 l 358 4 l 108 0 q 117 239 108 70 q 126 465 126 408 "},"Y":{"x_min":-28,"x_max":746,"ha":707,"o":"m 297 177 l 297 386 q 191 570 256 458 q 84 750 125 682 q -28 932 42 819 q 24 928 -9 932 q 63 925 59 925 q 112 927 91 925 q 146 932 134 930 q 207 800 174 866 q 275 676 239 735 l 389 475 q 509 688 451 575 q 627 932 567 801 l 683 926 q 715 927 701 926 q 746 932 729 929 q 555 627 640 769 l 432 415 l 432 240 q 435 101 432 198 q 438 0 438 5 q 401 4 426 1 q 361 6 376 6 q 319 4 334 6 q 284 0 304 2 q 292 88 288 36 q 297 177 297 140 "},"\"":{"x_min":64,"x_max":315,"ha":379,"o":"m 133 587 l 64 587 l 64 957 l 133 957 l 133 587 m 315 587 l 247 587 l 247 957 l 315 957 l 315 587 "},"ê":{"x_min":40,"x_max":646.9375,"ha":681,"o":"m 406 42 q 602 130 523 42 l 621 130 q 613 93 617 112 q 609 47 609 73 q 496 0 558 14 q 369 -15 435 -15 q 130 73 220 -15 q 40 311 40 162 q 126 562 40 456 q 355 669 212 669 q 564 590 481 669 q 646 386 646 512 l 644 331 q 438 333 562 331 q 314 335 315 335 l 179 331 q 235 127 179 212 q 406 42 291 42 m 296 978 l 386 978 l 537 743 l 488 743 l 340 875 l 193 743 l 143 743 l 296 978 m 513 392 l 513 437 q 470 563 513 509 q 356 618 427 618 q 233 552 271 618 q 183 390 195 487 l 513 392 "},"δ":{"x_min":41,"x_max":670,"ha":710,"o":"m 102 840 q 185 981 102 937 q 375 1025 268 1025 q 497 1010 436 1025 q 621 968 559 995 q 595 876 604 923 q 500 947 547 923 q 393 972 453 972 q 280 937 328 972 q 233 840 233 902 q 272 742 233 794 q 434 627 312 691 q 613 504 556 563 q 670 305 670 445 q 581 75 670 165 q 350 -15 492 -15 q 125 73 210 -15 q 41 305 41 162 q 113 526 41 430 q 306 622 186 622 q 145 726 189 674 q 102 840 102 779 m 356 576 q 221 492 261 576 q 181 302 181 409 q 223 118 181 203 q 356 34 265 34 q 490 116 450 34 q 530 307 530 198 q 489 492 530 409 q 356 576 449 576 "},"έ":{"x_min":53,"x_max":598.828125,"ha":628,"o":"m 506 516 q 433 591 467 566 q 353 616 400 616 q 261 580 298 616 q 225 492 225 545 q 268 406 225 437 q 372 375 311 375 l 418 375 l 417 352 l 417 313 l 343 317 q 237 282 281 317 q 193 185 193 247 q 238 78 193 118 q 352 38 284 38 q 460 66 410 38 q 543 144 510 94 q 553 99 547 121 q 567 54 558 76 q 452 2 515 19 q 321 -15 388 -15 q 134 31 216 -15 q 53 176 53 78 q 96 286 53 246 q 214 355 139 326 q 127 408 162 370 q 93 497 93 445 q 165 625 93 579 q 323 672 237 672 q 430 654 378 672 q 541 604 481 637 q 522 564 529 584 q 506 516 514 545 m 476 944 q 510 975 494 965 q 547 986 526 986 q 584 970 569 986 q 598 933 598 954 q 584 898 598 912 q 541 867 569 884 l 342 744 l 293 744 l 476 944 "},"ω":{"x_min":39.71875,"x_max":1028.9375,"ha":1068,"o":"m 535 526 l 596 528 l 594 305 q 616 117 594 193 q 722 42 638 42 q 850 118 811 42 q 888 293 888 194 q 829 502 888 409 q 664 654 769 594 l 717 648 q 805 654 766 648 q 967 510 905 606 q 1028 304 1028 413 q 948 81 1028 177 q 744 -15 867 -15 q 622 16 678 -15 q 534 104 566 47 q 445 16 500 48 q 323 -15 389 -15 q 118 83 196 -15 q 39 311 39 182 q 100 511 39 419 q 262 654 161 604 q 303 650 278 651 q 349 648 327 648 l 402 654 q 238 501 296 593 q 179 291 179 409 q 218 116 179 191 q 348 42 257 42 q 419 68 390 42 q 461 137 448 94 q 472 216 469 175 q 475 303 475 257 q 472 419 475 353 q 469 528 470 485 l 535 526 "},"´":{"x_min":90.28125,"x_max":305.5625,"ha":374,"o":"m 169 859 q 197 923 177 894 q 250 953 218 953 q 288 939 272 953 q 305 902 305 925 q 295 857 305 882 q 269 811 284 833 l 120 568 l 90 576 l 169 859 "},"±":{"x_min":169,"x_max":969,"ha":1139,"o":"m 602 549 l 969 549 l 969 482 l 602 482 l 602 247 l 534 247 l 534 482 l 169 482 l 169 549 l 534 549 l 534 779 l 602 779 l 602 549 m 969 33 l 169 33 l 169 100 l 969 100 l 969 33 "},"|":{"x_min":305,"x_max":376,"ha":683,"o":"m 376 448 l 305 448 l 305 956 l 376 956 l 376 448 m 376 -233 l 305 -233 l 305 272 l 376 272 l 376 -233 "},"ϋ":{"x_min":79,"x_max":703,"ha":774,"o":"m 703 395 q 595 110 703 236 q 332 -15 488 -15 q 145 54 211 -15 q 79 244 79 123 l 83 429 q 81 542 83 486 q 79 654 80 598 l 146 650 l 217 654 q 209 502 217 608 q 202 365 202 397 l 202 261 q 240 105 202 168 q 369 43 279 43 q 523 132 476 43 q 571 340 571 222 q 548 493 571 418 q 488 645 526 568 q 550 647 529 645 q 627 658 571 650 q 703 395 703 537 m 227 928 q 281 907 259 928 q 304 853 304 886 q 283 800 304 822 q 230 778 262 778 q 175 800 197 778 q 153 853 153 822 q 174 906 153 884 q 227 928 195 928 m 469 928 q 523 906 501 928 q 545 853 545 884 q 524 799 545 821 q 472 778 504 778 q 418 800 440 778 q 396 853 396 822 q 416 905 396 883 q 469 928 437 928 "},"§":{"x_min":64,"x_max":620,"ha":675,"o":"m 114 36 l 128 36 q 198 -76 148 -33 q 319 -120 247 -120 q 430 -78 384 -120 q 476 27 476 -37 q 369 169 476 116 q 170 252 269 210 q 64 419 64 312 q 91 522 64 476 q 171 609 119 568 q 122 739 122 669 q 195 896 122 837 q 369 956 268 956 q 473 940 422 956 q 576 894 523 925 q 559 864 568 882 q 521 775 551 846 l 508 775 q 445 871 483 839 q 343 903 407 903 q 251 867 289 903 q 213 777 213 832 q 318 644 213 694 q 514 563 415 604 q 620 408 620 507 q 592 299 620 348 q 515 213 565 251 q 560 143 544 179 q 576 65 576 108 q 494 -112 576 -46 q 298 -178 412 -178 q 179 -163 239 -178 q 76 -119 120 -148 q 97 -42 86 -89 q 114 36 108 4 m 138 479 q 257 340 138 396 q 478 238 376 285 q 524 285 508 261 q 541 342 541 310 q 384 490 541 423 q 197 587 228 556 q 156 532 175 563 q 138 479 138 501 "},"b":{"x_min":78,"x_max":703,"ha":758,"o":"m 152 1018 q 219 1025 181 1018 q 212 916 214 966 q 210 788 210 866 l 210 755 l 210 555 q 419 672 283 672 q 629 569 555 672 q 703 322 703 466 q 630 79 703 173 q 414 -15 558 -15 q 296 8 350 -15 q 193 79 242 31 q 160 49 175 64 q 120 -1 145 33 l 78 -1 q 87 106 82 43 q 92 213 92 169 l 92 545 q 88 784 92 625 q 85 1025 85 944 q 152 1018 119 1018 m 383 605 q 243 520 285 605 q 202 323 202 435 q 245 133 202 218 q 383 48 288 48 q 522 132 480 48 q 564 326 564 217 q 522 519 564 434 q 383 605 480 605 "},"q":{"x_min":54,"x_max":675,"ha":758,"o":"m 608 -368 q 579 -368 591 -368 q 540 -373 567 -369 q 549 -213 548 -312 q 551 -101 551 -115 l 551 99 q 339 -15 476 -15 q 130 82 207 -15 q 54 316 54 180 q 125 564 54 456 q 333 672 197 672 q 464 636 407 672 q 557 535 520 601 q 546 655 557 594 q 586 649 576 650 q 611 648 597 648 q 674 655 640 648 l 671 433 q 669 163 671 298 q 666 -106 668 27 l 675 -373 q 643 -369 658 -370 q 608 -368 627 -368 m 373 48 q 515 134 473 48 q 557 331 557 220 q 511 514 557 433 q 372 596 466 596 q 234 512 276 596 q 193 322 193 429 q 236 133 193 218 q 373 48 279 48 "},"Ω":{"x_min":8,"x_max":1119.125,"ha":1129,"o":"m 449 0 q 318 4 410 0 q 223 8 227 8 l 10 0 l 13 47 q 11 74 13 59 q 8 95 9 88 q 119 88 69 90 q 249 86 169 86 q 103 261 152 170 q 55 473 55 352 q 200 822 55 694 q 567 950 345 950 q 931 823 791 950 q 1072 473 1072 697 q 1025 261 1072 350 q 878 86 978 173 q 992 91 902 86 q 1119 96 1083 96 l 1114 33 l 1117 0 l 906 8 q 778 4 867 8 q 682 0 688 0 l 682 72 q 864 215 807 122 q 921 451 921 309 q 834 764 921 639 q 565 889 747 889 q 296 767 384 889 q 209 454 209 645 q 268 217 209 319 q 449 72 327 115 l 449 0 "},"ύ":{"x_min":79,"x_max":703,"ha":774,"o":"m 703 395 q 595 110 703 236 q 332 -15 488 -15 q 145 54 211 -15 q 79 244 79 123 l 83 429 q 81 541 83 484 q 79 652 80 597 l 146 648 l 217 652 q 209 502 217 606 q 202 365 202 397 l 202 261 q 240 105 202 168 q 369 43 279 43 q 523 132 476 43 q 571 340 571 222 q 548 491 571 416 q 488 644 526 566 q 550 646 529 644 q 627 656 571 648 q 703 395 703 536 m 499 941 q 532 972 517 962 q 568 983 547 983 q 606 967 592 983 q 620 930 620 952 q 605 894 620 910 q 564 865 590 878 l 365 741 l 316 741 l 499 941 "},"Ö":{"x_min":51,"x_max":1069,"ha":1121,"o":"m 51 465 q 191 819 51 688 q 559 950 332 950 q 891 852 750 950 q 1046 659 1031 755 q 1065 535 1062 562 q 1069 462 1069 508 q 1066 395 1069 416 q 1047 275 1063 373 q 894 80 1031 176 q 562 -15 756 -15 q 451 -8 503 -15 q 304 31 399 -2 q 130 187 209 65 q 51 465 51 308 m 439 1208 q 491 1186 470 1208 q 513 1133 513 1164 q 491 1080 513 1103 q 439 1058 470 1058 q 385 1080 409 1058 q 362 1133 362 1102 q 384 1186 362 1164 q 439 1208 407 1208 m 682 1208 q 735 1186 713 1208 q 757 1133 757 1164 q 735 1080 757 1103 q 682 1058 713 1058 q 628 1079 650 1058 q 607 1133 607 1101 q 628 1186 607 1164 q 682 1208 650 1208 m 204 469 q 292 162 204 283 q 559 42 380 42 q 827 162 739 42 q 916 469 916 283 q 825 767 916 648 q 559 887 735 887 q 349 825 430 887 q 226 638 267 763 q 204 469 204 558 "},"z":{"x_min":15.28125,"x_max":606.9375,"ha":647,"o":"m 15 29 q 164 224 88 124 q 302 416 240 323 l 418 586 l 270 586 q 181 581 218 586 q 62 565 145 577 l 68 609 l 62 654 q 181 648 115 650 q 330 646 248 646 l 363 646 l 393 646 q 606 654 500 646 l 606 626 q 453 428 545 549 q 317 246 361 306 q 194 68 273 185 l 343 68 q 456 72 400 68 q 594 86 513 77 l 588 42 l 594 0 l 280 8 q 148 4 237 8 q 15 0 59 0 l 15 29 "},"™":{"x_min":176,"x_max":918,"ha":1139,"o":"m 463 930 l 346 930 l 346 614 l 293 614 l 293 930 l 176 930 l 176 969 l 463 969 l 463 930 m 736 690 l 840 968 l 918 969 l 918 614 l 871 614 l 871 927 l 752 614 l 719 614 l 594 930 l 594 614 l 548 614 l 548 969 l 625 969 l 736 690 "},"ή":{"x_min":91,"x_max":662,"ha":754,"o":"m 594 -365 q 557 -366 577 -365 q 526 -369 537 -368 q 531 -189 526 -310 q 537 -7 537 -68 l 537 406 q 503 536 537 485 q 391 587 469 587 q 255 508 290 587 q 220 315 220 430 q 222 133 220 259 q 224 1 224 8 l 158 6 l 91 1 l 101 156 l 101 495 q 97 584 101 527 q 93 655 93 640 q 119 650 105 652 q 155 648 134 648 q 185 650 175 648 q 221 655 195 651 l 220 538 q 321 637 265 602 q 452 672 378 672 q 604 603 552 672 q 656 430 656 535 l 656 329 l 656 -186 q 659 -293 656 -227 q 662 -370 662 -359 q 630 -366 645 -368 q 594 -365 614 -365 m 481 944 q 515 975 499 965 q 552 986 531 986 q 589 970 575 986 q 603 933 603 955 q 589 898 603 912 q 547 868 575 884 l 348 744 l 298 744 l 481 944 "},"Θ":{"x_min":51,"x_max":1068,"ha":1119,"o":"m 51 465 q 193 820 51 690 q 562 950 335 950 q 893 852 755 950 q 1047 653 1031 755 q 1065 525 1062 551 q 1068 462 1068 500 q 1065 402 1068 426 q 1047 280 1062 379 q 892 83 1033 182 q 560 -15 751 -15 q 435 -7 480 -15 q 299 32 390 0 q 130 187 209 65 q 51 465 51 308 m 202 468 q 290 163 202 283 q 559 43 379 43 q 826 163 738 43 q 915 468 915 283 q 826 770 915 652 q 559 889 738 889 q 254 720 306 889 q 202 468 202 552 m 560 507 q 683 510 608 507 q 768 514 758 514 l 765 465 l 765 429 q 648 432 730 429 q 558 435 566 435 q 440 432 523 435 q 351 429 357 429 l 353 470 l 353 514 q 474 510 400 514 q 560 507 549 507 "},"®":{"x_min":80,"x_max":1058,"ha":1139,"o":"m 816 905 q 992 726 927 841 q 1058 481 1058 611 q 912 138 1058 283 q 567 -6 766 -6 q 225 139 370 -6 q 80 481 80 284 q 224 826 80 681 q 569 971 368 971 q 816 905 698 971 m 569 918 q 263 788 392 918 q 134 481 134 659 q 261 175 134 306 q 566 45 389 45 q 872 174 741 45 q 1004 478 1004 304 q 947 699 1004 596 q 787 859 890 801 q 569 918 684 918 m 815 619 q 776 521 815 562 q 681 468 738 480 l 809 209 l 709 208 l 592 456 l 462 457 l 462 209 l 376 209 l 376 771 l 581 771 q 745 737 676 771 q 815 619 815 704 m 462 714 l 462 513 l 566 513 q 682 532 635 513 q 729 611 729 551 q 681 692 729 671 q 564 714 634 714 l 462 714 "},"É":{"x_min":109,"x_max":614.5625,"ha":685,"o":"m 124 465 q 116 710 124 540 q 109 932 109 880 l 353 929 l 610 929 q 607 904 607 918 q 607 884 607 891 l 610 838 q 407 860 506 860 l 259 860 l 257 670 l 257 530 l 397 530 q 586 542 492 530 q 584 518 584 530 q 584 499 584 506 q 586 450 584 465 q 487 458 542 454 q 393 463 432 463 l 257 463 l 257 318 l 262 74 q 452 77 381 74 q 614 94 524 80 l 613 47 l 614 0 l 356 0 l 109 0 q 116 243 109 72 q 124 465 124 415 m 426 1225 q 461 1255 445 1244 q 499 1267 478 1267 q 536 1251 522 1267 q 549 1212 549 1236 q 533 1176 549 1192 q 492 1147 517 1160 l 292 1024 l 242 1024 l 426 1225 "},"~":{"x_min":284,"x_max":1080,"ha":1368,"o":"m 850 650 q 667 750 761 650 q 511 850 573 850 q 396 793 431 850 q 362 650 362 737 l 284 650 q 339 846 284 768 q 508 924 395 924 q 697 824 606 924 q 853 725 788 725 q 969 779 936 725 q 1002 924 1002 834 l 1080 924 q 1023 727 1080 805 q 850 650 966 650 "},"Ε":{"x_min":108,"x_max":613.5625,"ha":686,"o":"m 126 465 q 122 711 126 620 q 108 932 119 802 l 353 928 l 610 931 l 606 884 l 610 836 q 508 853 562 847 q 408 860 453 860 l 260 860 l 258 671 l 258 528 l 398 528 q 587 541 480 528 l 584 497 l 587 451 l 394 463 l 258 463 l 258 316 l 264 73 q 456 76 380 73 q 613 94 531 80 l 610 47 l 613 0 l 358 4 l 108 0 q 117 239 108 70 q 126 465 126 408 "},"³":{"x_min":48,"x_max":424,"ha":496,"o":"m 159 636 l 156 663 q 178 661 167 661 q 200 661 189 661 q 280 690 248 661 q 312 767 312 719 q 212 869 312 869 q 143 846 168 869 q 107 781 117 823 l 102 779 q 84 812 93 795 q 66 845 75 830 q 134 886 98 871 q 212 901 171 901 q 341 873 284 901 q 398 778 398 845 q 355 691 398 724 q 252 643 313 658 q 373 610 322 643 q 424 509 424 577 q 353 385 424 427 q 196 343 283 343 q 48 373 117 343 q 57 422 52 391 q 66 469 63 454 l 75 469 q 120 399 88 425 q 199 374 153 374 q 294 409 254 374 q 334 499 334 444 q 299 588 334 553 q 207 623 264 623 q 179 620 193 623 q 156 617 166 618 l 159 636 "},"[":{"x_min":116,"x_max":364.609375,"ha":449,"o":"m 127 2 l 127 386 l 127 769 l 116 932 l 235 929 l 364 929 l 363 908 l 363 872 q 263 880 313 880 l 216 880 l 216 387 l 216 -105 l 264 -105 q 329 -102 308 -105 q 364 -98 351 -99 l 363 -123 l 363 -158 l 237 -154 l 116 -158 q 121 -81 116 -138 q 127 2 127 -24 "},"L":{"x_min":108,"x_max":627.453125,"ha":629,"o":"m 126 465 q 122 712 126 621 q 108 932 119 803 q 149 930 126 932 q 188 926 173 927 q 233 929 202 926 q 268 932 265 932 q 263 797 268 883 q 258 684 258 711 q 261 332 258 577 q 264 73 264 86 l 402 73 q 512 78 458 73 q 627 94 566 84 l 624 47 l 627 0 l 358 4 l 108 0 q 117 239 108 70 q 126 465 126 408 "},"σ":{"x_min":41,"x_max":802.109375,"ha":806,"o":"m 625 644 l 802 651 l 797 611 l 802 566 l 626 573 q 690 464 671 527 q 710 327 710 402 q 616 81 710 177 q 371 -15 522 -15 q 131 78 222 -15 q 41 322 41 172 q 131 572 41 472 q 371 672 221 672 q 439 665 403 672 q 508 653 475 659 q 569 645 541 646 q 625 644 597 644 m 376 619 q 226 530 272 619 q 181 326 181 442 q 224 124 181 213 q 369 35 268 35 q 522 123 474 35 q 570 326 570 211 q 524 529 570 440 q 376 619 479 619 "},"ζ":{"x_min":75,"x_max":675,"ha":683,"o":"m 642 987 l 642 949 q 425 760 524 860 q 260 545 326 661 q 194 303 194 428 q 194 278 194 289 q 202 215 194 267 q 335 141 210 163 q 558 116 447 128 q 675 -7 675 91 q 643 -109 675 -65 q 544 -232 612 -154 l 500 -205 q 565 -113 555 -131 q 576 -66 576 -94 q 552 -20 576 -37 q 292 22 509 2 q 75 240 75 41 q 143 487 75 357 q 297 719 212 616 q 508 949 383 821 l 359 949 q 252 945 301 949 q 130 933 204 941 l 134 977 l 130 1025 q 272 1021 186 1025 q 372 1018 358 1018 q 526 1021 429 1018 q 643 1025 623 1025 l 642 987 "},"θ":{"x_min":48,"x_max":699,"ha":749,"o":"m 375 909 q 621 773 544 909 q 699 456 699 638 q 627 118 699 255 q 372 -19 556 -19 q 120 114 193 -19 q 48 444 48 247 q 122 773 48 638 q 375 909 196 909 m 184 383 q 221 136 184 242 q 374 31 259 31 q 534 137 505 31 q 564 424 564 244 l 408 428 l 184 423 l 184 383 m 371 858 q 257 804 300 858 q 196 673 214 751 q 186 581 189 630 q 184 483 184 532 l 322 478 q 461 480 364 478 q 564 483 558 483 q 528 747 564 637 q 371 858 493 858 "},"Ο":{"x_min":51,"x_max":1068,"ha":1119,"o":"m 51 465 q 192 820 51 690 q 559 950 333 950 q 892 853 754 950 q 1047 654 1031 757 q 1065 525 1062 551 q 1068 462 1068 500 q 1065 402 1068 426 q 1047 277 1062 379 q 894 80 1031 175 q 560 -15 756 -15 q 447 -10 496 -15 q 304 29 398 -5 q 130 186 210 64 q 51 465 51 308 m 202 468 q 290 162 202 282 q 559 42 379 42 q 826 162 738 42 q 915 468 915 283 q 825 770 915 651 q 559 889 735 889 q 348 826 429 889 q 225 639 267 764 q 202 468 202 552 "},"Γ":{"x_min":108,"x_max":627.453125,"ha":629,"o":"m 448 932 l 627 932 q 623 902 624 921 q 621 874 621 883 l 627 836 q 402 863 512 863 l 264 863 q 261 586 264 779 q 258 379 258 393 q 263 181 258 313 q 268 0 268 48 l 187 5 l 108 0 q 121 209 117 106 q 126 427 126 311 q 117 686 126 504 q 108 932 108 869 l 448 932 "}," ":{"x_min":0,"x_max":0,"ha":375},"%":{"x_min":28,"x_max":1011,"ha":1032,"o":"m 799 0 q 647 62 708 0 q 586 218 586 124 q 647 372 586 309 q 799 436 709 436 q 949 373 888 436 q 1011 223 1011 311 q 995 130 1011 176 q 918 35 972 70 q 799 0 865 0 m 863 1015 l 227 -125 l 158 -125 l 793 1015 l 863 1015 m 241 451 q 89 513 150 451 q 28 668 28 576 q 89 823 28 759 q 241 888 150 888 q 391 825 330 888 q 453 673 453 762 q 434 581 453 623 q 359 486 412 521 q 241 451 307 451 m 897 260 q 872 353 897 310 q 798 397 847 397 q 718 340 737 397 q 700 202 700 283 q 719 86 700 133 q 798 40 738 40 q 866 73 840 40 q 892 149 892 106 q 895 206 894 169 q 897 260 897 242 m 339 689 q 312 812 339 775 q 240 849 285 849 q 160 788 179 849 q 141 648 141 728 q 164 541 141 590 q 240 493 188 493 q 307 527 281 493 q 334 602 334 561 q 339 689 339 641 "},"P":{"x_min":109,"x_max":722,"ha":736,"o":"m 127 559 q 109 931 127 759 l 231 927 q 337 931 270 927 q 416 935 403 935 q 632 874 543 935 q 722 694 722 814 q 616 493 722 564 q 371 422 510 422 l 252 422 q 257 200 252 348 q 262 0 262 52 q 224 3 249 0 q 185 8 199 8 q 147 5 168 8 q 109 0 127 2 q 118 287 109 85 q 127 559 127 488 m 576 684 q 515 826 576 773 q 364 879 455 879 l 262 875 q 254 781 257 827 q 252 688 252 735 l 252 476 q 507 530 439 476 q 576 684 576 584 "},"Ώ":{"x_min":-1,"x_max":1355.953125,"ha":1365,"o":"m 685 0 q 555 4 646 0 q 460 8 464 8 l 247 0 l 250 47 q 248 74 250 59 q 244 95 246 88 q 355 88 305 90 q 486 86 405 86 q 340 261 389 170 q 292 473 292 352 q 437 822 292 694 q 804 950 582 950 q 1168 823 1028 950 q 1309 473 1309 697 q 1262 261 1309 350 q 1115 86 1215 173 q 1229 91 1139 86 q 1355 96 1319 96 l 1351 33 l 1354 0 l 1143 8 q 1014 4 1104 8 q 918 0 924 0 l 918 72 q 1100 215 1043 122 q 1158 451 1158 309 q 1071 764 1158 639 q 802 889 984 889 q 533 767 621 889 q 446 454 446 645 q 505 217 446 319 q 685 72 564 115 l 685 0 m 182 943 q 215 974 200 964 q 251 985 230 985 q 289 969 274 985 q 304 932 304 954 q 290 896 304 911 q 247 866 275 882 l 48 743 l -1 743 l 182 943 "},"Έ":{"x_min":-1.390625,"x_max":920.015625,"ha":992,"o":"m 432 465 q 428 711 432 620 q 414 932 425 802 l 660 928 l 917 932 l 912 884 l 917 836 q 814 853 868 847 q 714 860 760 860 l 567 860 l 564 671 l 564 528 l 704 528 q 893 541 786 528 l 890 497 l 893 451 l 700 462 l 564 462 l 564 317 l 570 74 q 762 77 686 74 q 920 94 838 80 l 917 47 l 920 0 l 664 4 l 414 0 q 423 239 414 70 q 432 465 432 408 m 181 943 q 215 974 200 964 q 251 985 230 985 q 288 969 273 985 q 304 932 304 954 q 289 896 304 911 q 247 866 275 882 l 47 743 l -1 743 l 181 943 "},"_":{"x_min":0,"x_max":683.328125,"ha":683,"o":"m 683 -322 l 0 -322 l 0 -256 l 683 -256 l 683 -322 "},"Ϊ":{"x_min":-3,"x_max":388,"ha":386,"o":"m 126 465 q 118 710 126 540 q 111 932 111 880 q 156 929 123 932 q 192 926 190 926 q 238 929 205 926 q 276 932 271 932 q 265 697 276 863 q 255 465 255 530 q 265 230 255 397 q 276 0 276 63 q 233 3 260 0 q 192 8 205 8 q 153 5 176 8 q 111 0 131 2 q 118 243 111 72 q 126 465 126 415 m 73 1208 q 124 1186 102 1208 q 146 1133 146 1164 q 123 1081 146 1105 q 73 1058 101 1058 q 19 1080 42 1058 q -3 1133 -3 1103 q 19 1185 -3 1163 q 73 1208 41 1208 m 313 1208 q 366 1186 344 1208 q 388 1133 388 1164 q 365 1080 388 1103 q 313 1058 342 1058 q 260 1080 283 1058 q 238 1133 238 1103 q 260 1185 238 1163 q 313 1208 282 1208 "},"+":{"x_min":169,"x_max":970,"ha":1139,"o":"m 603 441 l 970 441 l 970 374 l 603 374 l 603 0 l 536 0 l 536 374 l 169 374 l 169 441 l 536 441 l 536 816 l 603 816 l 603 441 "},"½":{"x_min":83,"x_max":1094.125,"ha":1172,"o":"m 250 743 l 245 836 q 181 804 205 818 q 120 768 156 791 q 104 788 117 775 q 83 808 91 801 q 200 851 141 825 q 327 913 259 877 l 336 911 q 331 724 336 850 q 326 551 326 598 l 326 391 q 301 394 319 391 q 280 397 283 397 q 254 394 271 397 q 233 391 238 391 q 246 551 242 473 q 250 743 250 629 m 859 1015 l 929 1015 l 312 -124 l 243 -124 l 859 1015 m 982 363 q 959 443 982 413 q 887 478 936 473 q 821 458 852 478 q 784 407 790 439 l 778 377 l 773 376 q 728 448 753 416 q 899 513 801 513 q 1019 476 967 513 q 1072 374 1072 439 q 955 189 1072 285 q 806 67 838 93 l 978 67 q 1094 79 1039 67 q 1090 63 1092 76 q 1088 41 1088 49 q 1094 3 1088 18 q 981 3 1056 3 q 867 3 906 3 q 791 3 842 3 q 714 3 739 3 l 714 25 q 913 198 844 125 q 982 363 982 270 "},"Ρ":{"x_min":109,"x_max":722,"ha":736,"o":"m 127 559 q 109 931 127 759 l 231 927 q 337 931 270 927 q 416 935 403 935 q 632 874 543 935 q 722 694 722 814 q 616 493 722 564 q 371 422 510 422 l 252 422 q 257 200 252 348 q 262 0 262 52 q 224 3 249 0 q 185 8 199 8 q 147 5 168 8 q 109 0 127 2 q 118 287 109 85 q 127 559 127 488 m 576 684 q 515 826 576 773 q 364 879 455 879 l 262 875 q 254 781 257 827 q 252 688 252 735 l 252 476 q 507 530 439 476 q 576 684 576 584 "},"'":{"x_min":88.890625,"x_max":306.9375,"ha":374,"o":"m 169 858 q 196 923 177 896 q 250 951 215 951 q 289 937 272 951 q 306 903 306 923 q 295 858 306 883 q 269 812 284 833 l 122 568 l 88 576 l 169 858 "},"T":{"x_min":11,"x_max":713,"ha":725,"o":"m 11 839 l 15 884 l 11 932 q 194 927 72 932 q 361 922 316 922 q 544 927 421 922 q 713 932 668 932 q 707 883 707 911 q 707 861 707 870 q 713 834 707 852 q 609 850 666 843 q 504 857 552 857 l 428 857 q 426 767 428 830 q 424 701 424 704 l 428 220 q 442 0 428 122 q 362 8 401 3 q 323 5 344 8 q 282 0 301 2 q 289 132 282 40 q 296 259 296 225 l 296 683 l 296 857 q 11 839 164 857 "},"Φ":{"x_min":50,"x_max":1068,"ha":1119,"o":"m 637 -25 q 559 -15 591 -15 q 527 -17 544 -15 q 483 -25 509 -19 l 487 68 q 181 179 313 68 q 50 465 50 291 q 172 744 50 647 q 487 865 295 842 l 483 958 q 522 952 502 955 q 559 950 543 950 q 596 952 576 950 q 637 958 616 955 l 631 865 q 942 758 816 865 q 1068 465 1068 651 q 944 184 1068 286 q 631 68 820 83 l 637 -25 m 501 502 q 497 677 501 570 q 494 800 494 784 q 278 698 354 786 q 203 466 203 611 q 282 231 203 331 q 494 132 361 132 q 497 363 494 225 q 501 502 501 501 m 915 466 q 839 706 915 612 q 626 800 764 800 q 622 636 626 738 q 618 470 618 533 q 622 301 618 408 q 626 132 626 194 q 839 226 764 132 q 915 466 915 320 "},"j":{"x_min":-55,"x_max":248,"ha":342,"o":"m 113 391 q 106 543 113 444 q 100 654 100 641 q 144 648 135 648 q 167 648 153 648 q 202 649 189 648 q 241 654 214 650 q 237 507 241 595 q 234 405 234 419 l 234 -13 l 234 -109 q 154 -303 234 -234 q -55 -372 74 -372 l -55 -333 q 78 -267 44 -323 q 113 -103 113 -212 l 113 -26 l 113 391 m 171 963 q 226 940 205 963 q 248 881 248 917 q 226 831 248 849 q 171 813 204 813 q 116 833 139 813 q 94 885 94 853 q 115 941 94 919 q 171 963 136 963 "},"Σ":{"x_min":44.4375,"x_max":790.28125,"ha":825,"o":"m 729 883 l 733 835 q 272 855 519 855 q 544 500 391 691 q 372 312 446 399 q 219 119 297 224 l 455 119 q 638 124 522 119 q 790 129 755 129 l 784 86 l 783 68 l 784 42 q 785 25 784 33 q 790 0 786 17 q 558 4 694 0 q 416 8 422 8 q 230 4 350 8 q 44 0 111 0 l 44 50 q 169 182 105 109 q 307 344 232 255 l 406 468 q 242 689 314 594 q 76 899 170 785 l 76 932 q 231 929 123 932 q 345 926 340 926 q 568 929 412 926 q 733 932 723 932 l 729 883 "},"1":{"x_min":72,"x_max":472,"ha":749,"o":"m 334 626 q 331 722 334 655 q 329 793 329 788 q 228 737 278 765 q 133 673 177 709 q 102 713 124 688 q 72 743 80 737 q 274 827 177 780 q 458 935 372 875 l 472 929 q 463 552 472 804 q 455 259 455 300 l 459 0 q 421 5 441 2 q 384 8 401 8 q 349 5 367 8 q 312 0 330 2 q 329 289 324 133 q 334 626 334 445 "},"ä":{"x_min":43,"x_max":655.5,"ha":649,"o":"m 234 -15 q 98 33 153 -15 q 43 162 43 82 q 106 303 43 273 q 303 364 169 333 q 444 448 437 395 q 403 568 444 521 q 288 616 362 616 q 191 587 233 616 q 124 507 149 559 l 95 520 l 104 591 q 202 651 144 631 q 323 672 261 672 q 500 622 444 672 q 557 455 557 573 l 557 133 q 567 69 557 84 q 618 54 577 54 q 655 58 643 54 l 655 26 q 594 5 626 14 q 537 -6 562 -3 q 438 85 453 -6 q 342 10 388 35 q 234 -15 296 -15 m 203 929 q 254 906 232 929 q 277 854 277 884 q 256 799 277 820 q 204 778 236 778 q 149 800 173 778 q 126 854 126 822 q 148 906 126 884 q 203 929 170 929 m 444 929 q 498 906 476 929 q 521 854 521 884 q 500 800 521 822 q 447 778 479 778 q 392 800 415 778 q 370 854 370 823 q 392 906 370 884 q 444 929 414 929 m 176 186 q 204 98 176 133 q 284 64 232 64 q 390 107 342 64 q 438 212 438 151 l 438 345 q 239 293 303 319 q 176 186 176 268 "},"<":{"x_min":176,"x_max":961.109375,"ha":1139,"o":"m 279 406 l 960 130 l 961 56 l 176 379 l 176 432 l 960 756 l 960 682 l 279 406 "},"£":{"x_min":65,"x_max":728.890625,"ha":749,"o":"m 67 47 l 65 98 l 116 101 q 203 168 176 112 q 231 292 231 224 q 227 375 231 330 q 221 444 223 420 q 139 441 171 444 q 76 432 107 439 l 78 479 l 76 503 q 105 495 92 498 q 134 493 117 493 l 219 493 q 212 550 214 522 q 209 609 209 578 q 304 825 209 742 q 537 909 399 909 q 633 896 592 909 q 723 864 673 884 q 666 731 694 809 l 656 731 q 605 825 641 791 q 512 859 570 859 q 383 796 427 859 q 340 646 340 734 l 345 493 l 366 493 q 523 502 450 493 l 521 466 l 526 434 q 438 441 493 439 q 345 444 383 444 l 345 378 q 310 238 345 302 q 213 107 275 173 q 527 113 421 107 q 728 134 633 119 l 721 66 q 728 0 721 34 q 542 3 666 0 q 358 8 419 8 q 176 3 285 8 q 65 0 67 0 l 67 47 "},"¹":{"x_min":82,"x_max":347,"ha":496,"o":"m 255 731 l 255 833 l 123 759 q 104 780 120 763 q 82 801 87 797 q 208 850 148 822 q 337 917 269 878 l 347 912 q 341 721 347 848 q 336 529 336 593 l 336 356 q 311 358 327 356 q 289 361 295 361 q 264 358 280 361 q 242 356 248 356 q 251 498 247 407 q 255 731 255 590 "},"t":{"x_min":18,"x_max":415.21875,"ha":425,"o":"m 18 586 l 22 630 l 18 654 q 133 643 80 643 q 131 732 133 669 q 129 799 129 796 q 199 827 163 811 q 263 863 234 843 q 252 758 255 811 q 250 643 250 705 q 334 645 310 643 q 401 654 358 647 l 398 618 l 401 586 q 248 594 323 594 l 243 258 l 243 162 q 272 76 243 109 q 353 43 301 43 q 387 44 369 43 q 415 48 405 46 l 415 4 q 349 -10 378 -5 q 290 -15 319 -15 q 174 18 221 -15 q 123 118 128 51 l 123 200 l 129 387 l 133 594 q 84 592 113 594 q 18 586 55 590 "},"λ":{"x_min":2.78125,"x_max":652.78125,"ha":657,"o":"m 302 670 q 227 871 262 803 q 111 940 193 940 q 78 937 94 940 q 20 924 62 934 l 20 978 q 96 1012 59 1000 q 170 1025 133 1025 q 329 947 287 1025 q 427 692 372 869 q 538 340 481 515 q 652 1 594 166 l 579 5 l 504 0 q 336 573 423 305 q 218 301 272 438 q 111 0 163 163 l 61 6 q 27 3 48 6 q 2 0 5 0 q 302 670 165 329 "},"ù":{"x_min":90,"x_max":664,"ha":754,"o":"m 653 498 q 653 329 653 443 q 653 158 653 215 q 664 0 653 81 q 631 3 647 1 q 598 5 616 5 q 563 3 583 5 q 533 0 544 1 l 538 118 q 440 18 494 52 q 312 -15 385 -15 q 148 50 201 -15 q 96 229 96 115 l 96 354 l 96 516 l 90 655 q 120 650 103 651 q 158 648 136 648 q 192 650 175 648 q 227 655 210 651 q 220 445 227 591 q 213 247 213 299 q 247 115 213 163 q 362 68 281 68 q 477 113 428 68 q 531 217 525 159 q 538 340 538 274 q 533 520 538 394 q 528 655 528 647 q 561 650 548 651 q 596 648 574 648 q 663 655 628 648 q 653 498 653 573 m 445 743 l 244 866 q 205 896 223 877 q 187 934 187 915 q 202 970 187 955 q 238 986 217 986 q 277 973 256 986 q 309 945 298 961 l 496 743 l 445 743 "},"W":{"x_min":0,"x_max":1306.953125,"ha":1307,"o":"m 0 932 q 47 927 31 929 q 76 926 62 926 q 121 929 88 926 q 155 931 154 931 q 262 547 200 750 l 380 171 q 470 437 415 272 q 552 693 525 602 q 619 931 580 784 l 672 926 q 700 928 684 926 q 726 931 716 930 q 825 604 787 727 q 883 419 862 482 q 969 171 904 357 l 1087 522 q 1143 720 1120 623 q 1187 931 1166 816 q 1221 929 1197 931 q 1247 926 1245 926 q 1280 928 1262 926 q 1306 931 1298 930 q 1131 467 1218 716 q 990 0 1045 217 q 963 4 980 1 q 937 7 947 7 q 904 3 925 7 q 880 0 883 0 q 761 385 831 184 l 641 733 l 491 287 q 402 0 438 133 q 370 3 391 0 q 344 7 350 7 q 315 4 327 7 q 287 0 302 2 q 206 296 252 142 q 122 568 161 450 q 0 932 83 686 "},"ï":{"x_min":-25,"x_max":365.328125,"ha":340,"o":"m 104 144 l 104 522 l 97 655 q 138 650 113 651 q 167 648 162 648 q 233 655 206 648 q 225 506 225 581 q 229 254 225 423 q 233 0 233 84 q 201 3 216 1 q 164 5 186 5 q 128 3 143 5 q 97 0 113 1 l 104 144 m 50 929 q 102 906 80 929 q 125 854 125 884 q 104 799 125 820 q 52 778 84 778 q -2 800 19 778 q -25 854 -25 822 q -4 906 -25 884 q 50 929 16 929 m 290 929 q 343 906 320 929 q 365 854 365 884 q 345 799 365 820 q 294 778 324 778 q 238 800 260 778 q 216 854 216 822 q 237 906 216 884 q 290 929 258 929 "},">":{"x_min":176.390625,"x_max":963,"ha":1139,"o":"m 963 379 l 176 56 l 176 130 l 858 406 l 176 682 l 176 756 l 962 432 l 963 379 "},"v":{"x_min":0,"x_max":658.328125,"ha":654,"o":"m 0 655 q 54 648 38 648 q 86 647 69 647 q 113 647 100 647 q 168 654 127 648 q 252 402 204 529 l 358 134 l 470 436 q 543 654 508 533 q 570 650 554 651 q 600 648 586 648 q 636 648 618 648 q 658 654 652 652 q 506 340 577 502 q 372 0 436 177 q 347 5 362 2 q 319 8 333 8 q 296 5 309 8 q 272 0 283 2 q 200 206 234 120 q 0 655 165 292 "},"τ":{"x_min":30,"x_max":677,"ha":701,"o":"m 423 573 l 419 303 q 423 146 419 250 q 428 0 428 42 q 394 4 410 2 q 359 5 378 5 q 333 4 343 5 q 289 0 323 4 l 298 194 l 294 573 q 156 553 207 573 q 57 472 105 534 q 30 559 49 522 q 149 626 82 609 q 307 644 216 644 l 510 644 q 604 647 545 644 q 677 651 664 651 l 671 610 q 677 566 671 586 q 527 569 618 566 q 423 573 436 573 "},"û":{"x_min":90,"x_max":664,"ha":754,"o":"m 653 498 q 653 328 653 442 q 653 158 653 215 q 664 0 653 81 q 631 3 647 1 q 598 5 616 5 q 563 3 583 5 q 533 0 544 1 l 538 118 q 440 18 494 52 q 312 -15 385 -15 q 148 50 201 -15 q 96 229 96 115 l 96 354 l 96 516 l 90 655 q 120 650 103 651 q 158 648 136 648 q 192 649 175 648 q 227 655 210 651 q 220 445 227 591 q 213 247 213 299 q 247 115 213 163 q 362 68 281 68 q 477 113 428 68 q 531 217 525 159 q 538 340 538 274 q 533 520 538 394 q 528 655 528 647 q 558 650 542 651 q 596 648 574 648 q 629 649 612 648 q 663 655 646 651 q 653 498 653 573 m 332 978 l 421 978 l 572 743 l 525 743 l 376 875 l 227 743 l 180 743 l 332 978 "},"ξ":{"x_min":64,"x_max":654,"ha":656,"o":"m 562 861 q 502 941 539 911 q 414 972 465 972 q 299 917 342 972 q 256 788 256 862 q 312 650 256 701 q 458 599 369 599 l 526 599 l 524 563 l 524 528 q 480 533 503 532 q 427 535 457 535 q 271 494 337 535 q 197 408 205 454 q 187 347 188 361 q 186 326 186 333 q 186 294 186 300 q 190 282 187 287 q 238 200 201 229 q 335 153 276 171 l 494 118 q 610 73 567 100 q 654 -13 654 46 q 628 -103 654 -60 q 511 -238 602 -146 l 466 -210 q 541 -121 530 -139 q 553 -75 553 -103 q 393 16 553 -18 q 149 92 234 50 q 64 276 64 133 q 130 462 64 379 q 299 575 197 544 q 175 652 222 600 q 128 780 128 704 q 213 954 128 883 q 405 1025 298 1025 q 507 1009 458 1025 q 609 965 555 994 q 585 914 600 945 q 562 861 571 883 "},"&":{"x_min":76,"x_max":917.671875,"ha":975,"o":"m 360 -18 q 160 41 245 -18 q 76 211 76 101 q 137 382 76 315 q 314 515 199 448 q 249 618 273 569 q 225 722 225 668 q 287 872 225 812 q 441 932 349 932 q 581 891 520 932 q 643 777 643 851 q 588 640 643 701 q 453 532 533 579 q 568 390 509 459 q 690 253 627 321 q 815 530 792 379 l 829 530 l 887 466 q 814 327 856 396 q 727 209 772 259 q 807 115 760 169 q 917 0 853 61 q 855 1 896 0 q 791 2 813 2 l 739 0 l 649 110 q 515 15 586 48 q 360 -18 445 -18 m 341 475 q 234 380 267 419 q 201 273 201 340 q 258 125 201 190 q 401 61 316 61 q 508 86 458 61 q 606 154 559 111 l 341 475 m 547 770 q 524 854 547 823 q 454 886 502 886 q 363 851 402 886 q 325 769 325 817 q 344 685 325 718 q 422 575 363 652 q 514 661 481 615 q 547 770 547 708 "},"Λ":{"x_min":0,"x_max":852.78125,"ha":853,"o":"m 662 452 l 778 172 l 852 0 l 769 5 q 734 4 747 5 q 679 0 722 4 q 647 102 661 55 q 605 226 633 148 l 547 383 l 401 777 l 266 429 q 191 213 226 319 q 125 0 157 108 l 62 2 l 0 0 q 205 459 95 191 q 380 932 315 726 q 404 927 393 929 q 431 926 416 926 q 459 929 441 926 q 487 932 477 932 q 548 743 511 850 q 662 452 586 637 "},"I":{"x_min":109,"x_max":271,"ha":385,"o":"m 127 465 q 123 711 127 620 q 109 932 120 803 q 154 927 129 929 q 190 925 179 925 q 238 928 209 925 q 271 931 266 931 q 263 788 271 887 q 256 659 256 690 l 256 448 l 256 283 q 263 135 256 238 q 271 0 271 31 q 231 3 258 0 q 190 8 204 8 q 151 5 172 8 q 109 0 129 2 q 118 239 109 70 q 127 465 127 408 "},"G":{"x_min":51,"x_max":942,"ha":1001,"o":"m 581 -15 q 198 107 345 -15 q 51 459 51 229 q 196 815 51 680 q 566 950 342 950 q 755 929 659 950 q 930 869 852 909 q 906 802 916 836 q 895 737 897 769 l 874 737 q 739 855 808 818 q 571 893 670 893 q 305 770 406 893 q 204 479 204 647 q 298 168 204 291 q 577 46 393 46 q 689 56 640 46 q 790 94 738 66 q 794 184 790 123 q 798 251 798 246 q 794 337 798 280 q 790 423 790 394 q 830 417 821 418 q 863 416 838 416 q 901 419 880 416 q 941 425 923 422 l 936 236 q 939 121 936 201 q 942 37 942 41 q 757 -1 843 11 q 581 -15 672 -15 "},"ΰ":{"x_min":79,"x_max":703,"ha":774,"o":"m 703 395 q 595 110 703 236 q 332 -15 488 -15 q 145 54 211 -15 q 79 244 79 123 l 83 430 q 81 542 83 486 q 79 654 80 598 l 146 650 l 217 654 q 209 502 217 608 q 202 365 202 397 l 202 261 q 240 105 202 168 q 369 43 279 43 q 523 132 476 43 q 571 340 571 222 q 548 493 571 418 q 488 645 526 568 q 550 647 529 645 q 627 658 571 650 q 703 395 703 537 m 209 865 q 250 846 232 865 q 269 804 269 828 q 251 761 269 780 q 209 743 234 743 q 166 761 184 743 q 148 804 148 779 q 166 846 148 828 q 209 865 184 865 m 361 929 q 378 969 368 956 q 414 982 388 982 q 458 941 458 982 q 446 904 458 919 l 338 743 l 306 743 l 361 929 m 513 865 q 555 846 537 865 q 573 804 573 828 q 555 761 573 779 q 513 743 537 743 q 470 761 487 743 q 454 804 454 779 q 470 846 454 828 q 513 865 487 865 "},"`":{"x_min":86.5,"x_max":303.171875,"ha":374,"o":"m 222 659 q 194 595 214 622 q 140 568 175 568 q 86 613 86 568 q 96 660 86 636 q 122 706 107 684 l 271 950 l 303 940 l 222 659 "},"Υ":{"x_min":-28,"x_max":746,"ha":707,"o":"m 297 177 l 297 386 q 191 570 256 458 q 84 750 125 682 q -28 932 42 819 q 24 928 -9 932 q 63 925 59 925 q 112 927 91 925 q 146 932 134 930 q 207 800 174 866 q 275 676 239 735 l 389 475 q 509 688 451 575 q 627 932 567 801 l 683 926 q 715 927 701 926 q 746 932 729 929 q 555 627 640 769 l 432 415 l 432 240 q 435 101 432 198 q 438 0 438 5 q 401 4 426 1 q 361 6 376 6 q 319 4 334 6 q 284 0 304 2 q 292 88 288 36 q 297 177 297 140 "},"r":{"x_min":89,"x_max":465.390625,"ha":488,"o":"m 99 120 l 99 400 l 99 433 q 91 654 99 548 q 125 648 114 650 q 162 647 136 647 q 232 654 195 647 q 223 588 226 626 q 220 516 220 550 q 313 628 264 589 q 437 668 362 668 l 465 668 l 459 604 l 465 537 q 427 544 448 541 q 383 551 407 548 q 256 482 292 551 q 220 312 220 413 q 222 131 220 256 q 225 0 225 6 l 157 6 l 89 0 l 99 120 "},"x":{"x_min":1,"x_max":635,"ha":632,"o":"m 264 316 l 158 461 q 78 563 120 508 q 5 655 36 619 q 97 647 51 647 q 141 649 120 647 q 177 654 162 651 q 249 538 214 592 q 334 415 284 484 q 420 533 377 473 q 501 654 464 592 q 523 650 508 652 q 550 647 539 648 q 616 654 582 647 l 371 365 q 477 210 434 267 q 635 0 519 152 q 587 3 616 0 q 551 6 558 6 q 501 4 523 6 q 465 0 479 1 q 380 140 407 98 q 295 264 352 183 q 172 84 194 117 q 123 0 151 51 l 66 5 q 33 2 55 5 q 1 0 10 0 q 131 154 63 72 q 264 316 199 236 "},"è":{"x_min":40,"x_max":646.9375,"ha":681,"o":"m 407 42 q 602 130 523 42 l 621 130 q 613 93 617 112 q 609 47 609 73 q 496 0 558 14 q 369 -15 435 -15 q 130 73 220 -15 q 40 311 40 162 q 126 562 40 456 q 355 669 212 669 q 564 590 481 669 q 646 386 646 512 l 644 331 q 438 333 562 331 q 313 335 315 335 l 179 331 q 235 127 179 212 q 407 42 291 42 m 407 743 l 208 866 q 166 895 183 880 q 149 934 149 911 q 167 967 149 949 q 202 986 185 986 q 243 969 220 986 q 273 945 266 952 l 457 743 l 407 743 m 513 392 l 513 437 q 470 563 513 509 q 356 618 427 618 q 233 552 271 618 q 183 390 195 487 l 513 392 "},"μ":{"x_min":84,"x_max":669.109375,"ha":754,"o":"m 331 -15 q 265 -7 292 -15 q 210 19 238 0 l 208 -128 q 211 -266 208 -178 q 214 -373 214 -354 q 183 -369 198 -370 q 150 -368 168 -368 q 114 -370 133 -368 q 84 -373 95 -372 q 89 -165 84 -304 q 94 43 94 -26 q 89 363 94 149 q 84 655 84 578 q 150 647 118 647 q 219 654 180 647 q 213 495 219 601 q 208 334 208 390 q 232 155 208 227 q 339 75 256 83 q 471 112 419 75 q 531 212 523 150 q 539 332 539 273 q 536 518 539 388 q 533 655 533 648 q 600 647 568 647 q 669 654 629 647 q 660 477 662 566 q 658 257 658 389 q 660 113 658 171 q 669 -1 662 55 l 602 4 l 537 -1 l 539 106 q 449 17 502 50 q 331 -15 397 -15 "},"÷":{"x_min":169,"x_max":969,"ha":1139,"o":"m 641 643 q 618 593 641 615 q 566 571 596 571 q 518 592 538 571 q 498 643 498 613 q 518 692 498 670 q 567 715 539 715 q 610 703 579 715 q 641 643 641 691 m 969 374 l 169 374 l 169 441 l 969 441 l 969 374 m 641 170 q 619 120 641 141 q 570 100 598 100 q 519 120 540 100 q 498 170 498 141 q 518 221 498 199 q 568 243 538 243 q 604 235 584 243 q 632 214 624 227 q 641 170 641 201 "},"h":{"x_min":92,"x_max":665,"ha":758,"o":"m 102 136 l 102 859 q 100 934 102 894 q 94 1025 98 975 q 136 1018 126 1019 q 158 1018 146 1018 q 226 1025 188 1018 q 222 957 223 1001 q 221 888 221 913 l 221 868 l 221 543 q 322 637 264 602 q 450 672 380 672 q 608 606 558 672 q 659 429 659 541 l 659 298 l 659 136 l 665 0 q 633 3 648 1 q 597 5 617 5 q 560 3 580 5 q 529 0 540 1 q 534 202 529 68 q 540 405 540 337 q 503 533 540 481 q 394 586 467 586 q 256 508 291 586 q 221 313 221 430 q 224 133 221 244 q 227 0 227 22 q 188 3 211 0 q 161 6 164 6 q 123 4 137 6 q 92 0 108 2 l 102 136 "},".":{"x_min":100,"x_max":274,"ha":374,"o":"m 187 156 q 248 130 223 156 q 274 68 274 105 q 248 8 274 32 q 187 -15 223 -15 q 125 8 150 -15 q 100 68 100 32 q 125 130 100 105 q 187 156 150 156 "},"φ":{"x_min":39,"x_max":965,"ha":1006,"o":"m 578 -371 q 505 -362 539 -362 q 465 -365 483 -362 q 427 -372 446 -368 q 433 -163 427 -298 q 440 -11 440 -29 q 156 76 274 -11 q 39 327 39 163 q 145 571 39 486 q 410 656 252 656 q 412 635 411 645 q 413 615 413 625 q 235 516 292 580 q 179 327 179 451 q 247 118 179 197 q 442 39 316 39 l 444 197 l 444 311 q 444 400 444 340 q 444 491 444 461 q 514 619 452 570 q 657 668 577 668 q 879 568 794 668 q 965 332 965 469 q 850 84 965 169 q 563 -14 735 0 q 570 -203 563 -71 q 578 -371 578 -334 m 826 347 q 794 534 826 451 q 677 617 763 617 q 592 572 621 617 q 563 470 563 527 l 559 350 l 563 39 q 759 126 693 39 q 826 347 826 213 "},";":{"x_min":72.609375,"x_max":312,"ha":446,"o":"m 224 636 q 287 611 262 636 q 312 548 312 586 q 287 486 312 511 q 224 461 262 461 q 162 486 188 461 q 137 548 137 512 q 162 611 137 586 q 224 636 187 636 m 164 75 q 198 157 182 140 q 244 175 214 175 q 304 119 304 175 q 296 75 304 93 q 262 18 287 56 l 103 -243 l 72 -231 l 164 75 "},"f":{"x_min":12,"x_max":432.546875,"ha":397,"o":"m 127 324 l 127 597 q 66 595 92 597 q 12 588 39 594 l 14 626 l 12 654 q 79 648 38 649 q 127 647 121 647 q 192 901 127 777 q 378 1025 257 1025 q 409 1022 400 1025 q 432 1015 418 1019 l 415 896 q 371 911 395 905 q 325 918 347 918 q 252 886 278 918 q 227 805 227 855 q 235 713 227 760 q 246 647 243 665 q 330 650 276 647 q 396 654 384 654 q 391 642 393 647 q 389 633 389 637 l 388 622 l 389 610 q 396 589 389 609 q 323 595 357 594 q 246 597 289 597 l 246 366 q 250 183 246 305 q 254 0 254 60 q 213 3 238 0 q 183 6 187 6 q 144 4 161 6 q 116 0 127 1 q 121 160 116 52 q 127 324 127 269 "},"“":{"x_min":83.71875,"x_max":550.390625,"ha":625,"o":"m 471 659 q 441 593 458 618 q 389 568 424 568 q 350 579 365 568 q 335 613 335 591 q 346 660 335 633 q 371 706 358 687 l 519 950 l 550 940 l 471 659 m 221 659 q 192 593 211 618 q 137 568 174 568 q 83 613 83 568 q 93 658 83 637 q 119 706 103 680 l 268 950 l 300 940 l 221 659 "},"A":{"x_min":-15.28125,"x_max":838.890625,"ha":825,"o":"m 257 639 l 387 950 q 402 945 395 947 q 417 944 409 944 q 452 950 437 944 q 576 629 536 733 q 686 359 617 526 q 838 0 755 192 q 789 3 820 0 q 751 6 758 6 q 700 4 723 6 q 663 0 677 1 q 600 199 622 137 q 543 353 579 260 l 377 358 l 215 353 l 162 205 q 130 110 145 160 q 101 0 115 59 l 44 5 q 6 2 20 5 q -15 0 -8 0 q 76 211 30 105 q 158 404 121 318 q 257 639 195 490 m 378 419 l 513 425 l 379 761 l 246 425 l 378 419 "},"6":{"x_min":64,"x_max":692,"ha":749,"o":"m 464 859 q 267 730 324 859 q 210 442 210 602 q 315 514 262 488 q 431 540 367 540 q 618 462 545 540 q 692 270 692 385 q 604 65 692 145 q 390 -15 516 -15 q 142 93 221 -15 q 64 377 64 201 q 167 745 64 581 q 462 909 270 909 q 524 905 501 909 q 579 890 547 902 l 574 827 q 521 851 547 844 q 464 859 495 859 m 554 258 q 510 409 554 347 q 380 471 466 471 q 255 409 300 471 q 210 264 210 348 q 253 105 210 172 q 384 39 297 39 q 485 73 441 39 q 540 148 529 108 q 552 206 551 187 q 554 258 554 225 "},"‘":{"x_min":86.5,"x_max":303.171875,"ha":374,"o":"m 224 659 q 193 594 212 620 q 140 568 174 568 q 86 615 86 568 q 98 660 86 633 q 122 708 110 687 l 271 951 l 303 942 l 224 659 "},"ϊ":{"x_min":-29,"x_max":362,"ha":342,"o":"m 104 333 l 104 520 q 103 566 104 544 q 96 654 102 588 q 140 647 130 648 q 165 647 151 647 q 232 654 195 647 q 224 555 225 599 q 223 437 223 511 l 223 406 q 228 194 223 337 q 233 0 233 51 q 201 3 216 1 q 165 5 185 5 q 127 3 148 5 q 96 0 107 1 q 100 165 96 51 q 104 333 104 279 m 45 928 q 99 907 77 928 q 122 853 122 886 q 101 800 122 822 q 48 778 80 778 q -6 800 15 778 q -29 853 -29 822 q -7 906 -29 884 q 45 928 13 928 m 286 928 q 340 906 318 928 q 362 853 362 884 q 341 799 362 821 q 289 778 321 778 q 235 800 257 778 q 213 853 213 822 q 233 905 213 883 q 286 928 254 928 "},"π":{"x_min":19,"x_max":957,"ha":989,"o":"m 702 5 l 635 0 q 639 114 635 44 q 643 196 643 185 l 643 575 l 508 575 l 373 575 l 369 284 q 373 143 369 236 q 377 0 377 50 q 345 3 360 1 q 309 5 329 5 q 271 3 292 5 q 239 0 250 1 l 248 196 l 243 575 q 130 553 171 575 q 43 472 89 532 q 19 559 35 519 q 139 627 71 611 q 305 644 207 644 l 658 644 l 852 644 l 957 651 l 951 610 l 957 566 l 769 575 l 765 310 q 769 154 765 257 q 773 0 773 51 q 739 3 755 1 q 702 5 724 5 "},"ά":{"x_min":41,"x_max":827.109375,"ha":846,"o":"m 705 352 q 803 -1 763 155 l 739 1 l 673 -1 l 632 172 q 521 36 593 87 q 356 -15 448 -15 q 129 81 217 -15 q 41 316 41 177 q 130 569 41 467 q 368 672 220 672 q 537 622 464 672 q 659 486 610 573 q 711 654 691 569 l 770 650 l 827 654 q 763 505 792 576 q 705 352 734 434 m 518 943 q 552 974 536 964 q 589 985 568 985 q 626 969 611 985 q 641 932 641 953 q 627 897 641 911 q 585 866 613 883 l 384 743 l 335 743 l 518 943 m 377 619 q 226 530 272 619 q 181 326 181 442 q 223 124 181 214 q 367 34 265 34 q 528 137 480 34 q 601 323 577 240 q 527 531 578 444 q 377 619 475 619 "},"O":{"x_min":51,"x_max":1068,"ha":1119,"o":"m 51 465 q 192 820 51 690 q 559 950 333 950 q 892 853 754 950 q 1047 654 1031 757 q 1065 525 1062 551 q 1068 462 1068 500 q 1065 402 1068 426 q 1047 277 1062 379 q 894 80 1031 175 q 560 -15 756 -15 q 447 -10 496 -15 q 304 29 398 -5 q 130 186 210 64 q 51 465 51 308 m 202 468 q 290 162 202 282 q 559 42 379 42 q 826 162 738 42 q 915 468 915 283 q 825 770 915 651 q 559 889 735 889 q 348 826 429 889 q 225 639 267 764 q 202 468 202 552 "},"n":{"x_min":89,"x_max":661,"ha":754,"o":"m 99 155 l 99 495 q 97 569 99 530 q 91 655 95 608 q 153 648 122 648 l 219 656 l 218 539 q 319 635 260 599 q 451 672 378 672 q 591 624 528 672 q 654 501 654 576 l 654 299 l 654 136 l 661 0 q 629 3 644 1 q 593 5 613 5 q 556 3 576 5 q 525 0 536 1 q 530 222 525 80 q 535 406 535 364 q 501 536 535 485 q 389 587 467 587 q 253 508 288 587 q 218 313 218 430 q 220 132 218 258 q 222 0 222 6 q 184 3 208 0 q 155 6 159 6 q 117 3 141 6 q 89 0 93 0 l 99 155 "},"3":{"x_min":75,"x_max":644,"ha":749,"o":"m 241 465 l 238 512 l 294 510 q 424 554 375 510 q 474 680 474 599 q 434 805 474 754 q 322 856 394 856 q 220 818 257 856 q 164 711 183 780 l 153 706 q 127 767 136 747 q 99 819 118 788 q 220 886 162 863 q 348 909 278 909 q 526 857 450 909 q 603 706 603 805 q 542 564 603 617 q 383 479 482 511 q 567 423 490 479 q 644 262 644 366 q 542 55 644 129 q 302 -18 441 -18 q 183 -6 240 -18 q 75 32 127 5 q 99 189 91 116 l 113 188 q 182 73 136 115 q 302 31 229 31 q 448 92 392 31 q 505 246 505 154 q 451 389 505 333 q 312 446 398 446 q 238 435 279 446 l 241 465 "},"9":{"x_min":57,"x_max":688,"ha":749,"o":"m 261 38 q 475 166 405 38 q 546 451 546 295 q 442 378 494 403 q 325 354 389 354 q 132 428 208 354 q 57 617 57 502 q 148 828 57 748 q 372 909 240 909 q 612 801 536 909 q 688 520 688 693 q 574 143 688 305 q 252 -18 461 -18 q 186 -14 211 -18 q 127 0 161 -11 l 113 90 q 180 51 143 64 q 261 38 218 38 m 372 419 q 501 482 457 419 q 546 634 546 545 q 504 790 546 725 q 373 855 462 855 q 238 791 284 855 q 193 637 193 727 q 238 482 193 545 q 372 419 284 419 "},"l":{"x_min":100,"x_max":237.5,"ha":342,"o":"m 107 118 l 107 881 q 104 965 107 915 q 101 1025 101 1016 q 169 1018 138 1018 q 237 1025 203 1018 q 228 872 230 948 q 226 684 226 797 l 226 512 l 232 111 l 237 0 q 205 3 220 1 q 169 5 189 5 q 131 3 152 5 q 100 0 111 1 l 107 118 "},"κ":{"x_min":97,"x_max":677.5625,"ha":683,"o":"m 104 365 q 100 531 104 428 q 97 655 97 634 q 164 647 134 647 q 231 654 196 647 q 227 516 231 608 q 223 377 223 425 l 258 377 q 386 498 323 431 q 528 654 449 565 q 588 647 563 647 q 640 647 613 647 q 672 652 662 651 l 358 387 l 548 165 q 608 93 577 127 q 677 19 638 59 l 677 0 q 628 3 659 0 q 591 6 596 6 q 544 3 567 6 q 510 0 520 0 q 437 100 477 47 q 360 196 398 153 l 269 308 l 252 323 l 223 326 q 227 163 223 274 q 231 0 231 52 l 164 5 l 97 0 q 100 208 97 77 q 104 365 104 339 "},"4":{"x_min":39,"x_max":691.78125,"ha":749,"o":"m 453 252 l 177 257 l 39 253 l 39 291 q 204 522 111 392 q 345 721 297 653 q 475 906 394 789 l 527 906 l 581 906 q 575 805 581 872 q 569 705 569 739 l 569 343 l 598 343 q 644 344 620 343 q 690 350 667 345 l 683 297 q 686 270 683 287 q 691 244 689 254 q 568 253 629 253 l 568 137 l 569 0 l 505 6 l 437 0 q 450 120 447 51 q 453 252 453 190 m 453 767 l 344 626 q 230 465 298 562 q 144 343 162 368 l 453 343 l 453 767 "},"p":{"x_min":83,"x_max":702,"ha":758,"o":"m 91 -106 q 89 202 91 47 q 87 513 88 358 l 83 655 q 109 650 95 652 q 146 648 124 648 q 177 650 165 648 q 213 655 188 651 q 202 535 202 591 q 297 637 246 602 q 425 672 349 672 q 630 567 558 672 q 702 322 702 463 q 629 84 702 183 q 423 -15 556 -15 q 210 99 287 -15 l 210 -101 q 214 -244 210 -148 q 219 -373 219 -340 q 185 -369 201 -370 q 151 -368 170 -368 q 130 -368 138 -368 q 83 -373 123 -368 q 87 -240 83 -329 q 91 -106 91 -151 m 384 596 q 245 514 289 596 q 202 328 202 433 q 244 134 202 220 q 383 48 286 48 q 520 131 478 48 q 563 322 563 215 q 519 509 563 423 q 384 596 475 596 "},"ψ":{"x_min":78,"x_max":1002,"ha":1038,"o":"m 78 294 l 82 477 l 82 654 l 145 650 l 215 654 q 209 517 215 605 q 203 421 203 430 l 203 341 q 264 117 203 197 q 465 38 325 38 l 468 260 q 461 535 468 342 q 455 786 455 729 q 496 779 479 782 q 526 776 513 776 q 566 780 545 776 q 600 786 587 784 q 591 496 600 690 q 583 270 583 302 l 587 38 q 791 132 715 38 q 867 357 867 227 q 824 641 867 506 q 885 645 857 641 q 960 656 912 648 q 1002 419 1002 544 q 891 118 1002 231 q 587 -13 780 5 l 591 -221 l 600 -372 q 561 -365 578 -367 q 526 -363 543 -363 q 491 -366 511 -363 q 455 -372 471 -369 q 461 -162 455 -302 q 468 -13 468 -22 q 194 64 310 -13 q 78 294 78 142 "},"Ü":{"x_min":101,"x_max":919.0625,"ha":1015,"o":"m 182 927 l 262 931 q 250 805 253 854 q 247 697 247 757 l 247 457 q 314 136 247 212 q 516 60 381 60 q 733 130 654 60 q 813 336 813 201 l 813 458 l 813 657 q 799 931 813 802 l 859 927 l 919 931 q 905 770 909 863 q 901 600 901 677 l 901 366 q 792 82 901 179 q 491 -15 684 -15 q 211 66 307 -15 q 116 325 116 148 l 116 426 l 116 698 q 112 805 116 757 q 101 931 109 854 l 182 927 m 410 1208 q 462 1186 442 1208 q 483 1133 483 1164 q 460 1081 483 1105 q 410 1058 438 1058 q 356 1080 379 1058 q 334 1133 334 1103 q 356 1185 334 1163 q 410 1208 378 1208 m 650 1208 q 704 1187 682 1208 q 727 1133 727 1166 q 704 1080 727 1103 q 650 1058 681 1058 q 598 1078 620 1058 q 576 1133 576 1099 q 598 1185 576 1163 q 650 1208 620 1208 "},"à":{"x_min":43,"x_max":655.5,"ha":649,"o":"m 234 -15 q 98 33 153 -15 q 43 162 43 82 q 106 303 43 273 q 303 364 169 333 q 444 448 437 395 q 403 568 444 521 q 288 616 362 616 q 191 587 233 616 q 124 507 149 559 l 95 520 l 104 591 q 202 651 144 631 q 323 672 261 672 q 500 622 444 672 q 557 455 557 573 l 557 133 q 567 69 557 84 q 618 54 577 54 q 655 58 643 54 l 655 26 q 594 5 626 14 q 537 -6 562 -3 q 438 85 453 -6 q 342 10 388 35 q 234 -15 296 -15 m 392 743 l 191 866 q 152 896 170 877 q 133 934 133 915 q 148 970 133 955 q 186 986 163 986 q 222 972 200 986 q 254 945 245 958 l 442 743 l 392 743 m 176 186 q 204 98 176 133 q 284 64 232 64 q 390 107 342 64 q 438 212 438 151 l 438 345 q 239 293 303 319 q 176 186 176 268 "},"η":{"x_min":91,"x_max":662,"ha":754,"o":"m 594 -365 q 557 -366 577 -365 q 526 -369 537 -368 q 531 -189 526 -310 q 537 -7 537 -68 l 537 406 q 503 536 537 485 q 391 587 469 587 q 255 508 290 587 q 220 315 220 430 q 222 133 220 259 q 224 1 224 8 l 158 6 l 91 1 l 101 156 l 101 495 q 97 584 101 527 q 93 655 93 640 q 119 650 105 652 q 155 648 134 648 q 185 650 175 648 q 221 655 195 651 l 220 538 q 321 637 265 602 q 452 672 378 672 q 604 603 552 672 q 656 430 656 535 l 656 329 l 656 -186 q 659 -293 656 -227 q 662 -370 662 -359 q 630 -366 645 -368 q 594 -365 614 -365 "}},"cssFontWeight":"normal","ascender":1267,"underlinePosition":-133,"cssFontStyle":"normal","boundingBox":{"yMin":-373.75,"xMin":-71,"yMax":1267,"xMax":1511},"resolution":1000,"original_font_information":{"postscript_name":"Optimer-Regular","version_string":"Version 1.00 2004 initial release","vendor_url":"http://www.magenta.gr/","full_font_name":"Optimer","font_family_name":"Optimer","copyright":"Copyright (c) Magenta Ltd., 2004","description":"","trademark":"","designer":"","designer_url":"","unique_font_identifier":"Magenta Ltd.:Optimer:22-10-104","license_url":"http://www.ellak.gr/fonts/MgOpen/license.html","license_description":"Copyright (c) 2004 by MAGENTA Ltd. All Rights Reserved.\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy of the fonts accompanying this license (\"Fonts\") and associated documentation files (the \"Font Software\"), to reproduce and distribute the Font Software, including without limitation the rights to use, copy, merge, publish, distribute, and/or sell copies of the Font Software, and to permit persons to whom the Font Software is furnished to do so, subject to the following conditions: \r\n\r\nThe above copyright and this permission notice shall be included in all copies of one or more of the Font Software typefaces.\r\n\r\nThe Font Software may be modified, altered, or added to, and in particular the designs of glyphs or characters in the Fonts may be modified and additional glyphs or characters may be added to the Fonts, only if the fonts are renamed to names not containing the word \"MgOpen\", or if the modifications are accepted for inclusion in the Font Software itself by the each appointed Administrator.\r\n\r\nThis License becomes null and void to the extent applicable to Fonts or Font Software that has been modified and is distributed under the \"MgOpen\" name.\r\n\r\nThe Font Software may be sold as part of a larger software package but no copy of one or more of the Font Software typefaces may be sold by itself. \r\n\r\nTHE FONT SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL MAGENTA OR PERSONS OR BODIES IN CHARGE OF ADMINISTRATION AND MAINTENANCE OF THE FONT SOFTWARE BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM OTHER DEALINGS IN THE FONT SOFTWARE.","manufacturer_name":"Magenta Ltd.","font_sub_family_name":"Regular"},"descender":-374,"familyName":"Optimer","lineHeight":1640,"underlineThickness":20});
-// File:editor/js/Sidebar.Geometry.TextGeometry.js
-
-/**
- * @author mrdoob / http://mrdoob.com/
- */
-
-Sidebar.Geometry.TextGeometry = function ( signals, object ) {
-
-	var container = new UI.Panel();
-
-	
-	var parameters = object.geometry.parameters;
-	var newParameters = parameters || {};
-
-	// Font Size
-	var sizeRow = new UI.Panel();
-	var size = new UI.Number(parameters.data.size).onChange( update);
-
-	sizeRow.add( new UI.Text( 'Font Size' ).setWidth( '90px' ) );
-	sizeRow.add( size );
-
-	container.add( sizeRow );
-
-	// Extrusion - change height to a more understandable name
-	var depthRow = new UI.Panel();
-	var depth = new UI.Number(parameters.data.height).onChange( update);
-
-	depthRow.add( new UI.Text( 'Depth' ).setWidth( '90px' ) );
-	depthRow.add( depth );
-
-	container.add( depthRow );
-
-	// Smoothness in curves - do users need to change values like this?
-	// var curveSegmentsRow = new UI.Panel();
-	// var curveSegments = new UI.Integer(parameters.data.curveSegments).onChange( update);
-
-	// curveSegmentsRow.add( new UI.Text( 'Curve Segments' ).setWidth( '90px' ) );
-	// curveSegmentsRow.add( curveSegments );
-
-	// container.add( curveSegmentsRow );
-
-	// Font
-	var fontRow = new UI.Panel();
-	var font = new UI.Select().setOptions( {
-
-		'helvetiker': 'helvetiker',
-		'optimer': 'optimer',
-		'gentilis': 'gentilis'
-
-	} ).setWidth( '150px' ).setFontSize( '12px' ).onChange( update );
-	fontRow.add( new UI.Text( 'Font' ).setWidth( '90px' ) );
-	fontRow.add( font );
-
-	container.add( fontRow );
-
-	// Weight
-	var weightRow = new UI.Panel();
-	var weight = new UI.Select().setOptions( {
-
-		'normal': 'normal',
-		'bold': 'bold'
-
-	} ).setWidth( '150px' ).setFontSize( '12px' ).onChange( update );
-	weightRow.add( new UI.Text( 'Weight' ).setWidth( '90px' ) );
-	weightRow.add( weight );
-
-	container.add( weightRow );
-
-	// Style - is this even working ( relevant if fonts support it )
-	// var styleRow = new UI.Panel();
-	// var style = new UI.Select().setOptions( {
-
-	// 	'normal': 'normal',
-	// 	'italics': 'italics'
-
-	// } ).setWidth( '150px' ).setFontSize( '12px' ).onChange( update );
-	// styleRow.add( new UI.Text( 'Style' ).setWidth( '90px' ) );
-	// styleRow.add( style );
-
-	// container.add( styleRow );
-
-	// Text
-	var textRow = new UI.Panel();
-	var text = new UI.Input(parameters.text).setWidth( '150px' ).setFontSize( '12px' ).onChange( update);
-
-	textRow.add( new UI.Text( 'Text' ).setWidth( '90px' ) );
-	textRow.add( text );
-
-	container.add( textRow );
-
-	//
-
-	function update() {
-
-		object.geometry.dispose();
-		
-		newParameters.size = size.getValue();
-		newParameters.height = depth.getValue();
-		newParameters.font = font.getValue();
-		newParameters.weight = weight.getValue();
-
-		object.geometry = new THREE.TextGeometry(
-			text.getValue(),
-			newParameters
-			
-		);
-
-		object.geometry.computeBoundingSphere();
-
-		signals.geometryChanged.dispatch( object );
-
-	}
-
-	return container;
-
-}
-

@@ -1,25 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>ZAAK PLUS Editor</title>
+		<title>three.js / editor</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 	</head>
 	<body ontouchstart="">
 		<link href="css/main.css" rel="stylesheet" />
-		<link id="theme" href="css/dark.css" rel="stylesheet" />
+		<link id="theme" href="css/light.css" rel="stylesheet" />
 
 		<script src="../build/three.js"></script>
 		<script src="../examples/js/libs/system.min.js"></script>
 
 		<script src="../examples/js/controls/EditorControls.js"></script>
 		<script src="../examples/js/controls/TransformControls.js"></script>
-<<<<<<< HEAD
-=======
 
 		<script src="../examples/js/libs/jszip.min.js"></script>
 		<script src="../examples/js/loaders/AMFLoader.js"></script>
->>>>>>> upstream/dev
 		<script src="../examples/js/loaders/AWDLoader.js"></script>
 		<script src="../examples/js/loaders/BabylonLoader.js"></script>
 		<script src="../examples/js/loaders/ColladaLoader.js"></script>
@@ -100,7 +97,6 @@
 		<script src="js/Menubar.Play.js"></script>
 		<script src="js/Menubar.Examples.js"></script>
 		<script src="js/Menubar.Help.js"></script>
-		<script src="js/Menubar.Preview.js"></script>
 		<script src="js/Menubar.Status.js"></script>
 		<script src="js/Sidebar.js"></script>
 		<script src="js/Sidebar.Scene.js"></script>
@@ -151,11 +147,20 @@
 		<script src="js/commands/SetMaterialMapCommand.js"></script>
 		<script src="js/commands/SetSceneCommand.js"></script>
 
-<<<<<<< HEAD
-		<!-- Sam Imports -->
 		<script src="js/EditorShortCuts.js"></script>
 		<script src="js/EditorShortCutsList.js"></script>
-=======
+		<script src="../examples/js/cameras/CombinedCamera.js"></script>
+
+		<script src="js/experimental/threex.htmlmixer.js"></script>
+		<script src="js/experimental/threex.htmlmultiplemixer.js"></script>
+		<script src="js/experimental/threex.htmlmixerhelpers.js"></script>
+		<script src="js/experimental/CSS3DRenderer.js"></script>
+		
+
+<!-- 		<div id="preview3d"><img src="http://zaak.ch/plus/preloader/loader_white.gif" height="512px" width="auto" class="ri"></div> -->
+
+
+
 		<script>
 
 			window.URL = window.URL || window.webkitURL;
@@ -189,6 +194,8 @@
 
 			var modal = new UI.Modal();
 			document.body.appendChild( modal.dom );
+
+			var shortcuts = new EditorShortCuts(editor);
 
 			//
 
@@ -241,32 +248,11 @@
 						}, 100 );
 
 					}, 1000 );
->>>>>>> upstream/dev
 
-		<script src="js/Menubar.Light.js"></script>
-		<script src="js/Menubar.Navigation.js"></script>
+				};
 
-		<script src="js/Sidebar.Sounds.js"></script>
-		<script src='js/SoundCollection.js'></script>
-		<script src='js/WebAudiox.js'></script>
+				var signals = editor.signals;
 
-<<<<<<< HEAD
-		<script src="fonts/helvetiker_regular.typeface.js"></script>
-		<script src="fonts/helvetiker_bold.typeface.js"></script>
-		<script src="fonts/gentilis_regular.typeface.js"></script>
-		<script src="fonts/optimer_regular.typeface.js"></script>
-
-		<script src="js/Sidebar.Geometry.TextGeometry.js"></script>
-
-		<script src="js/MainEditor.js"></script>
-		<script src="js/Menubar.Plus.js"></script>
-
-
-		<div id="preloader"><img src="img/Circular.gif" height="100px" width="auto" class="ri"></div>
-
-
-		<script>
-=======
 				signals.geometryChanged.add( saveState );
 				signals.objectAdded.add( saveState );
 				signals.objectChanged.add( saveState );
@@ -297,6 +283,8 @@
 
 				event.preventDefault();
 
+				console.log(event.dataTransfer.files[0]);
+
 				if ( event.dataTransfer.files.length > 0 ) {
 
 					editor.loader.loadFile( event.dataTransfer.files[ 0 ] );
@@ -309,29 +297,19 @@
 
 				switch ( event.keyCode ) {
 
+					case 79:
+						editor.camera.toOrthographic();
+
+						// editor.camera.toPerspective();
+						break;
+
 					case 8:
 						event.preventDefault(); // prevent browser back
 
-						var object = editor.selected;
-
-						if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
-
-						var parent = object.parent;
-						if ( parent !== null ) editor.execute( new RemoveObjectCommand( object ) );
-
 						break;
 
-					case 90: // Register Ctrl-Z for Undo, Ctrl-Shift-Z for Redo
-
-						if ( event.ctrlKey && event.shiftKey ) {
-
-							editor.redo();
-
-						} else if ( event.ctrlKey ) {
-
-							editor.undo();
-
-						}
+					default:
+						shortcuts.keyCheck( event.keyCode );
 						break;
 
 				}
@@ -375,19 +353,16 @@
 
 			/*
 			window.addEventListener( 'message', function ( event ) {
->>>>>>> upstream/dev
 
-		    var THEME_DARK = 'css/dark.css';
-		    var THEME_LIGHT = 'css/light.css';
-            var DUMMY = '3D/dummy.json';
+				editor.clear();
+				editor.fromJSON( event.data );
 
-<<<<<<< HEAD
-			var main = new MainEditor();
-=======
 			}, false );
 			*/
->>>>>>> upstream/dev
 
 		</script>
+
+<!-- 		<div id="library" style="position:absolute; left:30%; bottom:0; right:30%; height:20%"><iframe src="library.html"></div> -->
+
 	</body>
 </html>

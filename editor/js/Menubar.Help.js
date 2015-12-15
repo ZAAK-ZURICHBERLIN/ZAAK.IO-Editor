@@ -9,11 +9,7 @@ Menubar.Help = function ( editor ) {
 
 	var title = new UI.Panel();
 	title.setClass( 'title' );
-	title.setTextContent("Info");
-	// title.setBackground('#E6E6E6 url(http://localhost:8000/GITTY/MYVR/editor/imgs/toolbar-07.png)');
-	// title.setBackgroundRepeat("no-repeat");
-	// title.setBackgroundSize("50px, 100px");
-	// title.setTextContent( 'Info' );
+	title.setTextContent( 'Help' );
 	container.add( title );
 
 	var options = new UI.Panel();

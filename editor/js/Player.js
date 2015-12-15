@@ -33,21 +33,15 @@ var Player = function ( editor ) {
 
 		container.dom.appendChild( player.dom );
 
-		editor.play();
-
 	} );
 
 	signals.stopPlayer.add( function () {
 
 		container.setDisplay( 'none' );
 
-		editor.stop();
-
 		player.stop();
 
 		container.dom.removeChild( player.dom );
-
-
 
 	} );
 

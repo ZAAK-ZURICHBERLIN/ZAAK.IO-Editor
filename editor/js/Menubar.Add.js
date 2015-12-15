@@ -16,7 +16,8 @@ Menubar.Add = function ( editor ) {
 	options.setClass( 'options' );
 	container.add( options );
 
-	
+	//
+
 	var meshCount = 0;
 	var lightCount = 0;
 	var cameraCount = 0;
@@ -29,98 +30,174 @@ Menubar.Add = function ( editor ) {
 
 	} );
 
-	// Plane
+	// Group
 
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'Plane' );
+	option.setTextContent( 'Group' );
 	option.onClick( function () {
 
-		var width = 200;
-		var height = 200;
+		var mesh = new THREE.Group();
+		mesh.name = 'Group ' + ( ++ meshCount );
 
-		var widthSegments = 1;
-		var heightSegments = 1;
-
-		var geometry = new THREE.PlaneGeometry( width, height, widthSegments, heightSegments );
-		var material = new THREE.MeshPhongMaterial();
-		var mesh = new THREE.Mesh( geometry, material );
-		mesh.name = 'Plane ' + ( ++ meshCount );
-
-		editor.addObject( mesh );
-		editor.select( mesh );
+		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
 	options.add( option );
 
-	// // Soundsource
-	// var option = new UI.Panel();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Soundsource' );
-	// option.onClick( function () {
+	//
 
-	// 	var source = new THREE.Audio(editor.listener);
+	options.add( new UI.HorizontalRule() );
 
-	// 	editor.addObject( source );
-	// 	editor.select( source );
+	// HTML Mixer
 
-	// } );
-	// options.add( option );
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'HTML' );
+	option.onClick( function () {
+
+			////////////////////////////////////////////////////////////////////////////////
+		//		create THREEx.HtmlMixer						//
+		//////////////////////////////////////////////////////////////////////////////////
+
+		console.log(editor.renderer);
+
+		var mixerContext = new THREEx.HtmlMixer.Context(editor.renderer, editor.scene, editor.camera)
+		mixerContext.rendererCss.setSize( window.innerWidth, window.innerHeight )
+
+		// handle window resize for mixerContext
+		window.addEventListener('resize', function(){
+			mixerContext.rendererCss.setSize( window.innerWidth, window.innerHeight )
+		}, false)
+
+		//////////////////////////////////////////////////////////////////////////////////
+		//		mixerContext configuration and dom attachement
+		//////////////////////////////////////////////////////////////////////////////////
+
+	 	// set up rendererCss
+		var rendererCss		= mixerContext.rendererCss
+		// set up rendererWebgl
+		var rendererWebgl	= mixerContext.rendererWebgl
+
+		var css3dElement		= rendererCss.domElement
+		css3dElement.style.position	= 'absolute'
+		css3dElement.style.top		= '0px'
+		css3dElement.style.width	= '100%'
+		css3dElement.style.height	= '100%'
+		css3dElement.style.zIndex = -20
+		document.body.appendChild( css3dElement )
+		
+		
+		//////////////////////////////////////////////////////////////////////////////////
+		//		create a Plane for THREEx.HtmlMixer				//
+		//////////////////////////////////////////////////////////////////////////////////
+		
+		// var url		= 'http://threejs.org';
+		// var domElement	= THREEx.HtmlMixerHelpers.createIframeDomElement(url)
+
+		//
+
+		var url		= 'images/UV_Grid_Sm.jpg';
+		var domElement	= THREEx.HtmlMixerHelpers.createImageDomElement(url)
+
+		console.log('domElement', domElement)
+
+		var mixerPlane	= new THREEx.HtmlMixer.Plane(editor.mixerContext, domElement)
+		scene.add( mixerPlane.object3d )
+
+		onRenderFcts.push(function(){
+			var object3d	= mixerPlane.object3d
+			// object3d.rotation.y	+= 0.001
+		})
+
+		editor.execute( new AddObjectCommand( mixerPlane.object3d ) );
+
+	} );
+	options.add( option );
+
+	// Plane
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Plane' );
+	option.onClick( function () {
+
+		var geometry = new THREE.PlaneGeometry( 2, 2 );
+		var material = new THREE.MeshStandardMaterial();
+		var mesh = new THREE.Mesh( geometry, material );
+		mesh.name = 'Plane ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
 
 	// Box
-	var option = new UI.Panel();
+
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'Box' );
 	option.onClick( function () {
 
-		var width = 100;
-		var height = 100;
-		var depth = 100;
-
-		var widthSegments = 1;
-		var heightSegments = 1;
-		var depthSegments = 1;
-
-		var geometry = new THREE.BoxGeometry( width, height, depth, widthSegments, heightSegments, depthSegments );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial() );
+		var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Box ' + ( ++ meshCount );
 
-		editor.addObject( mesh );
-		editor.select( mesh );
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
+
+	// Circle
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Circle' );
+	option.onClick( function () {
+
+		var radius = 1;
+		var segments = 32;
+
+		var geometry = new THREE.CircleGeometry( radius, segments );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
+		mesh.name = 'Circle ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
 	options.add( option );
 
 	// Cylinder
-	var option = new UI.Panel();
+
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'Cylinder' );
 	option.onClick( function () {
 
-		var radiusTop = 20;
-		var radiusBottom = 20;
-		var height = 100;
+		var radiusTop = 1;
+		var radiusBottom = 1;
+		var height = 2;
 		var radiusSegments = 32;
 		var heightSegments = 1;
 		var openEnded = false;
 
 		var geometry = new THREE.CylinderGeometry( radiusTop, radiusBottom, height, radiusSegments, heightSegments, openEnded );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial() );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Cylinder ' + ( ++ meshCount );
 
-		editor.addObject( mesh );
-		editor.select( mesh );
+		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
 	options.add( option );
 
 	// Sphere
-	var option = new UI.Panel();
+
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'Sphere' );
 	option.onClick( function () {
 
-		var radius = 75;
+		var radius = 1;
 		var widthSegments = 32;
 		var heightSegments = 16;
 		var phiStart = 0;
@@ -129,175 +206,244 @@ Menubar.Add = function ( editor ) {
 		var thetaLength = Math.PI;
 
 		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial() );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Sphere ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
+
+	// Icosahedron
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Icosahedron' );
+	option.onClick( function () {
+
+		var radius = 1;
+		var detail = 2;
+
+		var geometry = new THREE.IcosahedronGeometry( radius, detail );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
+		mesh.name = 'Icosahedron ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
+
+	// Torus
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Torus' );
+	option.onClick( function () {
+
+		var radius = 2;
+		var tube = 1;
+		var radialSegments = 32;
+		var tubularSegments = 12;
+		var arc = Math.PI * 2;
+
+		var geometry = new THREE.TorusGeometry( radius, tube, radialSegments, tubularSegments, arc );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
+		mesh.name = 'Torus ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
+
+	// TorusKnot
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'TorusKnot' );
+	option.onClick( function () {
+
+		var radius = 2;
+		var tube = 0.8;
+		var radialSegments = 64;
+		var tubularSegments = 12;
+		var p = 2;
+		var q = 3;
+		var heightScale = 1;
+
+		var geometry = new THREE.TorusKnotGeometry( radius, tube, radialSegments, tubularSegments, p, q, heightScale );
+		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
+		mesh.name = 'TorusKnot ' + ( ++ meshCount );
+
+		editor.execute( new AddObjectCommand( mesh ) );
+
+	} );
+	options.add( option );
+
+	/*
+	// Teapot
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Teapot' );
+	option.onClick( function () {
+
+		var size = 50;
+		var segments = 10;
+		var bottom = true;
+		var lid = true;
+		var body = true;
+		var fitLid = false;
+		var blinnScale = true;
+
+		var material = new THREE.MeshStandardMaterial();
+
+		var geometry = new THREE.TeapotBufferGeometry( size, segments, bottom, lid, body, fitLid, blinnScale );
+		var mesh = new THREE.Mesh( geometry, material );
+		mesh.name = 'Teapot ' + ( ++ meshCount );
 
 		editor.addObject( mesh );
 		editor.select( mesh );
 
 	} );
 	options.add( option );
+	*/
 
-	
-	// // Text
-	// var option = new UI.Panel();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Text' );
-	// option.onClick( function () {
+	// Sprite
 
-	// 	var text = "three.js",
-	// 			height = 20,
-	// 			size = 70,
-	// 			hover = 30,
-
-	// 			curveSegments = 4,
-
-	// 			bevelThickness = 2,
-	// 			bevelSize = 1.5,
-	// 			bevelSegments = 3,
-	// 			bevelEnabled = true,
-
-	// 			font = "helvetiker", // helvetiker, optimer, gentilis, droid sans, droid serif
-	// 			weight = "bold", // normal bold
-	// 			style = "normal"; // normal italic
-
-
-
-	// 	var textGeo = new THREE.TextGeometry( text, {
-
-	// 		size: size,
-	// 		height: height,
-	// 		curveSegments: curveSegments,
-
-	// 		font: font,
-	// 		weight: weight,
-	// 		style: style,
-
-	// 		bevelThickness: bevelThickness,
-	// 		bevelSize: bevelSize,
-	// 		bevelEnabled: bevelEnabled,
-
-	// 		material: 0,
-	// 		extrudeMaterial: 1
-
-	// 	});
-
-	// 	console.log(textGeo);
-
-	// 	textGeo.computeBoundingBox();
-	// 	textGeo.computeVertexNormals();
-
-	// 	// "fix" side normals by removing z-component of normals for side faces
-	// 	// (this doesn't work well for beveled geometry as then we lose nice curvature around z-axis)
-
-	// 	if ( ! bevelEnabled ) {
-
-	// 		var triangleAreaHeuristics = 0.1 * ( height * size );
-
-	// 		for ( var i = 0; i < textGeo.faces.length; i ++ ) {
-
-	// 			var face = textGeo.faces[ i ];
-
-	// 			if ( face.materialIndex == 1 ) {
-
-	// 				for ( var j = 0; j < face.vertexNormals.length; j ++ ) {
-
-	// 					face.vertexNormals[ j ].z = 0;
-	// 					face.vertexNormals[ j ].normalize();
-
-	// 				}
-
-	// 				var va = textGeo.vertices[ face.a ];
-	// 				var vb = textGeo.vertices[ face.b ];
-	// 				var vc = textGeo.vertices[ face.c ];
-
-	// 				var s = THREE.GeometryUtils.triangleArea( va, vb, vc );
-
-	// 				if ( s > triangleAreaHeuristics ) {
-
-	// 					for ( var j = 0; j < face.vertexNormals.length; j ++ ) {
-
-	// 						face.vertexNormals[ j ].copy( face.normal );
-
-	// 					}
-
-	// 				}
-
-	// 			}
-
-	// 		}
-
-	// 	}
-
-	// 	var centerOffset = -0.5 * ( textGeo.boundingBox.max.x - textGeo.boundingBox.min.x );
-
-	// 	textMesh1 = new THREE.Mesh( textGeo, new THREE.MeshBasicMaterial({color: 'antiquewhite', needsUpdate: true }) );
-
-	// 	textMesh1.position.x = centerOffset;
-	// 	textMesh1.position.y = hover;
-	// 	textMesh1.position.z = 0;
-
-	// 	textMesh1.rotation.x = 0;
-	// 	textMesh1.rotation.y = Math.PI * 2;
-
-	// 	textMesh1.name = "Text Object";
-
-	// 	console.log(textMesh1);
-
-	// 	editor.addObject( textMesh1 );
-	// 	editor.select( textMesh1 );
-
-	// } );
-	// options.add( option );
-
-	// Mediasphere
-
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'Mediasphere' );
+	option.setTextContent( 'Sprite' );
 	option.onClick( function () {
 
-		//Media Object
-		var radius = 120;
-		var widthSegments = 32;
-		var heightSegments = 32;
-		var phiStart = 0;
-		var phiLength = Math.PI * 2;
-		var thetaStart = 0;
-		var thetaLength = Math.PI;
+		var sprite = new THREE.Sprite( new THREE.SpriteMaterial() );
+		sprite.name = 'Sprite ' + ( ++ meshCount );
 
-		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		THREE.ImageUtils.crossOrigin = '';
-		var texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/VVvulRt.jpg');
-		var mediaObject = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial({map: texture, side: THREE.FrontSide, needsUpdate: true}) );
+		editor.execute( new AddObjectCommand( sprite ) );
 
-		mediaObject.name = 'MediaSphere';
+	} );
+	options.add( option );
 
+	//
 
-		editor.addObject( mediaObject );
-		mediaObject.scale.set(-1,1,1);
+	options.add( new UI.HorizontalRule() );
 
-		// //TargetObject
-		// var radius = 15;
-		// var widthSegments = 10;
-		// var heightSegments = 10;
-		// var phiStart = 0;
-		// var phiLength = Math.PI * 2;
-		// var thetaStart = 0;
-		// var thetaLength = Math.PI;
+	// PointLight
 
-		// var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
-		// var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: true, depthWrite: true, needsUpdate: true}) );
-		// // var mesh = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial({transparent: true, depthTest: false, depthWrite: false, needsUpdate: true}) );
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'PointLight' );
+	option.onClick( function () {
 
-		// mesh.name = 'Target_name';
+		var color = 0xffffff;
+		var intensity = 1;
+		var distance = 0;
 
-		// editor.addObject( mesh );
-		// mesh.scale.set(-1,1,1);
-		
-		editor.select( mediaObject );
+		var light = new THREE.PointLight( color, intensity, distance );
+		light.name = 'PointLight ' + ( ++ lightCount );
 
-		// editor.moveObject(mesh, mediaObject);
+		editor.execute( new AddObjectCommand( light ) );
+
+	} );
+	options.add( option );
+
+	// SpotLight
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'SpotLight' );
+	option.onClick( function () {
+
+		var color = 0xffffff;
+		var intensity = 1;
+		var distance = 0;
+		var angle = Math.PI * 0.1;
+		var exponent = 10;
+
+		var light = new THREE.SpotLight( color, intensity, distance, angle, exponent );
+		light.name = 'SpotLight ' + ( ++ lightCount );
+		light.target.name = 'SpotLight ' + ( lightCount ) + ' Target';
+
+		light.position.set( 5, 10, 7.5 );
+
+		editor.execute( new AddObjectCommand( light ) );
+
+	} );
+	options.add( option );
+
+	// DirectionalLight
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'DirectionalLight' );
+	option.onClick( function () {
+
+		var color = 0xffffff;
+		var intensity = 1;
+
+		var light = new THREE.DirectionalLight( color, intensity );
+		light.name = 'DirectionalLight ' + ( ++ lightCount );
+		light.target.name = 'DirectionalLight ' + ( lightCount ) + ' Target';
+
+		light.position.set( 5, 10, 7.5 );
+
+		editor.execute( new AddObjectCommand( light ) );
+
+	} );
+	options.add( option );
+
+	// HemisphereLight
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'HemisphereLight' );
+	option.onClick( function () {
+
+		var skyColor = 0x00aaff;
+		var groundColor = 0xffaa00;
+		var intensity = 1;
+
+		var light = new THREE.HemisphereLight( skyColor, groundColor, intensity );
+		light.name = 'HemisphereLight ' + ( ++ lightCount );
+
+		light.position.set( 0, 10, 0 );
+
+		editor.execute( new AddObjectCommand( light ) );
+
+	} );
+	options.add( option );
+
+	// AmbientLight
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'AmbientLight' );
+	option.onClick( function() {
+
+		var color = 0x222222;
+
+		var light = new THREE.AmbientLight( color );
+		light.name = 'AmbientLight ' + ( ++ lightCount );
+
+		editor.execute( new AddObjectCommand( light ) );
+
+	} );
+	options.add( option );
+
+	//
+
+	options.add( new UI.HorizontalRule() );
+
+	// PerspectiveCamera
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'PerspectiveCamera' );
+	option.onClick( function() {
+
+		var camera = new THREE.PerspectiveCamera( 50, 1, 1, 10000 );
+		camera.name = 'PerspectiveCamera ' + ( ++ cameraCount );
+
+		editor.execute( new AddObjectCommand( camera ) );
 
 	} );
 	options.add( option );

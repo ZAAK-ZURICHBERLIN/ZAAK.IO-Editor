@@ -1,0 +1,27 @@
+{
+	"name":"libList",
+	"date":"3.12.15",
+	"location":"models/library/",
+
+	
+	"entries":[
+		{
+			"name":"Dummy",
+			"display_name":"Dummy",
+			"format":".js",
+			"used":0
+		},
+		{
+			"name":"trees",
+			"display_name":"Trees",
+			"format":".json",
+			"used":0
+		},
+		{
+			"name":"sneakers",
+			"display_name":"Sneakers",
+			"format":".json",
+			"used":0
+		}
+	]
+}

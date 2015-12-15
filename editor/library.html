@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			* {
+				box-sizing: border-box;
+				-moz-box-sizing: border-box;
+			}
+
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+
+				background-color: #fff;
+				margin: 0px;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+				text-align:center;
+			}
+
+			#content {
+				position: absolute;
+				top: 0px; width: 100%;
+				z-index: 1;
+				padding: 0 0 0 0;
+			}
+
+			a {
+				color: #0080ff;
+			}
+
+			#c {
+				position: fixed;
+				left: 0px;
+				width: 100%;
+				height: 100%;
+			}
+
+			.list-item {
+				display: inline-block;
+				margin: 1em;
+				padding: 1em;
+				box-shadow: 1px 2px 4px 0px rgba(0,0,0,0.25);
+			}
+
+			.list-item .scene {
+				width: 70px;
+				height: 70px;
+			}
+
+			.list-item .description {
+				color: #888;
+				font-family: sans-serif;
+				font-size: large;
+				width: 70px;
+				margin-top: 0.5em;
+			}
+		</style>
+	</head>
+	<body>
+
+		<canvas id="c"></canvas>
+
+		<div id="content">
+		</div>
+
+		<script src="../build/three.min.js"></script>
+		<script src="./js/Library.js"></script>
+		<script src="./js/LibraryLoader.js"></script>
+
+		<script id="template" type="notjs" class="div">
+			<div class="scene"></div>
+			<div class="description">$</div>
+		</script>
+		<script>
+
+			
+
+			// // Preloader
+			// var preload = new THREE.LoadingManager();
+
+			// preload.onProgress = function ( item, loaded, total ) {
+			//     console.log( item, loaded, total );
+			//     document.getElementById( "loading" ).innerHTML = loaded + " of " + total + " <br> objects ";
+			// };
+
+			// preload.onLoad = function ( item, loaded, total ) {
+			//     console.log( "loading complete" );
+			//     console.log("fader started!");
+
+			//     setTimeout( function(){
+			//         document.getElementById( "loading" ).innerHTML = "Go!";
+			//         setTimeout( function(){
+			//           document.getElementById( "loading_background" ).style.display = "none";
+			//           document.getElementById( "loading" ).style.display = "none";
+			//           document.getElementById( "preloader" ).style.display = "none";
+			//           document.getElementById( "botcenter" ).style.display = "none";
+			//       },500);
+			//     }, 50);
+
+			var library = new Library();
+
+
+
+			
+
+		</script>
+
+	</body>
+</html>

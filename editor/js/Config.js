@@ -8,18 +8,23 @@ var Config = function () {
 
 	var storage = {
 		'autosave': true,
-		'theme': 'css/dark.css',
+		'theme': 'css/light.css',
 
 		'backgroundColor': 0xcccccc,
 
+		'project/history/stored': true,
 		'project/renderer': 'WebGLRenderer',
 		'project/renderer/antialias': true,
 		'project/renderer/shadows': true,
 		'project/vr': false,
 
-		'settings/history': false,
-
 		'ui/sidebar/animation/collapsed': true,
+		'ui/sidebar/geometry/collapsed': true,
+		'ui/sidebar/history/collapsed': true,
+		'ui/sidebar/material/collapsed': true,
+		'ui/sidebar/object3d/collapsed': false,
+		'ui/sidebar/project/collapsed': true,
+		'ui/sidebar/scene/collapsed': false,
 		'ui/sidebar/script/collapsed': true
 	};
 

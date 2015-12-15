@@ -75,7 +75,7 @@ History.prototype = {
 		cmd.execute();
 		cmd.inMemory = true;
 
-		if ( this.config.getKey( 'settings/history' ) ) {
+		if ( this.config.getKey( 'project/history/stored' ) ) {
 
 			cmd.json = cmd.toJSON();	// serialize the cmd immediately after execution and append the json to the cmd
 
@@ -165,7 +165,7 @@ History.prototype = {
 		history.undos = [];
 		history.redos = [];
 
-		if ( ! this.config.getKey( 'settings/history' ) ) {
+		if ( ! this.config.getKey( 'project/history/stored' ) ) {
 
 			return history;
 

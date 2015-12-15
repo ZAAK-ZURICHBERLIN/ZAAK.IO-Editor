@@ -7,7 +7,6 @@ var Sidebar = function ( editor ) {
 	var container = new UI.Panel();
 	container.setId( 'sidebar' );
 
-
 	//
 
 	var sceneTab = new UI.Text( 'SCENE' ).onClick( onClick );
@@ -76,7 +75,6 @@ var Sidebar = function ( editor ) {
 	}
 
 	select( 'SCENE' );
-
 
 	return container;
 

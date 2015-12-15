@@ -82,20 +82,18 @@ Sidebar.Project = function ( editor ) {
 
 	// VR
 
+	var vrRow = new UI.Row();
+	var vr = new UI.Checkbox( config.getKey( 'project/vr' ) ).setLeft( '100px' ).onChange( function () {
 
-	// var vrRow = new UI.Panel();
-	// var vr = new UI.Checkbox( editor.config.getKey( 'project/vr' ) ).setLeft( '100px' ).onChange( function () {
+		config.setKey( 'project/vr', this.getValue() );
+		// updateRenderer();
 
-	// 	editor.config.setKey( 'project/vr', this.getValue() );
-	// 	// updateRenderer();
+	} );
 
+	vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
+	vrRow.add( vr );
 
-	// } );
-
-	// vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
-	// vrRow.add( vr );
-
-	// container.add( vrRow );
+	container.add( vrRow );
 
 	//
 

@@ -22,29 +22,14 @@ var Viewport = function ( editor ) {
 	var grid = new THREE.GridHelper( 30, 1 );
 	sceneHelpers.add( grid );
 
-	// instantiate a loader
-	var loader = new THREE.JSONLoader();
-	var vrHuman;
-
-	// load a resource
-	loader.load(
-		// resource URL
-		DUMMY,
-		// '3D/dummy.json',
-		// Function when resource is loaded
-		function ( geometry, materials ) {
-			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
-			sceneHelpers.add( vrHuman );
-
-			vrHuman.rotation.set(0,3.14,0);
-		}
-
-	);
-
-
 	//
 
 	var camera = editor.camera;
+	var perspCam = true;	
+
+	//
+
+	var renderer = null;
 
 	//
 
@@ -91,6 +76,7 @@ var Viewport = function ( editor ) {
 		controls.enabled = false;
 
 	} );
+
 	transformControls.addEventListener( 'mouseUp', function () {
 
 		var object = transformControls.object;
@@ -157,6 +143,8 @@ var Viewport = function ( editor ) {
 	function getIntersects( point, objects ) {
 
 		mouse.set( ( point.x * 2 ) - 1, - ( point.y * 2 ) + 1 );
+
+		// var usedCam = (camera.inPerspectiveMode) ? camera.cameraP : camera.cameraO;
 
 		raycaster.setFromCamera( mouse, camera );
 
@@ -302,20 +290,11 @@ var Viewport = function ( editor ) {
 
 		switch ( value ) {
 
-			// case 'THEME_LIGHT':
-			// 	grid.setColors( 0x444444, 0x888888 );
-			// 	clearColor = 0xaaaaaa;
-			// 	break;
-			// case 'THEME_DARK':
-			// 	grid.setColors( 0xbbbbbb, 0x888888 );
-			// 	clearColor = 0x333333;
-			// 	break;
-
-			case 'THEME_LIGHT':
+			case 'css/light.css':
 				grid.setColors( 0x444444, 0x888888 );
 				clearColor = 0xaaaaaa;
 				break;
-			case 'THEME_DARK':
+			case 'css/dark.css':
 				grid.setColors( 0xbbbbbb, 0x888888 );
 				clearColor = 0x333333;
 				break;
@@ -328,12 +307,42 @@ var Viewport = function ( editor ) {
 
 	} );
 
+	console.log(signals);
+
+
+	signals.switchCameraMode.add( function () {
+
+		var position = camera.position;
+
+		if (camera instanceof THREE.PerspectiveCamera) {
+            camera = new THREE.OrthographicCamera(window.innerWidth / -16, window.innerWidth / 16, window.innerHeight / 16, window.innerHeight / -16, -200, 10000);
+
+        } else {
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
+
+        }
+
+      	camera.position.x = position.x;
+        camera.position.y = position.y;
+        camera.position.z = position.z;
+
+       
+        controls.controler = camera; // update
+        transformControls.controler = camera; // update
+
+        editor.focus(editor.selected);
+		// render();
+
+	} );
+
 	signals.cameraPositionSnap.add( function ( mode ) {
 
 		//Needs Update to work without selected object
 
-		var distance;
+		var distance = camera.position.length();
 		var newPos;
+
+		console.log(distance);
 
 		if(editor.selected)
 			distance = editor.selected.position.distanceTo(camera.position);
@@ -378,8 +387,15 @@ var Viewport = function ( editor ) {
 		else
 		{
 
-			controls.center.set( 0, 0, 0 );
-			render();
+			// console.log(newPos);
+			// controls.center.set( 0, 0, 0 );
+			// controls.focus
+			// render();
+			camera.position.set(newPos.x,  
+				newPos.y, 
+				newPos.z);
+
+			controls.focus(editor.scene);
 		}
 
 		signals.cameraChanged.dispatch( camera );
@@ -404,8 +420,6 @@ var Viewport = function ( editor ) {
 
 	} );
 
-
-
 	signals.rendererChanged.add( function ( newRenderer ) {
 
 		if ( renderer !== null ) {
@@ -415,6 +429,7 @@ var Viewport = function ( editor ) {
 		}
 
 		renderer = newRenderer;
+		editor.renderer = renderer;
 
 		renderer.autoClear = false;
 		renderer.autoUpdateScene = false;
@@ -546,15 +561,19 @@ var Viewport = function ( editor ) {
 
 	} );
 
+	//@elephantatwork, changeable bgColor
+	signals.bgColorChanged.add(function ( bgColor ) {
 
+		renderer.setClearColor( bgColor, 1 );
+		editor.config.setKey( 'backgroundColor', bgColor);
+
+		render();
+
+	} );
 
 	signals.fogTypeChanged.add( function ( fogType ) {
 
-
 		if ( fogType !== oldFogType ) {
-
-			if(scene.fog !== null)
-				scene.fog.name = fogType;
 
 			if ( fogType === "None" ) {
 
@@ -576,25 +595,12 @@ var Viewport = function ( editor ) {
 
 		render();
 
-		// console.log(scene.fog);
-
-	} );
-
-	//@elephantatwork, changeable bgColor
-	signals.bgColorChanged.add(function ( bgColor ) {
-
-		renderer.setClearColor( bgColor, 1 );
-		editor.config.setKey( 'backgroundColor', bgColor);
-
-		render();
-
 	} );
 
 	signals.fogColorChanged.add( function ( fogColor ) {
 
-		console.log(fogColor);
 		oldFogColor = fogColor;
-		editor.config.setKey( 'fogColor', fogColor);
+
 		updateFog( scene );
 
 		render();
@@ -604,11 +610,8 @@ var Viewport = function ( editor ) {
 	signals.fogParametersChanged.add( function ( near, far, density ) {
 
 		oldFogNear = near;
-		editor.config.setKey( 'fogNear', near);
 		oldFogFar = far;
-		editor.config.setKey( 'fogFar', far);
 		oldFogDensity = density;
-		editor.config.setKey( 'fogDensity', density);
 
 		updateFog( scene );
 
@@ -618,10 +621,6 @@ var Viewport = function ( editor ) {
 
 	signals.windowResize.add( function () {
 
-		// TODO: Move this out?
-
-		editor.DEFAULT_CAMERA.aspect = container.dom.offsetWidth / container.dom.offsetHeight;
-		editor.DEFAULT_CAMERA.updateProjectionMatrix();
 
 		camera.aspect = container.dom.offsetWidth / container.dom.offsetHeight;
 		camera.updateProjectionMatrix();
@@ -639,24 +638,15 @@ var Viewport = function ( editor ) {
 
 	} );
 
-	signals.showManChanged.add( function ( showMan ) {
-
-		vrHuman.visible = showMan;
-		render();
-
-	} );
-
 	//
 
-	var renderer = null;
+	// var renderer = null;
 
 	animate();
 
 	//
 
 	function updateFog( root ) {
-
-
 
 		if ( root.fog ) {
 
@@ -674,12 +664,11 @@ var Viewport = function ( editor ) {
 
 		requestAnimationFrame( animate );
 
+		// call each update function
+		
 		/*
 
 		// animations
-		// console.log(snap)
-
-		// editor.storage.size();
 
 		if ( THREE.AnimationHandler.animations.length > 0 ) {
 
@@ -703,12 +692,47 @@ var Viewport = function ( editor ) {
 
 		*/
 
+		// render();
+
 	}
+
+	editor.onRenderFcts.push(function(delta, now){
+		
+		if(editor.mixerContext !== undefined)
+			editor.mixerContext.update();
+	})
+
+	editor.onRenderFcts.push(function(){
+		render();	
+	})
+	
+	//////////////////////////////////////////////////////////////////////////////////
+	//		loop runner							//
+	//////////////////////////////////////////////////////////////////////////////////
+	var lastTimeMsec= null
+	requestAnimationFrame(function animate(nowMsec){
+
+		// console.log(nowMsec);
+		// keep looping
+		requestAnimationFrame( animate );
+		// measure time
+		lastTimeMsec	= lastTimeMsec || nowMsec-1000/60
+		var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec)
+		lastTimeMsec	= nowMsec
+		// call each update function
+		editor.onRenderFcts.forEach(function(onRenderFct){
+			onRenderFct(deltaMsec/1000, nowMsec/1000)
+		})
+	})
 
 	function render() {
 
 		sceneHelpers.updateMatrixWorld();
 		scene.updateMatrixWorld();
+
+		// console.log(camera.matrixWorld);
+		// console.log(camera.cameraO.matrixWorld);
+		// console.log(camera.cameraP.matrixWorld);
 
 		renderer.clear();
 		renderer.render( scene, camera );

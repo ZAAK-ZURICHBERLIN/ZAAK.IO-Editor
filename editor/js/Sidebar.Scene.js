@@ -31,6 +31,7 @@ Sidebar.Scene = function ( editor ) {
 	container.add( outliner );
 	container.add( new UI.Break() );
 
+	//bg
 	
 	var bgColorRow = new UI.Panel();
 	var bgColor = new UI.Color().setHexValue( editor.config.getKey('backgroundColor'));
@@ -56,12 +57,8 @@ Sidebar.Scene = function ( editor ) {
 
 	};
 
-	var activeFogType = "Exponential";
-	// if(editor.scene.fog != undefined) activeFogType = editor.scene.fog.name;
-
-	var fogTypeRow = new UI.Panel();
-	var fogType = new UI.Select(activeFogType).setOptions( {
-
+	var fogTypeRow = new UI.Row();
+	var fogType = new UI.Select().setOptions( {
 
 		'None': 'None',
 		'Fog': 'Linear',
