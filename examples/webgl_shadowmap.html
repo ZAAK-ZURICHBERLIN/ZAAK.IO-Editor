@@ -41,6 +41,8 @@
 		<script src="js/Detector.js"></script>
 		<script src="js/libs/stats.min.js"></script>
 
+		<script src="js/geometries/TextGeometry.js"></script>
+		<script src="js/utils/FontUtils.js"></script>
 		<script src="fonts/helvetiker_bold.typeface.js"></script>
 
 		<script>
@@ -62,7 +64,11 @@
 
 			var sceneHUD, cameraOrtho, hudMesh;
 
+<<<<<<< HEAD
 			var morph, morphs = [];
+=======
+			var mixer, morphs = [];
+>>>>>>> upstream/dev
 
 			var light;
 
@@ -120,7 +126,6 @@
 				//light.shadowCameraVisible = true;
 
 				light.shadowBias = 0.0001;
-				light.shadowDarkness = 0.5;
 
 				light.shadowMapWidth = SHADOW_MAP_WIDTH;
 				light.shadowMapHeight = SHADOW_MAP_HEIGHT;
@@ -305,6 +310,8 @@
 
 				// MORPHS
 
+				mixer = new THREE.AnimationMixer( scene );
+
 				function addMorph( geometry, speed, duration, x, y, z, fudgeColor ) {
 
 					var material = new THREE.MeshLambertMaterial( { color: 0xffaa55, morphTargets: true, vertexColors: THREE.FaceColors } );
@@ -317,15 +324,32 @@
 
 					var meshAnim = new THREE.MorphAnimMesh( geometry, material );
 
+<<<<<<< HEAD
 					meshAnim.speed = speed;
 					meshAnim.duration = duration;
 					meshAnim.time = 600 * Math.random();
+=======
+					var clip = geometry.animations[ 0 ];
+
+					mixer.clipAction( clip, mesh ).
+							setDuration( duration ).
+							// to shift the playback out of phase:
+							startAt( - duration * Math.random() ).
+							play();
+>>>>>>> upstream/dev
 
 					meshAnim.position.set( x, y, z );
 					meshAnim.rotation.y = Math.PI/2;
 
+<<<<<<< HEAD
 					meshAnim.castShadow = true;
 					meshAnim.receiveShadow = true;
+=======
+					mesh.castShadow = true;
+					mesh.receiveShadow = true;
+
+					scene.add( mesh );
+>>>>>>> upstream/dev
 
 					scene.add( meshAnim );
 
@@ -333,31 +357,21 @@
 
 				}
 
-				function morphColorsToFaceColors( geometry ) {
-
-					if ( geometry.morphColors && geometry.morphColors.length ) {
-
-						var colorMap = geometry.morphColors[ 0 ];
-
-						for ( var i = 0; i < colorMap.colors.length; i ++ ) {
-
-							geometry.faces[ i ].color = colorMap.colors[ i ];
-
-						}
-
-					}
-
-				}
-
 				var loader = new THREE.JSONLoader();
 
 				loader.load( "models/animated/horse.js", function( geometry ) {
 
+<<<<<<< HEAD
 					morphColorsToFaceColors( geometry );
 
 					addMorph( geometry, 550, 1000, 100 - Math.random() * 1000, FLOOR, 300, true );
 					addMorph( geometry, 550, 1000, 100 - Math.random() * 1000, FLOOR, 450, true );
 					addMorph( geometry, 550, 1000, 100 - Math.random() * 1000, FLOOR, 600, true );
+=======
+					addMorph( geometry, 550, 1, 100 - Math.random() * 1000, FLOOR, 300, true );
+					addMorph( geometry, 550, 1, 100 - Math.random() * 1000, FLOOR, 450, true );
+					addMorph( geometry, 550, 1, 100 - Math.random() * 1000, FLOOR, 600, true );
+>>>>>>> upstream/dev
 
 					addMorph( geometry, 550, 1000, 100 - Math.random() * 1000, FLOOR, -300, true );
 					addMorph( geometry, 550, 1000, 100 - Math.random() * 1000, FLOOR, -450, true );
@@ -367,22 +381,34 @@
 
 				loader.load( "models/animated/flamingo.js", function( geometry ) {
 
+<<<<<<< HEAD
 					morphColorsToFaceColors( geometry );
 					addMorph( geometry, 500, 1000, 500 - Math.random() * 500, FLOOR + 350, 40 );
+=======
+					addMorph( geometry, 500, 1, 500 - Math.random() * 500, FLOOR + 350, 40 );
+>>>>>>> upstream/dev
 
 				} );
 
 				loader.load( "models/animated/stork.js", function( geometry ) {
 
+<<<<<<< HEAD
 					morphColorsToFaceColors( geometry );
 					addMorph( geometry, 350, 1000, 500 - Math.random() * 500, FLOOR + 350, 340 );
+=======
+					addMorph( geometry, 350, 1, 500 - Math.random() * 500, FLOOR + 350, 340 );
+>>>>>>> upstream/dev
 
 				} );
 
 				loader.load( "models/animated/parrot.js", function( geometry ) {
 
+<<<<<<< HEAD
 					morphColorsToFaceColors( geometry );
 					addMorph( geometry, 450, 500, 500 - Math.random() * 500, FLOOR + 300, 700 );
+=======
+					addMorph( geometry, 450, 0.5, 500 - Math.random() * 500, FLOOR + 300, 700 );
+>>>>>>> upstream/dev
 
 				} );
 
@@ -401,12 +427,17 @@
 
 				var delta = clock.getDelta();
 
+				mixer.update( delta );
+
 				for ( var i = 0; i < morphs.length; i ++ ) {
 
 					morph = morphs[ i ];
 
+<<<<<<< HEAD
 					morph.updateAnimation( 1000 * delta );
 
+=======
+>>>>>>> upstream/dev
 					morph.position.x += morph.speed * delta;
 
 					if ( morph.position.x  > 2000 )  {

@@ -56,7 +56,11 @@
 			var dae;
 
 			var clock = new THREE.Clock();
+<<<<<<< HEAD
 			var morphs = [];
+=======
+			var mixer;
+>>>>>>> upstream/dev
 
 			// Collada model
 
@@ -99,6 +103,8 @@
 
 				// Add Blender exported Collada model
 
+				mixer = new THREE.AnimationMixer( scene );
+
 				var loader = new THREE.JSONLoader();
 				loader.load( 'models/animated/monster/monster.js', function ( geometry, materials ) {
 
@@ -129,6 +135,7 @@
 
 						// random animation offset
 
+<<<<<<< HEAD
 						morph.time = 1000 * Math.random();
 
 						var s = THREE.Math.randFloat( 0.00075, 0.001 );
@@ -143,6 +150,14 @@
 						scene.add( morph );
 
 						morphs.push( morph );
+=======
+						scene.add( mesh );
+						
+						mixer.clipAction( geometry.animations[0], mesh )
+								.setDuration( 1 )			// one second
+								.startAt( - Math.random() )	// random phase (already running)
+								.play();					// let's go
+>>>>>>> upstream/dev
 
 					}
 
@@ -202,12 +217,16 @@
 
 				THREE.AnimationHandler.update( delta );
 
+<<<<<<< HEAD
 				if ( morphs.length ) {
 
 					for ( var i = 0; i < morphs.length; i ++ )
 						morphs[ i ].updateAnimation( 1000 * delta );
 
 				}
+=======
+				mixer.update( delta );
+>>>>>>> upstream/dev
 
 				render();
 				stats.update();

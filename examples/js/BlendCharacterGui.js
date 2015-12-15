@@ -40,9 +40,15 @@ function BlendCharacterGui( animations ) {
 
 	this.update = function() {
 
+<<<<<<< HEAD
 		controls[ 'idle' ] = animations[ 'idle' ].weight;
 		controls[ 'walk' ] = animations[ 'walk' ].weight;
 		controls[ 'run' ] = animations[ 'run' ].weight;
+=======
+		controls[ 'idle' ] = blendMesh.getWeight( 'idle' );
+		controls[ 'walk' ] = blendMesh.getWeight( 'walk' );
+		controls[ 'run' ] = blendMesh.getWeight( 'run' );
+>>>>>>> upstream/dev
 
 	};
 

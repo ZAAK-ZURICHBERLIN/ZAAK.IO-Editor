@@ -74,8 +74,14 @@
 					skinnedMesh = new THREE.SkinnedMesh(geometry, new THREE.MeshFaceMaterial(materials));
 					skinnedMesh.scale.set( 1, 1, 1 );
 					scene.add( skinnedMesh );
+<<<<<<< HEAD
 					animation = new THREE.Animation( skinnedMesh, skinnedMesh.geometry.animations[ 0 ] );
 					animation.play();
+=======
+
+					mixer = new THREE.AnimationMixer( skinnedMesh );
+					mixer.clipAction( skinnedMesh.geometry.animations[ 0 ] ).play();
+>>>>>>> upstream/dev
 
 				});
 

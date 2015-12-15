@@ -54,8 +54,12 @@ THREE.UCSCharacter = function() {
 			mesh.castShadow = true;
 			mesh.receiveShadow = true;
 
+<<<<<<< HEAD
 			animation = new THREE.Animation( mesh, geometry.animation );
 			animation.play();
+=======
+			scope.mixer.clipAction( geometry.animations[0], mesh ).play();
+>>>>>>> upstream/dev
 			
 			scope.setSkin( 0 );
 			

@@ -4,7 +4,6 @@
 
 THREE.BlendCharacter = function () {
 
-	this.animations = {};
 	this.weightSchedule = [];
 	this.warpSchedule = [];
 
@@ -20,12 +19,22 @@ THREE.BlendCharacter = function () {
 
 			THREE.SkinnedMesh.call( scope, geometry, originalMaterial );
 
+<<<<<<< HEAD
 			// Create the animations
 
 			for ( var i = 0; i < geometry.animations.length; ++ i ) {
 
 				var animName = geometry.animations[ i ].name;
 				scope.animations[ animName ] = new THREE.Animation( scope, geometry.animations[ i ] );
+=======
+			var mixer = new THREE.AnimationMixer( scope );
+			scope.mixer = mixer;
+
+			// Create the animations
+			for ( var i = 0; i < geometry.animations.length; ++ i ) {
+
+				mixer.clipAction( geometry.animations[ i ] );
+>>>>>>> upstream/dev
 
 			}
 
@@ -119,12 +128,19 @@ THREE.BlendCharacter = function () {
 
 	this.play = function( animName, weight ) {
 
+<<<<<<< HEAD
 		this.animations[ animName ].play( 0, weight );
 
+=======
+		//console.log("play('%s', %f)", animName, weight);
+		return this.mixer.clipAction( animName ).
+				setEffectiveWeight( weight ).play();
+>>>>>>> upstream/dev
 	};
 
 	this.crossfade = function( fromAnimName, toAnimName, duration ) {
 
+<<<<<<< HEAD
 		var fromAnim = this.animations[ fromAnimName ];
 		var toAnim = this.animations[ toAnimName ];
 
@@ -150,11 +166,20 @@ THREE.BlendCharacter = function () {
 			duration: duration
 
 		} );
+=======
+		this.mixer.stopAllAction();
+
+		var fromAction = this.play( fromAnimName, 1 );
+		var toAction = this.play( toAnimName, 1 );
+
+		fromAction.crossFadeTo( toAction, duration, false );
+>>>>>>> upstream/dev
 
 	};
 
 	this.warp = function( fromAnimName, toAnimName, duration ) {
 
+<<<<<<< HEAD
 		var fromAnim = this.animations[ fromAnimName ];
 		var toAnim = this.animations[ toAnimName ];
 
@@ -169,14 +194,32 @@ THREE.BlendCharacter = function () {
 			duration: duration
 
 		} );
+=======
+		this.mixer.stopAllAction();
+
+		var fromAction = this.play( fromAnimName, 1 );
+		var toAction = this.play( toAnimName, 1 );
+
+		fromAction.crossFadeTo( toAction, duration, true );
+>>>>>>> upstream/dev
 
 	};
 
 	this.applyWeight = function( animName, weight ) {
 
+<<<<<<< HEAD
 		this.animations[ animName ].weight = weight;
+=======
+		this.mixer.clipAction( animName ).setEffectiveWeight( weight );
+>>>>>>> upstream/dev
 
 	};
+
+	this.getWeight = function( animName ) {
+
+		return this.mixer.clipAction( animName ).getEffectiveWeight();
+
+	}
 
 	this.pauseAll = function() {
 
@@ -209,6 +252,7 @@ THREE.BlendCharacter = function () {
 
 	this.stopAll = function() {
 
+<<<<<<< HEAD
 		for ( a in this.animations ) {
 
 			if ( this.animations[ a ].isPlaying ) {
@@ -223,6 +267,9 @@ THREE.BlendCharacter = function () {
 
 		this.weightSchedule.length = 0;
 		this.warpSchedule.length = 0;
+=======
+		this.mixer.stopAllAction();
+>>>>>>> upstream/dev
 
 	};
 

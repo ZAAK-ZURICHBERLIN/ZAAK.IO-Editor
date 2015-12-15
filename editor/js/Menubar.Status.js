@@ -7,6 +7,7 @@ Menubar.Status = function ( editor ) {
 	var container = new UI.Panel();
 	container.setClass( 'menu right' );
 
+
 	// var checkbox = new UI.Checkbox( editor.config.getKey( 'autosave' ) );
 	// checkbox.onChange( function () {
 
@@ -19,7 +20,6 @@ Menubar.Status = function ( editor ) {
 	// 		editor.signals.sceneGraphChanged.dispatch();
 
 	// 	}
-
 	// } );
 	// container.add( checkbox );
 
@@ -37,6 +37,7 @@ Menubar.Status = function ( editor ) {
 		});
 
 	container.add( title );
+
 
 	// var loading = new UI.Panel();
 	// loading.setClass( 'status' );
@@ -72,10 +73,12 @@ Menubar.Status = function ( editor ) {
 
 	editor.signals.savingStarted.add( function () {
 
+
 		// title.setTextDecoration( 'underline' );
 		saveButton.setBackgroundColor('#f2f2f2').setColor('darkslategrey');
 		//Create a "currently saving overlay"
 		// document.getElementById((saveOverlay).style.display = 'initial';
+
 
 	} );
 
@@ -86,8 +89,14 @@ Menubar.Status = function ( editor ) {
 		editor.storage.size( function (size){
 			title.setTextContent( "Size : " + size/10 + "/50Mb");
 
+
 		});
 	} );
+
+	var version = new UI.Text( 'r' + THREE.REVISION );
+	version.setClass( 'title' );
+	version.setOpacity( 0.5 );
+	container.add( version );
 
 	return container;
 

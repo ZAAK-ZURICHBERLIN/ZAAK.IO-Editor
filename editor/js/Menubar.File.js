@@ -18,7 +18,7 @@ Menubar.File = function ( editor ) {
 
 	// New
 
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'New' );
 	option.onClick( function () {
@@ -47,7 +47,7 @@ Menubar.File = function ( editor ) {
 
 	} );
 
-	var option = new UI.Panel();
+	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'Import' );
 	option.onClick( function () {
@@ -57,10 +57,12 @@ Menubar.File = function ( editor ) {
 	} );
 	options.add( option );
 
+
 	// var option = new UI.Panel();
 	// option.setClass( 'option' );
 	// option.setTextContent( 'Reload from LocalStorage' );
 	// option.onClick( function () {
+
 
 	// 	var file = null;
 	// 	var hash = window.location.hash;
@@ -78,27 +80,28 @@ Menubar.File = function ( editor ) {
 
 	// 				var json = JSON.parse( text );
 
+
 	// 				editor.clear();
 	// 				editor.fromJSON( json );
 
 	// 			} );
 
+
 	// 		}
 
+
 	// 	}
+
 
 	// } );
 	// options.add( option );
 
 
+
 	//
 
 	options.add( new UI.HorizontalRule() );
-
-
-
-
-
+	
 	// Export Scene
 
 	// var option = new UI.Panel();
@@ -115,27 +118,26 @@ Menubar.File = function ( editor ) {
 	// } );
 	// options.add( option );
 
+
 	var link = document.createElement( 'a' );
 	link.style.display = 'none';
 	document.body.appendChild( link ); // Firefox workaround, see #6594
 
-	var exportString = function ( output, filename ) {
+	function save( blob, filename ) {
 
-		var blob = new Blob( [ output ], { type: 'text/plain' } );
-		var objectURL = URL.createObjectURL( blob );
-
-		link.href = objectURL;
+		link.href = URL.createObjectURL( blob );
 		link.download = filename || 'data.json';
-		link.target = '_blank';
+		link.click();
 
-		var event = document.createEvent("MouseEvents");
-		event.initMouseEvent(
-			"click", true, false, window, 0, 0, 0, 0, 0
-			, false, false, false, false, 0, null
-		);
-		link.dispatchEvent(event);
+		// URL.revokeObjectURL( url ); breaks Firefox...
 
-	};
+	}
+
+	function saveString( text, filename ) {
+
+		save( new Blob( [ text ], { type: 'text/plain' } ), filename );
+
+	}
 
 	// Save to Platform
 

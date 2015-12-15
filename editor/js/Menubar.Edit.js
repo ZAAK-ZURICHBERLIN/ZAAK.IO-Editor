@@ -16,13 +16,15 @@ Menubar.Edit = function ( editor ) {
 	options.setClass( 'options' );
 	container.add( options );
 
+
 	//Undo
 	var option = new UI.Panel();
 	option.setClass( 'option' );
 	option.setTextContent( 'Undo ( ' + editor.shortcuts.getKey( 'history/undo' ) +' )' );
 	option.onClick( function () {
 
-		editor.history.undo();
+
+		editor.undo();
 
 	} );
 	options.add( option );	
@@ -33,14 +35,59 @@ Menubar.Edit = function ( editor ) {
 	option.setTextContent( 'Redo ( ' + editor.shortcuts.getKey( 'history/redo' ) +' )' );
 	option.onClick( function () {
 
-		editor.history.redo();
+		editor.redo();
 
 	} );
 	options.add( option );
 
+	// Clear History
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Clear History' );
+	option.onClick( function () {
+
+		if ( confirm( 'The Undo/Redo History will be cleared. Are you sure?' ) ) {
+
+			editor.history.clear();
+
+		}
+
+	} );
+	options.add( option );
+
+
 	options.add( new UI.HorizontalRule() );
 
 	//Translate
+	var option = new UI.Panel();
+
+	editor.signals.historyChanged.add( function () {
+
+		var history = editor.history;
+
+		undo.setClass( 'option' );
+		redo.setClass( 'option' );
+
+		if ( history.undos.length == 0 ) {
+
+			undo.setClass( 'inactive' );
+
+		}
+
+		if ( history.redos.length == 0 ) {
+
+			redo.setClass( 'inactive' );
+
+		}
+
+	} );
+
+	// ---
+
+	options.add( new UI.HorizontalRule() );
+
+	// Translate
 	var option = new UI.Panel();
 	option.setClass( 'option' );
 	option.setTextContent( 'Translate ( ' + editor.shortcuts.getKey( 'transform/move' ) +' )' );
@@ -59,8 +106,10 @@ Menubar.Edit = function ( editor ) {
 
 		signals.transformModeChanged.dispatch( 'scale' );
 
+
 	} );
 	options.add( option );
+
 
 	//Rotate
 	var option = new UI.Panel();
@@ -75,11 +124,13 @@ Menubar.Edit = function ( editor ) {
 
 	options.add( new UI.HorizontalRule() );
 
+
 	//TODO: Put the action to a different place
 	var option = new UI.Panel();
 	option.setClass( 'option' );
 	option.setTextContent( 'Clone ( ' + editor.shortcuts.getKey( 'edit/clone' ) +' )');
 	option.onClick( function () {
+
 
 		// var object = editor.selected;
 
@@ -99,14 +150,7 @@ Menubar.Edit = function ( editor ) {
 	option.setClass( 'option' );
 	option.setTextContent( 'Delete ( X )' );
 	option.onClick( function () {
-	
-		// var object = editor.selected;
 
-		// if ( confirm( 'Delete ' + object.name + '?' ) === false ) return;
-
-		// var parent = object.parent;
-		// editor.removeObject( object );
-		// editor.select( parent );
 		editor.destoryCurrent();
 
 	} );
