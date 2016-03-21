@@ -325,7 +325,6 @@ var Viewport = function ( editor ) {
       	camera.position.x = position.x;
         camera.position.y = position.y;
         camera.position.z = position.z;
-
        
         controls.controler = camera; // update
         transformControls.controler = camera; // update

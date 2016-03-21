@@ -87,8 +87,42 @@ var Storage = function () {
 
 			};
 
+		},
+
+		size: function ( callback ){
+
+			if(database != null){
+		        var size = 0;
+		 
+		        var transaction = database.transaction(["states"])
+		            .objectStore("states")
+		            .openCursor();
+		 
+		        transaction.onsuccess = function(event){
+		            var cursor = event.target.result;
+		            if(cursor){
+		                var storedObject = cursor.value;
+		                var json = JSON.stringify(storedObject);
+		                size += json.length;
+		                cursor.continue();
+		            }
+		            else{
+		            	// console.log(size);
+		            	// dbSize = parseInt(size) / 1000000;
+		            	// console.log(dbSize);
+		            	size /= 100000; // -2
+		            	size = parseInt(size);
+
+		            	callback(size,null);
+		            }
+		        }.bind(this);
+		        transaction.onerror = function(err){
+		            callback(null,err);
+		        }
+		    }
+		    else{
+		        callback(null,null);
+		    }
 		}
-
 	}
-
 };

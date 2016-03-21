@@ -7,7 +7,7 @@
 	</head>
 	<body ontouchstart="">
 		<link href="css/main.css" rel="stylesheet" />
-		<link id="theme" href="css/light.css" rel="stylesheet" />
+		<link id="theme" href="css/dark.css" rel="stylesheet" />
 
 		<script src="../build/three.js"></script>
 		<script src="../examples/js/libs/system.min.js"></script>
@@ -149,7 +149,8 @@
 
 		<script src="js/EditorShortCuts.js"></script>
 		<script src="js/EditorShortCutsList.js"></script>
-		<script src="../examples/js/cameras/CombinedCamera.js"></script>
+		<script src="js/Menubar.Preview.js"></script>
+
 
 		<script src="js/experimental/threex.htmlmixer.js"></script>
 		<script src="js/experimental/threex.htmlmultiplemixer.js"></script>
@@ -223,15 +224,60 @@
 
 				//
 
+				// var timeout;
+
+				// function saveState( scene ) {
+
+				// 	if ( editor.config.getKey( 'autosave' ) === false ) {
+
+				// 		return;
+
+				// 	}
+
+				// 	clearTimeout( timeout );
+
+				// 	timeout = setTimeout( function () {
+
+				// 		editor.signals.savingStarted.dispatch();
+
+				// 		timeout = setTimeout( function () {
+
+				// 			editor.storage.set( editor.toJSON() );
+
+				// 			editor.signals.savingFinished.dispatch();
+
+				// 		}, 100 );
+
+				// 	}, 1000 );
+
+				// };
+
 				var timeout;
 
-				function saveState( scene ) {
+				var sceneChanged = function(){
 
-					if ( editor.config.getKey( 'autosave' ) === false ) {
+					editor.signals.unsaveProject.dispatch();
 
-						return;
+					if ( editor.config.getKey( 'autosave' ) === false ) return;
 
-					}
+					// else {
+
+					// 	saveState(1000);
+
+					// }
+
+				};
+
+				var manualSave = function () {
+
+					saveState(1000);
+					// console.log("manualSave");
+				};
+
+				// var saveState = function ( scene ) {
+				var saveState = function ( time ) {
+
+					console.log("h2");
 
 					clearTimeout( timeout );
 
@@ -247,20 +293,34 @@
 
 						}, 100 );
 
-					}, 1000 );
+					}, time );
 
 				};
 
 				var signals = editor.signals;
 
-				signals.geometryChanged.add( saveState );
-				signals.objectAdded.add( saveState );
-				signals.objectChanged.add( saveState );
-				signals.objectRemoved.add( saveState );
-				signals.materialChanged.add( saveState );
-				signals.sceneGraphChanged.add( saveState );
+				signals.editorCleared.add( sceneChanged );
+				signals.geometryChanged.add( sceneChanged );
+				signals.objectAdded.add( sceneChanged );
+				signals.objectChanged.add( sceneChanged );
+				signals.objectRemoved.add( sceneChanged );
+				signals.materialChanged.add( sceneChanged );
+				signals.sceneGraphChanged.add( sceneChanged );
 				signals.scriptChanged.add( saveState );
-				signals.historyChanged.add( saveState );
+				signals.saveProject.add( manualSave );
+			// } );
+
+				// var signals = editor.signals;
+
+				// signals.geometryChanged.add( saveState );
+				// signals.objectAdded.add( saveState );
+				// signals.objectChanged.add( saveState );
+				// signals.objectRemoved.add( saveState );
+				// signals.materialChanged.add( saveState );
+				// signals.sceneGraphChanged.add( saveState );
+				// signals.scriptChanged.add( saveState );
+				// signals.historyChanged.add( saveState );
+				// signals.saveProject.add( manualSave );
 
 				signals.showModal.add( function ( content ) {
 

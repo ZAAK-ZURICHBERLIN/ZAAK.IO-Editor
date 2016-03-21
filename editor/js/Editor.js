@@ -564,9 +564,18 @@ Editor.prototype = {
 		this.history.fromJSON( json.history );
 		this.scripts = json.scripts;
 
-		console.log(json.scene);
+		// console.log(json.background);
+		if(json.project.background != undefined)//if bg here
+			this.signals.bgColorChanged.dispatch(json.project.background);
+		else
+			this.signals.bgColorChanged.dispatch(0x333333); //Default gray bg
 
 		this.setScene( loader.parse( json.scene ) );
+
+		//Meh
+		this.signals.saveProject.dispatch();
+
+		// document.getElementById( "preloader" ).style.display = "none";
 
 	},
 

@@ -738,12 +738,6 @@
 
 		};
 
-		this.getMode = function () {
-
-			return _mode;
-
-		};
-
 		this.setMode = function ( mode ) {
 
 			_mode = mode ? mode : _mode;
