@@ -7,10 +7,17 @@
 	</head>
 	<body ontouchstart="">
 		<link href="css/main.css" rel="stylesheet" />
-		<link id="theme" href="css/dark.css" rel="stylesheet" />
+		<link id="theme" href="css/light.css" rel="stylesheet" />
+		<script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+		
+
+		<!-- preview -->
+		<link rel="stylesheet" href="css/platform.css">
+
 
 		<script src="../build/three.js"></script>
 		<script src="../examples/js/libs/system.min.js"></script>
+		<script src="js/libs/lodash.core.js"></script>
 
 		<script src="../examples/js/controls/EditorControls.js"></script>
 		<script src="../examples/js/controls/TransformControls.js"></script>
@@ -148,281 +155,30 @@
 		<script src="js/commands/SetSceneCommand.js"></script>
 
 		<script src="js/EditorShortCuts.js"></script>
-		<script src="js/EditorShortCutsList.js"></script>
-		<script src="js/Menubar.Preview.js"></script>
+		<script src="js/EditorShortCutsList.js"></script>		
+		
+		<script src="js/MainEditor.js"></script>
 
+		<!-- Viewer -->
 
-		<script src="js/experimental/threex.htmlmixer.js"></script>
-		<script src="js/experimental/threex.htmlmultiplemixer.js"></script>
-		<script src="js/experimental/threex.htmlmixerhelpers.js"></script>
-		<script src="js/experimental/CSS3DRenderer.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.18.2/TweenMax.min.js"></script>
 		
 
 <!-- 		<div id="preview3d"><img src="http://zaak.ch/plus/preloader/loader_white.gif" height="512px" width="auto" class="ri"></div> -->
-
-
-
 		<script>
 
-			window.URL = window.URL || window.webkitURL;
-			window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
-
-			Number.prototype.format = function (){
-				return this.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
-			};
-
-			//
-
-			var editor = new Editor();
-
-			var viewport = new Viewport( editor );
-			document.body.appendChild( viewport.dom );
-
-			var script = new Script( editor );
-			document.body.appendChild( script.dom );
-
-			var player = new Player( editor );
-			document.body.appendChild( player.dom );
-
-			var toolbar = new Toolbar( editor );
-			document.body.appendChild( toolbar.dom );
-
-			var menubar = new Menubar( editor );
-			document.body.appendChild( menubar.dom );
-
-			var sidebar = new Sidebar( editor );
-			document.body.appendChild( sidebar.dom );
-
-			var modal = new UI.Modal();
-			document.body.appendChild( modal.dom );
-
-			var shortcuts = new EditorShortCuts(editor);
-
-			//
-
-			editor.setTheme( editor.config.getKey( 'theme' ) );
-
-			editor.storage.init( function () {
-
-				editor.storage.get( function ( state ) {
-
-					if ( state !== undefined ) {
-
-						editor.fromJSON( state );
-
-					}
-
-					var selected = editor.config.getKey( 'selected' );
-
-					if ( selected !== undefined ) {
-
-						editor.selectByUuid( selected );
-
-					}
-
-				} );
-
-				//
-
-				// var timeout;
-
-				// function saveState( scene ) {
-
-				// 	if ( editor.config.getKey( 'autosave' ) === false ) {
-
-				// 		return;
-
-				// 	}
-
-				// 	clearTimeout( timeout );
-
-				// 	timeout = setTimeout( function () {
-
-				// 		editor.signals.savingStarted.dispatch();
-
-				// 		timeout = setTimeout( function () {
-
-				// 			editor.storage.set( editor.toJSON() );
-
-				// 			editor.signals.savingFinished.dispatch();
-
-				// 		}, 100 );
-
-				// 	}, 1000 );
-
-				// };
-
-				var timeout;
-
-				var sceneChanged = function(){
-
-					editor.signals.unsaveProject.dispatch();
-
-					if ( editor.config.getKey( 'autosave' ) === false ) return;
-
-					// else {
-
-					// 	saveState(1000);
-
-					// }
-
-				};
-
-				var manualSave = function () {
-
-					saveState(1000);
-					// console.log("manualSave");
-				};
-
-				// var saveState = function ( scene ) {
-				var saveState = function ( time ) {
-
-					console.log("h2");
-
-					clearTimeout( timeout );
-
-					timeout = setTimeout( function () {
-
-						editor.signals.savingStarted.dispatch();
-
-						timeout = setTimeout( function () {
-
-							editor.storage.set( editor.toJSON() );
-
-							editor.signals.savingFinished.dispatch();
-
-						}, 100 );
-
-					}, time );
-
-				};
-
-				var signals = editor.signals;
-
-				signals.editorCleared.add( sceneChanged );
-				signals.geometryChanged.add( sceneChanged );
-				signals.objectAdded.add( sceneChanged );
-				signals.objectChanged.add( sceneChanged );
-				signals.objectRemoved.add( sceneChanged );
-				signals.materialChanged.add( sceneChanged );
-				signals.sceneGraphChanged.add( sceneChanged );
-				signals.scriptChanged.add( saveState );
-				signals.saveProject.add( manualSave );
-			// } );
-
-				// var signals = editor.signals;
-
-				// signals.geometryChanged.add( saveState );
-				// signals.objectAdded.add( saveState );
-				// signals.objectChanged.add( saveState );
-				// signals.objectRemoved.add( saveState );
-				// signals.materialChanged.add( saveState );
-				// signals.sceneGraphChanged.add( saveState );
-				// signals.scriptChanged.add( saveState );
-				// signals.historyChanged.add( saveState );
-				// signals.saveProject.add( manualSave );
-
-				signals.showModal.add( function ( content ) {
-
-					modal.show( content );
-
-				} );
-
-			} );
-
-			//
-
-			document.addEventListener( 'dragover', function ( event ) {
-
-				event.preventDefault();
-				event.dataTransfer.dropEffect = 'copy';
-
-			}, false );
-
-			document.addEventListener( 'drop', function ( event ) {
-
-				event.preventDefault();
-
-				console.log(event.dataTransfer.files[0]);
-
-				if ( event.dataTransfer.files.length > 0 ) {
-
-					editor.loader.loadFile( event.dataTransfer.files[ 0 ] );
-
-				}
-
-			}, false );
-
-			document.addEventListener( 'keydown', function ( event ) {
-
-				switch ( event.keyCode ) {
-
-					case 79:
-						editor.camera.toOrthographic();
-
-						// editor.camera.toPerspective();
-						break;
-
-					case 8:
-						event.preventDefault(); // prevent browser back
-
-						break;
-
-					default:
-						shortcuts.keyCheck( event.keyCode );
-						break;
-
-				}
-
-			}, false );
-
-			function onWindowResize( event ) {
-
-				editor.signals.windowResize.dispatch();
-
+			var DUMMY = '3D/dummy.json';
+			var main = new MainEditor();
+
+			function closeIFrame(){
+				$(".modal-overlay").remove();
+                $("#preview").remove();
 			}
-
-			window.addEventListener( 'resize', onWindowResize, false );
-
-			onWindowResize();
-
-			//
-
-			var hash = window.location.hash;
-
-			if ( hash.substr( 1, 5 ) === 'file=' ) {
-
-				var file = hash.substr( 6 );
-
-				if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
-
-					var loader = new THREE.XHRLoader();
-					loader.crossOrigin = '';
-					loader.load( file, function ( text ) {
-
-						var json = JSON.parse( text );
-
-						editor.clear();
-						editor.fromJSON( json );
-
-					} );
-
-				}
-
-			}
-
-			/*
-			window.addEventListener( 'message', function ( event ) {
-
-				editor.clear();
-				editor.fromJSON( event.data );
-
-			}, false );
-			*/
 
 		</script>
 
-<!-- 		<div id="library" style="position:absolute; left:30%; bottom:0; right:30%; height:20%"><iframe src="library.html"></div> -->
+<!-- 
+		<div id="library" style="position:absolute; left:30%; bottom:0; right:30%; height:20%"><iframe src="library.html"></div> -->
 
 	</body>
 </html>

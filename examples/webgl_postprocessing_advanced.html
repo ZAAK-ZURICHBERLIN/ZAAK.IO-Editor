@@ -208,12 +208,7 @@
 
 				//
 
-				var rtParameters = {
-					minFilter: THREE.LinearFilter,
-					magFilter: THREE.LinearFilter,
-					format: THREE.RGBFormat,
-					stencilBuffer: true
-				};
+				var rtParameters = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat, stencilBuffer: true };
 
 				var rtWidth  = width / 2;
 				var rtHeight = height / 2;
@@ -370,7 +365,9 @@
 
 				if ( mesh ) mesh.rotation.y = -time;
 
-				renderer.setViewport( 0, 0, halfWidth, halfHeight );
+				renderer.setViewport( 0, 0, 2 * halfWidth, 2 * halfHeight );
+
+				renderer.clear();
 				composerScene.render( delta );
 
 				renderer.setViewport( 0, 0, halfWidth, halfHeight );

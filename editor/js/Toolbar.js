@@ -50,11 +50,16 @@ var Toolbar = function ( editor ) {
 	var showGrid = new UI.THREE.Boolean( true, 'show' ).onChange( update );
 	buttons.add( showGrid );
 
+	var showMan = new UI.Checkbox().onChange( update ).setValue( true );
+	buttons.add( showMan );
+	buttons.add( new UI.Text( 'Dummy' ) );
+
 	function update() {
 
 		signals.snapChanged.dispatch( snap.getValue() === true ? grid.getValue() : null );
 		signals.spaceChanged.dispatch( local.getValue() === true ? "local" : "world" );
 		signals.showGridChanged.dispatch( showGrid.getValue() );
+		signals.showManChanged.dispatch( showMan.getValue() );
 
 	}
 

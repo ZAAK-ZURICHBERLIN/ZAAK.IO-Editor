@@ -11,9 +11,13 @@ THREEx.HtmlMixer	= THREEx.HtmlMixer	|| {}
  * @param  {THREE.Camera} camera the camera used for the last view
  */
 THREEx.HtmlMixer.Context	= function(rendererWebgl, scene, camera){
+	
+	// this.cam = camera;
+
 	// update functions
 	var updateFcts	= []
 	this.update	= function(){
+
 		updateFcts.forEach(function(updateFct){
 			updateFct()
 		})
@@ -40,6 +44,7 @@ THREEx.HtmlMixer.Context	= function(rendererWebgl, scene, camera){
 	var cssCamera	= new THREE.PerspectiveCamera(camera.fov, camera.aspect, camera.near*cssFactor, camera.far*cssFactor);
 
 	updateFcts.push(function(){
+
 		cssCamera.quaternion.copy(camera.quaternion)
 
 		cssCamera.position
@@ -142,6 +147,8 @@ THREEx.HtmlMixer.Plane = function(mixerContext, domElement, opts) {
 		domElement.style.height	= elementHeight + "px";
 	}
 	setDomElementSize()
+
+	console.log(mixerContext);
 
 	// create a CSS3DObject to display element
 	var cssObject		= new THREE.CSS3DObject( domElement )

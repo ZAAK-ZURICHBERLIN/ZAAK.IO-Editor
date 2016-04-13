@@ -586,14 +586,46 @@ THREE.Object3D.prototype = {
 
 		object.matrix = this.matrix.toArray();
 
-		//
+		//Duplicate Check, Remove Lodash
+		// if ( this.geometry !== undefined ) {
 
+		// 	var _duplicate = false;
+
+		// 	if ( meta.geometries[ this.geometry.uuid ] === undefined ) {
+
+		// 		var _newGeometryData = this.geometry.toJSON( meta );
+
+		// 		for (var key in meta.geometries) {
+		// 		  if (meta.geometries.hasOwnProperty(key)) {
+					
+		// 		  	var _tempOld = _.clone(meta.geometries[key]);
+		// 		  	delete _tempOld.uuid;
+
+		// 			var _tempNew = _newGeometryData;
+		// 			delete _tempNew.uuid;
+
+		// 		  	if(_.isEqual(_tempOld, _tempNew)) { // bad LODASH
+
+		// 		  		object.geometry = meta.geometries[key].uuid; // get the old uuid
+		// 				_duplicate = true;
+		// 		  	}	
+		// 		  }
+		// 		}
+
+		// 		if(!_duplicate)
+		// 			meta.geometries[ this.geometry.uuid ] = this.geometry.toJSON( meta );
+
+		// 	}
+
+		// 	if(!_duplicate )
+		// 		object.geometry = this.geometry.uuid;
+
+		// }
 		if ( this.geometry !== undefined ) {
 
 			if ( meta.geometries[ this.geometry.uuid ] === undefined ) {
 
 				meta.geometries[ this.geometry.uuid ] = this.geometry.toJSON( meta );
-
 			}
 
 			object.geometry = this.geometry.uuid;
@@ -605,14 +637,11 @@ THREE.Object3D.prototype = {
 			if ( meta.materials[ this.material.uuid ] === undefined ) {
 
 				meta.materials[ this.material.uuid ] = this.material.toJSON( meta );
-
 			}
 
 			object.material = this.material.uuid;
 
 		}
-
-		//
 
 		if ( this.children.length > 0 ) {
 
@@ -625,8 +654,6 @@ THREE.Object3D.prototype = {
 			}
 
 		}
-
-		// var output = {};
 
 		if ( isRootObject ) {
 
@@ -643,7 +670,6 @@ THREE.Object3D.prototype = {
 		}
 
 		output.object = object;
-
 
 		return output;
 

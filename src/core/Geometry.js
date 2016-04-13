@@ -4,7 +4,7 @@
  * @author alteredq / http://alteredqualia.com/
  * @author mikael emtinger / http://gomo.se/
  * @author zz85 / http://www.lab4games.net/zz85/blog
- * @author bhouston / http://exocortex.com
+ * @author bhouston / http://clara.io
  */
 
 THREE.Geometry = function () {
@@ -928,6 +928,7 @@ THREE.Geometry.prototype = {
 		if ( this.parameters !== undefined ) {
 
 			var parameters = this.parameters;
+
 
 			for ( var key in parameters ) {
 

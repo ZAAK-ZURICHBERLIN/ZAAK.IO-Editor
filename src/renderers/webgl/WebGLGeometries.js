@@ -61,29 +61,10 @@ THREE.WebGLGeometries = function ( gl, properties, info ) {
 
 		delete geometries[ geometry.id ];
 
-		// TODO
-
 		var property = properties.get( geometry );
-
-		if ( property.wireframe ) {
-
-			deleteAttribute( property.wireframe );
-
-		}
+		if ( property.wireframe ) deleteAttribute( property.wireframe );
 
 		properties.delete( geometry );
-
-		var bufferproperty = properties.get( buffergeometry );
-
-		if ( bufferproperty.wireframe ) {
-
-			deleteAttribute( bufferproperty.wireframe );
-
-		}
-
-		properties.delete( buffergeometry );
-
-		//
 
 		info.memory.geometries --;
 

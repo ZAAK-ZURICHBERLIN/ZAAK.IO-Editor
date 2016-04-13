@@ -27,6 +27,7 @@ AddObjectCommand.prototype = {
 
 	execute: function () {
 
+		console.log(this.object);
 		this.editor.addObject( this.object );
 		this.editor.select( this.object );
 

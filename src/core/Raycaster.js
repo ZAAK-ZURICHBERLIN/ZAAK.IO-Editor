@@ -1,6 +1,6 @@
 /**
  * @author mrdoob / http://mrdoob.com/
- * @author bhouston / http://exocortex.com/
+ * @author bhouston / http://clara.io/
  * @author stephomi / http://stephaneginier.com/
  */
 
@@ -76,6 +76,10 @@
 		},
 
 		setFromCamera: function ( coords, camera ) {
+
+			// if(camera.parent !== undefined)
+			// 	if(camera.parent instanceof THREE.CombinedCamera)
+			// 		camera.matrixWorld = camera.parent.matrixWorld;
 
 			if ( camera instanceof THREE.PerspectiveCamera ) {
 

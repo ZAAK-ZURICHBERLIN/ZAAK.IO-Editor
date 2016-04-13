@@ -9,7 +9,7 @@ var APP = {
 		var scope = this;
 
 		var loader = new THREE.ObjectLoader();
-		var camera, scene, renderer;
+		var camera, scene, renderer, listener;
 
 		var vr, controls, effect;
 
@@ -104,9 +104,15 @@ var APP = {
 
 		this.setCamera = function ( value ) {
 
+
+
 			camera = value;
 			camera.aspect = this.width / this.height;
 			camera.updateProjectionMatrix();
+
+			listener = new THREE.AudioListener();
+			listener.name = "Listener";
+        	camera.add( listener );
 
 			if ( vr === true ) {
 

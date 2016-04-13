@@ -20,28 +20,21 @@ THREE.Points.prototype.raycast = ( function () {
 
 	var inverseMatrix = new THREE.Matrix4();
 	var ray = new THREE.Ray();
-	var sphere = new THREE.Sphere();
 
 	return function raycast( raycaster, intersects ) {
 
 		var object = this;
-		var geometry = this.geometry;
-		var matrixWorld = this.matrixWorld;
+		var geometry = object.geometry;
 		var threshold = raycaster.params.Points.threshold;
 
-		// Checking boundingSphere distance to ray
-
-		if ( geometry.boundingSphere === null ) geometry.computeBoundingSphere();
-
-		sphere.copy( geometry.boundingSphere );
-		sphere.applyMatrix4( matrixWorld );
-
-		if ( raycaster.ray.intersectsSphere( sphere ) === false ) return;
-
-		//
-
-		inverseMatrix.getInverse( matrixWorld );
+		inverseMatrix.getInverse( this.matrixWorld );
 		ray.copy( raycaster.ray ).applyMatrix4( inverseMatrix );
+
+		if ( geometry.boundingBox !== null ) {
+
+			if ( ray.intersectsBox( geometry.boundingBox ) === false ) return;
+
+		}
 
 		var localThreshold = threshold / ( ( this.scale.x + this.scale.y + this.scale.z ) / 3 );
 		var localThresholdSq = localThreshold * localThreshold;
@@ -54,7 +47,7 @@ THREE.Points.prototype.raycast = ( function () {
 			if ( rayPointDistanceSq < localThresholdSq ) {
 
 				var intersectPoint = ray.closestPointToPoint( point );
-				intersectPoint.applyMatrix4( matrixWorld );
+				intersectPoint.applyMatrix4( object.matrixWorld );
 
 				var distance = raycaster.ray.origin.distanceTo( intersectPoint );
 

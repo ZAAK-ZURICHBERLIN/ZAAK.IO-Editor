@@ -61,11 +61,7 @@
 
 			var NEAR = 5, FAR = 3000;
 
-<<<<<<< HEAD
-			var morph, morphs = [];
-=======
 			var morph, morphs = [], mixer, animGroups = [];
->>>>>>> upstream/dev
 
 			var light;
 
@@ -244,8 +240,6 @@
 
 				scene.add( mesh );
 
-<<<<<<< HEAD
-=======
 				mixer = new THREE.AnimationMixer( scene );
 
 				for ( var i = 0; i !== ANIMATION_GROUPS; ++ i ) {
@@ -255,7 +249,6 @@
 
 				}
 
->>>>>>> upstream/dev
 				// MORPHS
 
 				function addMorph( geometry, speed, duration, x, y, z, fudgeColor, massOptimization ) {
@@ -268,30 +261,15 @@
 
 					}
 
-					var meshAnim = new THREE.MorphAnimMesh( geometry, material );
+					var mesh = new THREE.Mesh( geometry, material );
+					mesh.speed = speed;
 
-<<<<<<< HEAD
-					meshAnim.speed = speed;
-					meshAnim.duration = duration;
-					meshAnim.time = 600 * Math.random();
-
-					meshAnim.position.set( x, y, z );
-					meshAnim.rotation.y = Math.PI/2;
-
-					meshAnim.castShadow = true;
-					meshAnim.receiveShadow = true;
-
-					scene.add( meshAnim );
-
-					morphs.push( meshAnim );
-=======
 					var clip = geometry.animations[ 0 ];
 
 					if ( massOptimization ) {
 
 						var index = Math.floor( Math.random() * ANIMATION_GROUPS ),
 							animGroup = animGroups[ index ];
->>>>>>> upstream/dev
 
 						animGroup.add( mesh );
 
@@ -334,11 +312,7 @@
 
 					for ( var i = - 600; i < 601; i += 2 ) {
 
-<<<<<<< HEAD
-						addMorph( geometry, 550, 1000, 100 - Math.random() * 3000, FLOOR, i, true );
-=======
 						addMorph( geometry, 550, 1, 100 - Math.random() * 3000, FLOOR, i, true, true );
->>>>>>> upstream/dev
 
 					}
 
@@ -405,16 +379,11 @@
 
 				var delta = clock.getDelta();
 
-<<<<<<< HEAD
-=======
 				if ( mixer ) mixer.update( delta );
 
->>>>>>> upstream/dev
 				for ( var i = 0; i < morphs.length; i ++ ) {
 
 					morph = morphs[ i ];
-
-					morph.updateAnimation( 1000 * delta );
 
 					morph.position.x += morph.speed * delta;
 

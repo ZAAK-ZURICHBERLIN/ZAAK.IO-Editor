@@ -8,19 +8,36 @@
 		{
 			"name":"Dummy",
 			"display_name":"Dummy",
+			"category":"model",
 			"format":".js",
 			"used":0
 		},
 		{
 			"name":"trees",
 			"display_name":"Trees",
+			"category":"model",
 			"format":".json",
 			"used":0
 		},
 		{
 			"name":"sneakers",
 			"display_name":"Sneakers",
+			"category":"model",
 			"format":".json",
+			"used":0
+		},
+		{
+			"name":"test",
+			"display_name":"audio",
+			"category":"audio",
+			"format":".mp3",
+			"used":0
+		},
+		{
+			"name":"ftt",
+			"display_name":"video",
+			"category":"video",
+			"format":".mp4",
 			"used":0
 		}
 	]

@@ -1,3 +1,4 @@
+"use strict";
 /**
  * @author Samuel Vonäsch / http://zaak.io
  */
@@ -5,18 +6,19 @@ var Library = function() {
 	
 	var canvas;
 
-	var scenes = [], camera, renderer, emptyScene;
+	var scenes = [], camera, renderer, library, controls;
 
 	var template = document.getElementById("template").text;
 	var content = document.getElementById("content");
 
-	var emptyScene = new THREE.Scene();
+	// var emptyScene = new THREE.Scene();
 
 	var libLoader = new LibraryLoader(this);
 
 	var id = 0;
 
-	var uniformDimension = 3;
+	var uniformDimension = 1;
+
 
 	init();
 	animate();
@@ -25,18 +27,23 @@ var Library = function() {
 
 		canvas = document.getElementById( "c" );
 
-		camera = new THREE.PerspectiveCamera( 50, 1, 0.1, 100 );
+		// camera = new THREE.PerspectiveCamera( 50, 1, 0.1, 100 );
 		
-		preloadLibrary();
-
 		renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true } );
 		renderer.setClearColor( 0xFFFFFF );
 	}
 
 
-	function preloadLibrary(){
+	this.loadLibrary = function(_filter){
 
-		var libraryURL = "./js/libraryList.json";
+		_filter = typeof _filter !== 'undefined' ? _filter : "_model";
+
+		//Clean selection
+		while (content.firstChild) {
+		    content.removeChild(content.firstChild);
+		}
+
+		var libraryURL = "./js/acid"+_filter+".json";
 
 		var loader = new THREE.XHRLoader();
 		loader.crossOrigin = '';
@@ -45,59 +52,98 @@ var Library = function() {
 
 			library = JSON.parse( text );
 
-			for(var i = 0; i < library.entries.length; i++){
+			for(var i = 0; i < library.objects.length; i++){
 
+				var name = library.objects[i].media;
 
-				var name = library.entries[i].name + library.entries[i].format;
-				// var myFile, myBlob; 
-
-				loadObject(name, library);
-
-				// var loader = new THREE.XHRLoader();
-				// loader.crossOrigin = '';
-				// loader.setWithCredentials(name);
-
-				// loader.load( library.location + name, function ( text ) {
-
-				// 	var fileParts = [text];
-
-				// 	myBlob = new Blob(fileParts, {type : 'text/javascript'});
-				// 	myFile = blobToFile(myBlob, name);
-
-				// 	libLoader.loadFile( name );
-
-				// });
+				loadObject(name, i);
 
 			} 
 		} );
 
-
-
 		console.log("preloadDone");
-	}
+	};
 
-	function loadObject ( _name ){
+	function loadObject ( _name, _id ){
 
-		console.log(library)
+		// console.log(_library)
 		// var name = library.entries[i].name + library.entries[i].format;
-		var myFile, myBlob; 
+		console.log(library.objects[_id]);
+		switch(library.objects[_id].categories[0]){
+			case "model":
 
-		var loader = new THREE.XHRLoader();
-		loader.crossOrigin = '';
+				var myFile, myBlob; 
 
-		loader.load( library.location + _name, function ( text ) {
+				var url, script;
+				
 
-			var fileParts = [text];
+				var loader = new THREE.XHRLoader();
+				loader.crossOrigin = '';
 
-			myBlob = new Blob(fileParts, {type : 'text/javascript'});
-			myFile = blobToFile(myBlob, _name);
+				loader.load( library.objects[_id].media, function ( text ) {
 
-			libLoader.loadFile( myFile );
+					var fileParts = [text];
 
-		} );
+					myBlob = new Blob(fileParts, {type : 'text/javascript'});
+					myFile = blobToFile(myBlob, _name);
+
+					console.log(myFile);
+
+					libLoader.loadFile( myFile );
+
+				} );
+			break;
+
+			case "audio":
+				url = library.objects[_id].media;
+				script = { name: library.objects[_id].name,  source: "//The url of the audioFile\nvar url = '"+url+"';\nvar autoplay = true;\nvar distance = 20;\n\n//Don't change these\nvar audioSource;\n\nfunction init ( event ){\n\n\taudioSource = new THREE.PositionalAudio(camera.getObjectByName('Listener'));\n\taudioSource.load( url );\n\taudioSource.setRefDistance( distance );\n\taudioSource.autoplay = autoplay;\n\tthis.add( audioSource );\n\n}\n\nfunction rayStart( event ){\n\t\t \n\tif(audioSource.isPlaying)\n\t \taudioSource.pause();\n\telse\n\t \taudioSource.play();\n\t\t\n\t\n}\n\nfunction stop ( event ) {\n\t\n\taudioSource.stop();\n}"};
+
+				createScripts( script, library.objects[_id]);
+		
+			break;
+
+			case "video":
+				url = library.objects[_id].media;
+				script = { name: library.objects[_id].name,  source: "var url = 'video/"+url+"';\n\n//\nvar video;\nvar texture;\n\nfunction init ( event ){\n\n\tvideo = document.createElement('video');\n\tvideo.setAttribute(\"webkit-playsinline\",\"\");\n\tvideo.setAttribute(\"playsinline\",\"\");\n\tvideo.autoplay = true;\n\tvideo.loop = true;\n\tvideo.width\t= 1920;\n\tvideo.height = 1080;\n\tvideo.src = url;\n\tvideo.load();\n\n\t// create the texture\n\ttexture\t= new THREE.VideoTexture( video );\n\t// expose texture as this.texture\n\t\n\tvideo.play();\n\n}\n\nfunction update( event ) {\n\n\tif( video.readyState !== video.HAVE_ENOUGH_DATA )\treturn;\n\t\ttexture.needsUpdate\t= true;\t\n\n\tthis.material\t= new THREE.MeshBasicMaterial({\n\t\tmap\t: texture\n\t});\n}\n\nfunction stop ( event ) {\n\n\tvideo.pause();\n}"};
+
+				createScripts( script, library.objects[_id]);
+		
+			break;
+
+			default:
+			break;
+		}
 	}
 
+	function createScripts( _script, _object ){
 
+		var element = document.createElement( "div" );
+
+		element.className = "list-item";
+
+		var tags = _object.tags[0];
+		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags );
+		// element.innerHTML = template;
+
+		// element.children(".nameHere")[0].innerHTML
+
+		// scene.element = element.querySelector(".scene");
+		// console.log(element.querySelector("#addButton"));	
+		content.appendChild( element );
+
+		var _butt = element.querySelector("#addButton");
+		// console.log(_butt);
+		_butt.addEventListener('click', function(){
+			 window.parent.main.editor.addScriptNew(_script);
+			 parent.closeIFrame();
+			 // $(".modal-box, .modal-overlay").fadeOut(500, function() {
+    //             $(".modal-overlay").remove();
+
+    //         });
+		});
+	}
+
+	//For 3D objects
 	this.createScenes = function(_object, file){
 
 		var scene = new THREE.Scene();
@@ -109,71 +155,113 @@ var Library = function() {
 
 		// make a list item
 		var element = document.createElement( "div" );
-		element.type = "button"
-		element.addEventListener('click', function(){
-		    window.parent.editor.loader.loadFile(file);
-		});
+		// element.type = "button";
+		// element.addEventListener('click', function(){
+		//     window.parent.editor.loader.loadFile(file);
+		//      parent.closeIFrame();
+		// });
 		element.className = "list-item";
-		element.innerHTML = template.replace('$', _name );
-		
-		// id ++;
+		var _libraryEntry = getDisplayName(_object);
+		var tags = _libraryEntry.tags[0];
+		element.innerHTML = template.replace('$', _libraryEntry.name ).replace('£', _libraryEntry.user.name ).replace('?', _libraryEntry.description ).replace('!', tags );
 
-		// Look up the element that represents the area
-		// we want to render the scene
-		scene.element = element.querySelector(".scene");
+		var _butt = element.querySelector("#addButton");
+		// console.log(_butt);
+		_butt.addEventListener('click', function(){
+			 window.parent.editor.loader.loadFile(file);
+			 parent.closeIFrame();
+			 // $(".modal-box, .modal-overlay").fadeOut(500, function() {
+    //             $(".modal-overlay").remove();
+
+    //         });
+		});
+
+		scene.userData.element = element.querySelector( ".scene" );
 		content.appendChild( element );
-
+		var camera = new THREE.PerspectiveCamera( 50, 1, 0.1, 1000 );
+		// camera.position.z = 2;
+		// Convert camera fov degrees to radians
+		var fov = camera.fov * ( Math.PI / 180 ); 
+				// _object.scale.set(_size,_size,_size);
 		_object.geometry.computeBoundingBox();
+
+
+
 
 		var width = _object.geometry.boundingBox.max.x - _object.geometry.boundingBox.min.x;
 		var height = _object.geometry.boundingBox.max.y - _object.geometry.boundingBox.min.y;
 		var depth = _object.geometry.boundingBox.max.z - _object.geometry.boundingBox.min.z;
 
-		var _size = uniformDimension / Math.max(depth, Math.max(width,height));
+		// Calculate the camera distance
+		var _size = Math.max(depth, Math.max(width,height));
+
+		var distance = Math.abs( _size / Math.sin( fov / 2 ) );
+		camera.position.z = distance;
+		scene.userData.camera = camera;
+
+		controls = new THREE.OrbitControls( scene.userData.camera, scene.userData.element );
 		
-		_object.scale.set(_size,_size,_size);
+		controls.minDistance = distance*0.2;
+		controls.maxDistance = distance*2;
+		controls.enablePan = true;
+		controls.enableZoom = true;
+		scene.userData.controls = controls;
 
-		console.log(_object.scale);
+		// _object.geometry.computeBoundingBox();
 
-		// radius = _object.geometry.boundingSphere.radius;
-		// distanceFactor = Math.abs( camera.aspect * radius / Math.sin( camera.fov ));
-		camera.position.z = 5;
+		// var _size = uniformDimension / Math.max(depth, Math.max(width,height));
+				scene.add(_object);
 
-		scene.add(_object);
-
-		light = new THREE.HemisphereLight( 0xffbbbb, 0x444488 );
-		light.position.set( - 0.5, 0.8, 1 );
+		scene.add( new THREE.HemisphereLight( 0xaaaaaa, 0x444444 ) );
+		var light = new THREE.DirectionalLight( 0xffffff, 0.5 );
+		light.position.set( 1, 1, 1 );
 		scene.add( light );
-
 		scenes.push( scene );
 
+		// Look up the element that represents the area
+		// we want to render the scene
+		// scene.element = element.querySelector(".scene");
+		// content.appendChild( element );
 
-	}
+		// _object.geometry.computeBoundingBox();
 
-	function getDisplayName( meshName ){
+		// var width = _object.geometry.boundingBox.max.x - _object.geometry.boundingBox.min.x;
+		// var height = _object.geometry.boundingBox.max.y - _object.geometry.boundingBox.min.y;
+		// var depth = _object.geometry.boundingBox.max.z - _object.geometry.boundingBox.min.z;
 
-		// var libraryURL = "./js/libraryList.json";
+		// var _size = uniformDimension / Math.max(depth, Math.max(width,height));
+		
+		// _object.scale.set(_size,_size,_size);
 
-		// var loader = new THREE.XHRLoader();
-		// loader.crossOrigin = '';
+		// console.log(_object.scale);
 
-		// loader.load( libraryURL, function ( text ) {
+		// // radius = _object.geometry.boundingSphere.radius;
+		// // distanceFactor = Math.abs( camera.aspect * radius / Math.sin( camera.fov ));
+		// camera.position.z = 5;
 
-		// 	library = JSON.parse( text );
+		// scene.add(_object);
 
-		for(var i = 0; i < library.entries.length; i++){
+		// var light = new THREE.HemisphereLight( 0xffbbbb, 0x444488 );
+		// light.position.set( - 0.5, 0.8, 1 );
+		// scene.add( light );
+
+		// scenes.push( scene );
 
 
-			var name = library.entries[i].name + library.entries[i].format;
-			var myFile, myBlob; 
+	};
 
-			if(name == meshName)
-				return library.entries[i].display_name;
+	function getDisplayName( _object ){
+
+		for(var i = 0; i < library.objects.length; i++){
+
+			var name = library.objects[i].media;
+
+			if(name == _object.name)
+				return library.objects[i];
 
 		} 
 
-		console.log("***");
-		return "default";
+		return null;
 		// } );
 
 	}
@@ -208,45 +296,39 @@ var Library = function() {
 	function render() {
 
 		updateSize();
+		renderer.setClearColor( 0xffffff );
+		// renderer.setScissorTest( false );
+		renderer.clear();
+		renderer.setClearColor( 0xe0e0e0 );
+		// renderer.setScissorTest( true );
 
-		renderer.setClearColor( 0xFFFFFF );
-		renderer.clear( true );
-		renderer.setClearColor( 0xE0E0E0 );
-
-		renderer.enableScissorTest( true );
 		scenes.forEach( function( scene ) {
-
 			// so something moves
 			scene.children[0].rotation.y = Date.now() * 0.0001;
-
 			// get the element that is a place holder for where we want to
 			// draw the scene
-			var element = scene.element;
-
+			var element = scene.userData.element;
 			// get its position relative to the page's viewport
 			var rect = element.getBoundingClientRect();
-
 			// check if it's offscreen. If so skip it
 			if ( rect.bottom < 0 || rect.top  > renderer.domElement.clientHeight ||
 				 rect.right  < 0 || rect.left > renderer.domElement.clientWidth ) {
-			  return;  // it's off screen
+				return;  // it's off screen
 			}
-
 			// set the viewport
 			var width  = rect.right - rect.left;
 			var height = rect.bottom - rect.top;
 			var left   = rect.left;
 			var bottom = renderer.domElement.clientHeight - rect.bottom;
-
-			camera.aspect = width / height;
-			camera.updateProjectionMatrix();
 			renderer.setViewport( left, bottom, width, height );
 			renderer.setScissor( left, bottom, width, height );
+			var camera = scene.userData.camera;
+			//camera.aspect = width / height; // not changing in this example
+			//camera.updateProjectionMatrix();
+			//scene.userData.controls.update();
 			renderer.render( scene, camera );
-
-
 		} );
-		renderer.enableScissorTest( false );
+
 
 	}
 }

@@ -114,18 +114,34 @@ THREE.Texture.prototype = {
 				canvas.height = image.height;
 
 				canvas.getContext( '2d' ).drawImage( image, 0, 0, image.width, image.height );
-
 			}
 
-			if ( canvas.width > 2048 || canvas.height > 2048 ) {
+			var imgd = canvas.getContext('2d').getImageData(0, 0, image.width, image.height).data;
 
-				return canvas.toDataURL( 'image/jpeg', 0.6 );
+			var _isPNG = false;
+
+			// Loop over each pixel and invert the color.
+			for (var i = 0; i < imgd.length; i += 4) {
+
+			    if(imgd[i+3] < 255){
+
+			    	_isPNG = true;
+			    	break;
+			    }
+			}
+
+			if (_isPNG) {
+
+				return canvas.toDataURL(); 
 
 			} else {
 
-				return canvas.toDataURL( 'image/png' );
+				// var url1 = canvas.toDataURL( 'image/jpeg', 0.6 );
+
+				return canvas.toDataURL( 'image/jpeg', 0.6 );
 
 			}
+
 
 		}
 
@@ -149,6 +165,74 @@ THREE.Texture.prototype = {
 			magFilter: this.magFilter,
 			anisotropy: this.anisotropy
 		};
+
+		//Duplicate Check Image, remove lodash and put in again
+		// if ( this.image !== undefined ) {
+
+		// 	// TODO: Move to THREE.Image
+
+		// 	var image = this.image;
+
+		// 	if ( image.uuid === undefined ) {
+
+		// 		image.uuid = THREE.Math.generateUUID(); // UGH
+
+		// 	}
+
+		// 	var _duplicate = false;
+
+		// 	if ( meta.images[ image.uuid ] === undefined ) {
+
+		// 		var _newImage = getDataURL( image );
+
+		// 		for (var key in meta.images) {
+		// 		  if (meta.images.hasOwnProperty(key)) {
+
+		// 		  	if(_.isEqual(_newImage, meta.images[key].url)) { // bad LODASH
+
+		// 		  		console.log(meta.images[key].uuid);
+		// 		  		output.image = meta.images[key].uuid; // get the old uuid
+		// 				_duplicate = true;
+		// 		  	}	
+		// 		  }
+		// 		}
+
+		// 		if(!_duplicate)
+		// 			meta.images[ image.uuid ] = { uuid: image.uuid, url: _newImage};
+		// 	}
+
+		// 	if(!_duplicate )
+		// 		output.image = image.uuid;
+		// }
+
+		// var _duplicate = false;
+
+		// if ( meta.textures[ output.uuid ] === undefined ) {
+
+		// 	for (var key in meta.textures) {
+		// 		if ( meta.textures.hasOwnProperty(key)) {
+					
+		// 		  	var _tempOld = _.clone(meta.textures[key]);
+		// 		  	delete _tempOld.uuid;
+
+		// 			var _tempNew = _.clone(output);
+		// 			delete _tempNew.uuid;
+
+		// 		  	if(_.isEqual(_tempOld, _tempNew)) { // bad LODASH
+
+		// 		  		output = _.clone(meta.textures[key]);
+		// 				_duplicate = true;
+		// 		  	}	
+		// 		}
+		// 	}
+		// }		
+
+		// if(!_duplicate )	
+		// 	meta.textures[ this.uuid ] = output;
+
+		// console.log(output);
+
+		// return output;
 
 		if ( this.image !== undefined ) {
 
@@ -180,6 +264,8 @@ THREE.Texture.prototype = {
 		return output;
 
 	},
+
+
 
 	dispose: function () {
 

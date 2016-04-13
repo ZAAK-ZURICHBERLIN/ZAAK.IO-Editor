@@ -68,7 +68,6 @@ def skeletal_animation(mesh, options):
 
     return animations
 
-
 @_mesh
 def bones(mesh, options):
     """
@@ -499,7 +498,6 @@ def animated_blend_shapes(mesh, name, options):
             });
 
     return tracks
->>>>>>> upstream/dev
 
 @_mesh
 def materials(mesh, options):

@@ -49,71 +49,128 @@ Menubar.Add = function ( editor ) {
 
 	options.add( new UI.HorizontalRule() );
 
-	// HTML Mixer
+	// Video Object
 
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'VideoPlayer' );
+	// option.onClick( function () {
+
+	// 	var varArray = {
+	// 	    url: 'images/ttf.mp4',
+	//   	};
+
+	// 	var script = { name: 'VideoPlayer', publicVar: varArray, source: "var video;\nvar texture;\nvar isPlaying = false;\n\nfunction init ( event ){\n\n\tvideo = document.createElement('video');\n\tvideo.autoplay = true;\n\tvideo.loop = true;\n\tvideo.width\t= 1920;\n\tvideo.height = 1080;\n\tvideo.src = url;\n\tvideo.load();\n\n\t// create the texture\n\ttexture\t= new THREE.Texture( video );\n\n}\n\nfunction update( event ) {\n\n\tif( video.readyState !== video.HAVE_ENOUGH_DATA )\treturn;\n\t\ttexture.needsUpdate\t= true;\t\n\n\tthis.material = new THREE.MeshStandardMaterial({\n\t\tmap\t: texture\n\t});\n}\n\nfunction rayHit( event ){\n\t\n\tif(isPlaying)\n\t\tvideo.pause();\n\telse\n\t\tvideo.play();\n\t\n\tisPlaying = ! isPlaying;\n}\n\n\nfunction stop ( event ) {\n\t\n\tvideo.pause();\n}"};
+	// 	editor.execute( new AddScriptCommand( editor.selected, script ) );
+
+	// } );
+	// options.add( option );
+
+	// //Audio
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'AudioSource' );
+	// option.onClick( function () {
+
+	// 	var varArray = {
+	// 	    url: 'sound/test.mp3',
+	//   	};
+
+	// 	var script = { name: 'AudioSource', publicVar: varArray, source: "var listener = camera.getObjectByName(\"Listener\");\nvar audioSource;\nvar isPlaying = true;\n\nfunction init ( event ){\n\n\tconsole.log(this.name);\n\t\n\taudioSource = new THREE.PositionalAudio(listener);\n\taudioSource.load( url );\n\taudioSource.setRefDistance( 20 );\n\taudioSource.autoplay = isPlaying;\n\tthis.add( audioSource );\n\n}\n\nfunction rayHit( event ){\n\t\n\t \n\tif(isPlaying)\n\t \taudioSource.pause();\n\telse\n\t \taudioSource.play();\n\t\t\n\tisPlaying = !isPlaying;\n\t\n}\n\n\nfunction stop ( event ) {\n\t\n\taudioSource.stop();\n}"};
+
+	// 	editor.execute( new AddScriptCommand( editor.selected, script ) );
+
+	// } );
+	// options.add( option );
+
+	// //Move To
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Move To' );
+	// option.onClick( function () {
+
+	// 	var script = { name: 'MoveTo', source: "var billboarding = true;\n\nfunction update( event ){\n\t\n\tif(billboarding){\n\n\t\tthis.quaternion.copy( camera.quaternion );\n\t\n\t}\n\n}\n\nfunction rayHit( event ){\n\n\tif(tween !== undefined)\n    \ttween.stop();\n\n    var newPos = this.position;\n\n\ttween = new TWEEN.Tween(camera.position).to(newPos, 1300).onComplete(reactivate);\n    tween.easing(TWEEN.Easing.Cubic.InOut);\n\n    tween.start();\n\t\n}"};
+
+	// 	editor.execute( new AddScriptCommand( editor.selected, script ) );
+
+	// } );
+	// options.add( option );
+
+	// //Jump To
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Jump To' );
+	// option.onClick( function () {
+
+	// 	var varArray = {
+	// 	    targetName: 'Target_JumpTo',
+	//   	};
+
+	// 	var script = { name: 'JumpTo', publicVar: varArray, source: "var billboarding = true;\n\nvar targetPosition;\n\nfunction init( event ){\n\t\n\tconsole.log(this.name);\n\n\ttargetPosition = scene.getObjectByName(targetName).position;\n}\n\nfunction update( event ){\n\t\n\tif(billboarding){\n\n\t\tthis.quaternion.copy( camera.quaternion );\n\t\n\t}\n}\n\nfunction rayHit( event ){\n\n\tif(tween !== undefined)\n    \ttween.stop();\n\n\ttween = new TWEEN.Tween(camera.position).to(targetPosition, 20).onComplete(reactivate); \n\n    tween.start();\n\t\n}"};
+
+	// 	editor.execute( new AddScriptCommand( editor.selected, script ) );
+
+	// } );
+	// options.add( option );
+
+	// //Billboarding
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Billboarding' );
+	// option.onClick( function () {
+
+	// 	var script = { name: 'Billboarding', source: "var billboarding = true;\n\nfunction update( event ){\n\t\n\tif(billboarding){\n\n\t\tthis.quaternion.copy( camera.quaternion );\n\t\n\t}\n\n}"};
+
+	// 	editor.execute( new AddScriptCommand( editor.selected, script ) );
+
+	// } );
+	// options.add( option );
+
+	// //
 	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'HTML' );
+	option.setTextContent( 'Library' );
 	option.onClick( function () {
 
-			////////////////////////////////////////////////////////////////////////////////
-		//		create THREEx.HtmlMixer						//
-		//////////////////////////////////////////////////////////////////////////////////
+        // preview box
+        var preview = "<div id='preview' class='modal-box' style='height:100%;width:100%;text-align: center;'> \
+        <header style='background-color:#333;'> \
+            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
+        </header> \
+        <div style='height:100%;'> \
+            <iframe id='library_iframe' width='100%' height='100%' allowfullscreen src='library.html'></iframe> \
+        </div></div>";
+        $("body").append($.parseHTML(preview));
 
-		console.log(editor.renderer);
+        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
+        $("body").append(modal);
 
-		var mixerContext = new THREEx.HtmlMixer.Context(editor.renderer, editor.scene, editor.camera)
-		mixerContext.rendererCss.setSize( window.innerWidth, window.innerHeight )
+        $(".modal-overlay").fadeTo(500, 0.9);
+        $('#preview').fadeIn();
+        // modal helper
+        $(".js-modal-close, .modal-overlay").click(function() {
+            $(".modal-box, .modal-overlay").fadeOut(500, function() {
+            	// player.stop();
+                $(".modal-overlay").remove();
+                $("#preview").remove();
+            });
+        });
+        $(window).resize(function() {
+            $(".modal-box").css({
+                top: ($(window).height() - $("#preview").outerHeight()) / 2,
+                left: ($(window).width() - $("#preview").outerWidth()) / 2
+            });
+        });
 
-		// handle window resize for mixerContext
-		window.addEventListener('resize', function(){
-			mixerContext.rendererCss.setSize( window.innerWidth, window.innerHeight )
-		}, false)
+        $(window).resize();
 
-		//////////////////////////////////////////////////////////////////////////////////
-		//		mixerContext configuration and dom attachement
-		//////////////////////////////////////////////////////////////////////////////////
-
-	 	// set up rendererCss
-		var rendererCss		= mixerContext.rendererCss
-		// set up rendererWebgl
-		var rendererWebgl	= mixerContext.rendererWebgl
-
-		var css3dElement		= rendererCss.domElement
-		css3dElement.style.position	= 'absolute'
-		css3dElement.style.top		= '0px'
-		css3dElement.style.width	= '100%'
-		css3dElement.style.height	= '100%'
-		css3dElement.style.zIndex = -20
-		document.body.appendChild( css3dElement )
-		
-		
-		//////////////////////////////////////////////////////////////////////////////////
-		//		create a Plane for THREEx.HtmlMixer				//
-		//////////////////////////////////////////////////////////////////////////////////
-		
-		// var url		= 'http://threejs.org';
-		// var domElement	= THREEx.HtmlMixerHelpers.createIframeDomElement(url)
-
-		//
-
-		var url		= 'images/UV_Grid_Sm.jpg';
-		var domElement	= THREEx.HtmlMixerHelpers.createImageDomElement(url)
-
-		console.log('domElement', domElement)
-
-		var mixerPlane	= new THREEx.HtmlMixer.Plane(editor.mixerContext, domElement)
-		scene.add( mixerPlane.object3d )
-
-		onRenderFcts.push(function(){
-			var object3d	= mixerPlane.object3d
-			// object3d.rotation.y	+= 0.001
-		})
-
-		editor.execute( new AddObjectCommand( mixerPlane.object3d ) );
 
 	} );
 	options.add( option );
+
+	
+
+	options.add( new UI.HorizontalRule() );
 
 	// Plane
 
@@ -191,7 +248,6 @@ Menubar.Add = function ( editor ) {
 	options.add( option );
 
 	// Sphere
-
 	var option = new UI.Row();
 	option.setClass( 'option' );
 	option.setTextContent( 'Sphere' );

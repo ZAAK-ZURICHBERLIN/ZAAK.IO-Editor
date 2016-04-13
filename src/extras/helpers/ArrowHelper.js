@@ -1,7 +1,7 @@
 /**
  * @author WestLangley / http://github.com/WestLangley
  * @author zz85 / http://github.com/zz85
- * @author bhouston / http://exocortex.com
+ * @author bhouston / http://clara.io
  *
  * Creates an arrow for visualizing directions
  *
@@ -104,15 +104,3 @@ THREE.ArrowHelper.prototype.setColor = function ( color ) {
 	this.cone.material.color.set( color );
 
 };
-
-//Look always as target
-THREE.ArrowHelper.prototype.update = function () {
-
-	this.box.setFromObject( this.object );
-
-	this.box.size( this.scale );
-
-	this.box.center( this.position );
-
-};
-

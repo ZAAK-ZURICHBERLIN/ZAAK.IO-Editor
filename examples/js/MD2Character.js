@@ -21,6 +21,8 @@ THREE.MD2Character = function () {
 
 	this.activeAnimation = null;
 
+	this.mixer = null;
+
 	this.onLoadComplete = function () {};
 
 	this.loadCounter = 0;
@@ -51,7 +53,11 @@ THREE.MD2Character = function () {
 			scope.root.add( mesh );
 
 			scope.meshBody = mesh;
-			scope.activeAnimation = geo.firstAnimation;
+
+			scope.meshBody.clipOffset = 0;
+			scope.activeAnimationClipName = mesh.geometry.animations[0].name;
+
+			scope.mixer = new THREE.AnimationMixer( mesh );
 
 			checkLoadingComplete();
 
@@ -105,8 +111,12 @@ THREE.MD2Character = function () {
 
 	this.setPlaybackRate = function ( rate ) {
 
-		if ( this.meshBody ) this.meshBody.duration = this.meshBody.baseDuration / rate;
-		if ( this.meshWeapon ) this.meshWeapon.duration = this.meshWeapon.baseDuration / rate;
+		if( rate !== 0 ) {
+			this.mixer.timeScale = 1 / rate;
+		}
+		else {
+			this.mixer.timeScale = 0;
+		}
 
 	};
 
@@ -147,29 +157,16 @@ THREE.MD2Character = function () {
 			activeWeapon.visible = true;
 			this.meshWeapon = activeWeapon;
 
-			activeWeapon.playAnimation( this.activeAnimation, this.animationFPS );
-
-			this.meshWeapon.baseDuration = this.meshWeapon.duration;
-
-			this.meshWeapon.time = this.meshBody.time;
-			this.meshWeapon.duration = this.meshBody.duration;
+			scope.syncWeaponAnimation();
 
 		}
 
 	};
 
-	this.setAnimation = function ( animationName ) {
+	this.setAnimation = function ( clipName ) {
 
 		if ( this.meshBody ) {
 
-<<<<<<< HEAD
-			this.meshBody.playAnimation( animationName, this.animationFPS );
-			this.meshBody.baseDuration = this.meshBody.duration;
-
-		}
-
-		if ( this.meshWeapon ) {
-=======
 			if( this.meshBody.activeAction ) {
 				this.meshBody.activeAction.stop();
 				this.meshBody.activeAction = null;
@@ -180,29 +177,23 @@ THREE.MD2Character = function () {
 
 				this.meshBody.activeAction =
 						this.mixer.clipAction( clip, this.meshBody ).play();
->>>>>>> upstream/dev
 
-			this.meshWeapon.playAnimation( animationName, this.animationFPS );
-			this.meshWeapon.baseDuration = this.meshWeapon.duration;
-			this.meshWeapon.time = this.meshBody.time;
+			}
 
 		}
 
-		this.activeAnimation = animationName;
+		scope.activeClipName = clipName;
+
+		scope.syncWeaponAnimation();
 
 	};
 
-	this.update = function ( delta ) {
+	this.syncWeaponAnimation = function() {
 
-<<<<<<< HEAD
-		if ( this.meshBody ) {
+		var clipName = scope.activeClipName;
 
-			this.meshBody.updateAnimation( 1000 * delta );
+		if ( scope.meshWeapon ) {
 
-		}
-
-		if ( this.meshWeapon ) {
-=======
 			if( this.meshWeapon.activeAction ) {
 				this.meshWeapon.activeAction.stop();
 				this.meshWeapon.activeAction = null;
@@ -217,11 +208,16 @@ THREE.MD2Character = function () {
 				this.meshWeapon.activeAction =
 						this.mixer.clipAction( clip, this.meshWeapon ).
 							syncWith( this.meshBody.activeAction ).play();
->>>>>>> upstream/dev
 
-			this.meshWeapon.updateAnimation( 1000 * delta );
+			}
 
 		}
+			
+	}
+
+	this.update = function ( delta ) {
+
+		if( this.mixer ) this.mixer.update( delta );
 
 	};
 
@@ -248,7 +244,7 @@ THREE.MD2Character = function () {
 
 		//
 
-		var mesh = new THREE.MorphAnimMesh( geometry, materialTexture );
+		var mesh = new THREE.Mesh( geometry, materialTexture );
 		mesh.rotation.y = - Math.PI / 2;
 
 		mesh.castShadow = true;
@@ -258,14 +254,7 @@ THREE.MD2Character = function () {
 
 		mesh.materialTexture = materialTexture;
 		mesh.materialWireframe = materialWireframe;
-
-		//
-
-		mesh.parseAnimations();
-
-		mesh.playAnimation( geometry.firstAnimation, scope.animationFPS );
-		mesh.baseDuration = mesh.duration;
-
+	
 		return mesh;
 
 	}

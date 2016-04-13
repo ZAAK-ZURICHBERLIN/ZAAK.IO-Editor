@@ -84,6 +84,8 @@ THREE.ShaderTerrain = {
 			"varying vec3 vNormal;",
 			"varying vec2 vUv;",
 
+			"uniform vec3 ambientLightColor;",
+
 			"varying vec3 vViewPosition;",
 
 			THREE.ShaderChunk[ "common" ],

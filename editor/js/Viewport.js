@@ -33,6 +33,28 @@ var Viewport = function ( editor ) {
 
 	//
 
+	// instantiate a loader
+	var loader = new THREE.JSONLoader();
+	var vrHuman;
+
+	// load a resource
+	loader.load(
+		// resource URL
+		DUMMY,
+		// '3D/dummy.json',
+		// Function when resource is loaded
+		function ( geometry, materials ) {
+			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
+			sceneHelpers.add( vrHuman );
+			vrHuman.scale.set(0.008,0.008,0.008);
+			vrHuman.rotation.set(0,3.14,0);
+		}
+
+	);
+
+
+	//
+
 	var selectionBox = new THREE.BoxHelper();
 	selectionBox.material.depthTest = false;
 	selectionBox.material.transparent = true;
@@ -307,9 +329,6 @@ var Viewport = function ( editor ) {
 
 	} );
 
-	console.log(signals);
-
-
 	signals.switchCameraMode.add( function () {
 
 		var position = camera.position;
@@ -325,6 +344,7 @@ var Viewport = function ( editor ) {
       	camera.position.x = position.x;
         camera.position.y = position.y;
         camera.position.z = position.z;
+
        
         controls.controler = camera; // update
         transformControls.controler = camera; // update
@@ -562,7 +582,7 @@ var Viewport = function ( editor ) {
 
 	//@elephantatwork, changeable bgColor
 	signals.bgColorChanged.add(function ( bgColor ) {
-
+		console.log("ha");
 		renderer.setClearColor( bgColor, 1 );
 		editor.config.setKey( 'backgroundColor', bgColor);
 
@@ -620,7 +640,6 @@ var Viewport = function ( editor ) {
 
 	signals.windowResize.add( function () {
 
-
 		camera.aspect = container.dom.offsetWidth / container.dom.offsetHeight;
 		camera.updateProjectionMatrix();
 
@@ -637,11 +656,18 @@ var Viewport = function ( editor ) {
 
 	} );
 
+	signals.showManChanged.add( function ( showMan ) {
+
+		vrHuman.visible = showMan;
+		render();
+
+	} );
+
 	//
 
 	// var renderer = null;
 
-	animate();
+	//animate();
 
 	//
 
@@ -659,11 +685,22 @@ var Viewport = function ( editor ) {
 
 	}
 
-	function animate() {
+	var lastTimeMsec = null;
+
+	function animate( now ) {
 
 		requestAnimationFrame( animate );
 
 		// call each update function
+		lastTimeMsec	= lastTimeMsec || now-1000/60;
+		var delta	= Math.min(200, now - lastTimeMsec);
+		lastTimeMsec	= now;
+		// call each update function
+		editor.RenderFcts.forEach(function( _function ){
+			_function(delta/1000, now/1000);
+			render();
+		
+		})
 		
 		/*
 
@@ -691,47 +728,14 @@ var Viewport = function ( editor ) {
 
 		*/
 
-		// render();
+		render();
 
 	}
-
-	editor.onRenderFcts.push(function(delta, now){
-		
-		if(editor.mixerContext !== undefined)
-			editor.mixerContext.update();
-	})
-
-	editor.onRenderFcts.push(function(){
-		render();	
-	})
-	
-	//////////////////////////////////////////////////////////////////////////////////
-	//		loop runner							//
-	//////////////////////////////////////////////////////////////////////////////////
-	var lastTimeMsec= null
-	requestAnimationFrame(function animate(nowMsec){
-
-		// console.log(nowMsec);
-		// keep looping
-		requestAnimationFrame( animate );
-		// measure time
-		lastTimeMsec	= lastTimeMsec || nowMsec-1000/60
-		var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec)
-		lastTimeMsec	= nowMsec
-		// call each update function
-		editor.onRenderFcts.forEach(function(onRenderFct){
-			onRenderFct(deltaMsec/1000, nowMsec/1000)
-		})
-	})
 
 	function render() {
 
 		sceneHelpers.updateMatrixWorld();
 		scene.updateMatrixWorld();
-
-		// console.log(camera.matrixWorld);
-		// console.log(camera.cameraO.matrixWorld);
-		// console.log(camera.cameraP.matrixWorld);
 
 		renderer.clear();
 		renderer.render( scene, camera );

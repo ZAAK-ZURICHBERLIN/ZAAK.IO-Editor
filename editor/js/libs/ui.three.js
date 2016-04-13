@@ -134,6 +134,141 @@ UI.Texture.prototype.onChange = function ( callback ) {
 
 };
 
+//Video
+UI.Video = function ( mapping ) {
+
+	UI.Element.call( this );
+
+	var scope = this;
+
+	var dom = document.createElement( 'span' );
+
+	var input = document.createElement( 'input' );
+	input.type = 'file';
+	input.addEventListener( 'change', function ( event ) {
+
+		loadFile( event.target.files[ 0 ] );
+
+	} );
+
+	var canvas = document.createElement( 'canvas' );
+	canvas.width = 32;
+	canvas.height = 16;
+	canvas.style.cursor = 'pointer';
+	canvas.style.marginRight = '5px';
+	canvas.style.border = '1px solid #888';
+	canvas.addEventListener( 'click', function ( event ) {
+
+		input.click();
+
+	}, false );
+	canvas.addEventListener( 'drop', function ( event ) {
+
+		event.preventDefault();
+		event.stopPropagation();
+		loadFile( event.dataTransfer.files[ 0 ] );
+
+	}, false );
+	dom.appendChild( canvas );
+
+	var name = document.createElement( 'input' );
+	name.disabled = true;
+	name.style.width = '64px';
+	name.style.border = '1px solid #ccc';
+	dom.appendChild( name );
+
+	var loadFile = function ( file ) {
+
+		if ( file.type.match( 'video.*' ) ) {
+
+			var reader = new FileReader();
+			reader.addEventListener( 'load', function ( event ) {
+
+				var video = document.createElement( 'video' );
+				video.addEventListener( 'load', function( event ) {
+
+					var videoTexture = new THREE.Texture( this );
+					videoTexture.sourceFile = file.name;
+					videoTexture.needsUpdate = true;
+
+					scope.setValue( videoTexture );
+
+					if ( scope.onChangeCallback ) scope.onChangeCallback();
+
+				}, false );
+
+				video.src = event.target.result;
+
+			}, false );
+
+			reader.readAsDataURL( file );
+
+		}
+
+	};
+
+	this.dom = dom;
+	this.texture = null;
+	this.onChangeCallback = null;
+
+	return this;
+
+};
+
+UI.Video.prototype = Object.create( UI.Element.prototype );
+UI.Video.prototype.constructor = UI.Texture;
+
+UI.Video.prototype.getValue = function () {
+
+	return this.video;
+
+};
+
+UI.Video.prototype.setValue = function ( video ) {
+
+	var canvas = this.dom.children[ 0 ];
+	var name = this.dom.children[ 1 ];
+	var context = canvas.getContext( '2d' );
+
+	if ( video !== null ) {
+
+		console.log(video.sourceFile);
+
+		// var vid = texture.image;
+
+		// if ( image !== undefined && image.width > 0 ) {
+
+		// 	name.value = texture.sourceFile;
+
+		// 	var scale = canvas.width / image.width;
+		// 	context.drawImage( image, 0, 0, image.width * scale, image.height * scale );
+
+		// } else {
+
+		// 	name.value = texture.sourceFile + ' (error)';
+		// 	context.clearRect( 0, 0, canvas.width, canvas.height );
+
+		// }
+
+	} else {
+
+		name.value = '';
+		context.clearRect( 0, 0, canvas.width, canvas.height );
+
+	}
+
+	this.texture = texture;
+
+};
+
+UI.Video.prototype.onChange = function ( callback ) {
+
+	this.onChangeCallback = callback;
+
+	return this;
+
+};
+
 // Outliner
 
 UI.Outliner = function ( editor ) {

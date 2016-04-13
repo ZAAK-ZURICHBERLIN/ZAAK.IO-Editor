@@ -94,7 +94,7 @@ Sidebar.Object = function ( editor ) {
 
 	container.add( objectNameRow );
 
-	/*
+	
 	// parent
 
 	var objectParentRow = new UI.Row();
@@ -104,7 +104,7 @@ Sidebar.Object = function ( editor ) {
 	objectParentRow.add( objectParent );
 
 	container.add( objectParentRow );
-	*/
+	
 
 	// position
 
@@ -357,7 +357,7 @@ Sidebar.Object = function ( editor ) {
 
 		if ( object !== null ) {
 
-			/*
+			
 			if ( object.parent !== null ) {
 
 				var newParentId = parseInt( objectParent.getValue() );
@@ -369,7 +369,7 @@ Sidebar.Object = function ( editor ) {
 				}
 
 			}
-			*/
+			
 
 			var newPosition = new THREE.Vector3( objectPositionX.getValue(), objectPositionY.getValue(), objectPositionZ.getValue() );
 			if ( object.position.distanceTo( newPosition ) >= 0.01 ) {
@@ -557,7 +557,7 @@ Sidebar.Object = function ( editor ) {
 
 	} );
 
-	/*
+	
 	signals.sceneGraphChanged.add( function () {
 
 		var scene = editor.scene;
@@ -572,7 +572,7 @@ Sidebar.Object = function ( editor ) {
 		objectParent.setOptions( options );
 
 	} );
-	*/
+	
 
 	signals.objectChanged.add( function ( object ) {
 
@@ -597,13 +597,13 @@ Sidebar.Object = function ( editor ) {
 		objectUUID.setValue( object.uuid );
 		objectName.setValue( object.name );
 
-		/*
+		
 		if ( object.parent !== null ) {
 
 			objectParent.setValue( object.parent.id );
 
 		}
-		*/
+		
 
 		objectPositionX.setValue( object.position.x );
 		objectPositionY.setValue( object.position.y );

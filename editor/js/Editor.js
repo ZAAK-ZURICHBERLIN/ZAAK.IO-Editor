@@ -1,7 +1,7 @@
 /**
  * @author mrdoob / http://mrdoob.com/
  */
-
+"use strict";
 var Editor = function () {
 
 	var SIGNALS = signals;
@@ -76,10 +76,11 @@ var Editor = function () {
 		undo: new SIGNALS.Signal(),
 		redo: new SIGNALS.Signal(),
 		switchCameraMode: new SIGNALS.Signal(),
-
-		bgColorChanged: new SIGNALS.Signal(),
+		unsaveProject: new SIGNALS.Signal(),
 		saveProject: new SIGNALS.Signal(),
-		unsaveProject: new SIGNALS.Signal()
+		showManChanged: new SIGNALS.Signal(),
+
+		bgColorChanged: new SIGNALS.Signal()
 
 	};
 
@@ -89,6 +90,9 @@ var Editor = function () {
 	this.loader = new Loader( this );
 
 	this.camera = this.DEFAULT_CAMERA.clone();
+	this.camera.aspect = this.DEFAULT_CAMERA.aspect;
+ 	this.camera.updateProjectionMatrix();
+
 	// this.camera = new THREE.CombinedCamera( window.innerWidth / 2, window.innerHeight / 2, 70, 1, 1000, - 500, 1000 );
 	// this.camera.name = 'ComboCamera';//'Camera';
 	// this.camera.position.set( 20, 10, 20 );
@@ -120,8 +124,7 @@ var Editor = function () {
 	var cameraPerspective, cameraOrtho;
 	this.renderer = null;
 
-	this.onRenderFcts = [];
-	this.mixerContext;
+	this.RenderFcts = [];
 
 };
 
@@ -152,7 +155,7 @@ Editor.prototype = {
 			this.addObject( scene.children[ 0 ] );
 
 		}
-
+		console.log("why");
 		this.signals.sceneGraphChanged.active = true;
 		this.signals.sceneGraphChanged.dispatch();
 
@@ -361,6 +364,12 @@ Editor.prototype = {
 	},
 
 	//
+	addScriptNew: function ( _script ) {
+
+		editor.execute( new AddScriptCommand( this.selected, _script ) );
+
+
+	},
 
 	addScript: function ( object, script ) {
 
@@ -452,6 +461,8 @@ Editor.prototype = {
 
 		if ( this.selected === null ) return;
 			this.signals.objectFocused.dispatch( object );
+
+		this.cleanScene(this.scene);	
 
 	},
 
@@ -555,8 +566,16 @@ Editor.prototype = {
 
 			this.config.setKey( 'project/renderer/shadows', json.project.shadows );
 			this.config.setKey( 'project/vr', json.project.vr );
+			this.config.setKey('backgroundColor', json.project.backgroundColor);
 
+			this.signals.bgColorChanged.dispatch( json.project.backgroundColor );
+
+			console.log("project");
 		}
+		// console.log(this.config.getKey('backgroundColor'));
+
+		// this.signals.bgColorChanged.dispatch( this.config.getKey('backgroundColor'));
+
 
 		var camera = loader.parse( json.camera );
 
@@ -564,25 +583,19 @@ Editor.prototype = {
 		this.history.fromJSON( json.history );
 		this.scripts = json.scripts;
 
-		// console.log(json.background);
-		if(json.project.background != undefined)//if bg here
-			this.signals.bgColorChanged.dispatch(json.project.background);
-		else
-			this.signals.bgColorChanged.dispatch(0x333333); //Default gray bg
+		console.log(json.scene);
 
 		this.setScene( loader.parse( json.scene ) );
 
-		//Meh
 		this.signals.saveProject.dispatch();
 
-		// document.getElementById( "preloader" ).style.display = "none";
+		console.log("hw");
 
 	},
 
 	toJSON: function () {
 
 		// scripts clean up
-
 		var scene = this.scene;
 		var scripts = this.scripts;
 
@@ -597,6 +610,27 @@ Editor.prototype = {
 			}
 
 		}
+		//Script merging;
+		// var array = [{name:"foo1",value:"val1"},{name:"foo1",value:["val2","val3"]},{name:"foo2",value:"val4"}];
+
+		// var output = [];
+
+		// for ( var value in scripts ) { 
+		//     var existing = output.filter(function(v, i) { 
+		//         return v.name == value.name; 
+		//     }); 
+		//     if(existing.length) {
+		//         var existingIndex = output.indexOf(existing[0]);
+		//         output[existingIndex].value = output[existingIndex].value.concat(value.value); 
+		//     }
+		//     else {
+		//         if(typeof value.value == 'string')
+		//             value.value = [value.value];
+		//         output.push(value);  
+		//     }
+		// }
+
+		// console.dir(output);
 
 		//
 
@@ -616,6 +650,12 @@ Editor.prototype = {
 			history: this.history.toJSON()
 
 		};
+
+	},
+
+	cleanScene: function ( _scene ){
+
+		// console.log(_scene.toJSON());
 
 	},
 

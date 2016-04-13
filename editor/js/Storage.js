@@ -8,7 +8,7 @@ var Storage = function () {
 
 	if ( indexedDB === undefined  ) {
 		console.warn( 'Storage: IndexedDB not available.' );
-		return { init: function () {}, get: function () {}, set: function () {}, clear: function () {} };
+		return { init: function () {}, get: function () {}, set: function () {}, clear: function () {}, size: function () {} };
 	}
 
 	var name = 'threejs-editor';
@@ -74,6 +74,13 @@ var Storage = function () {
 
 			};
 
+			// var output = data.history;
+			// delete output.history;
+
+			// var json = JSON.stringify(output);
+			// console.log(json.length/100000);
+
+
 		},
 
 		clear: function () {
@@ -88,11 +95,11 @@ var Storage = function () {
 			};
 
 		},
-
+		
 		size: function ( callback ){
 
 			if(database != null){
-		        var size = 0;
+				var size = 0;
 		 
 		        var transaction = database.transaction(["states"])
 		            .objectStore("states")
@@ -100,16 +107,15 @@ var Storage = function () {
 		 
 		        transaction.onsuccess = function(event){
 		            var cursor = event.target.result;
+		            
 		            if(cursor){
 		                var storedObject = cursor.value;
+		                delete storedObject.history;
 		                var json = JSON.stringify(storedObject);
 		                size += json.length;
 		                cursor.continue();
 		            }
 		            else{
-		            	// console.log(size);
-		            	// dbSize = parseInt(size) / 1000000;
-		            	// console.log(dbSize);
 		            	size /= 100000; // -2
 		            	size = parseInt(size);
 
@@ -124,5 +130,7 @@ var Storage = function () {
 		        callback(null,null);
 		    }
 		}
+
 	}
+
 };

@@ -98,11 +98,22 @@ EditorShortCuts.prototype = {
 
 		//Delete Shortcut -HACK IT ATM, pressing x doesnt work
 		if( event.keyCode == 88 ) {
-			this.editor.destoryCurrent();
+			if(editor.selected != null && editor.selected.parent != null)
+				editor.execute( new RemoveObjectCommand( editor.selected ) );
 		}
 
 		//Clone Object
-		if( this.pressed(this.shortcuts.getKey( 'edit/clone' ))) this.editor.cloneObject();
+		if( this.pressed(this.shortcuts.getKey( 'edit/clone' ))) {
+			var _uuid = editor.selected.uuid;
+			var _object = editor.selected.clone();
+
+			editor.execute( new AddObjectCommand( _object ) );
+			var _script = editor.scripts[_uuid];
+			console.log(_object);
+			console.log(_script);
+
+			editor.execute( new AddScriptCommand( _object, _script  ) );
+		}
 
 		//Hide Current
 		if( this.pressed(this.shortcuts.getKey( 'view/hide' ))) this.editor.hide();

@@ -440,6 +440,8 @@ var Loader = function ( editor ) {
 				var result = loader.parse( data );
 
 				var geometry = result.geometry;
+				console.log(geometry);
+
 				var material;
 
 				if ( result.materials !== undefined ) {
@@ -465,7 +467,9 @@ var Loader = function ( editor ) {
 
 				var mesh;
 
-				if ( geometry.animation && geometry.animation.hierarchy ) {
+				if ( geometry.animations) {
+
+				// if ( geometry.animation && geometry.animation.hierarchy ) {
 
 					mesh = new THREE.SkinnedMesh( geometry, material );
 

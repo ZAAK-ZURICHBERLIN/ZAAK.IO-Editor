@@ -35,14 +35,9 @@
 			var SCREEN_HEIGHT = window.innerHeight;
 
 			var container, stats;
-<<<<<<< HEAD
-			var camera, scene1, scene2, renderer;
-=======
 			var camera, scene, renderer;
 			var mixers = [];
->>>>>>> upstream/dev
 
-			var morphs = [];
 			var clock = new THREE.Clock();
 
 			init();
@@ -79,23 +74,6 @@
 
 				//
 
-<<<<<<< HEAD
-				var loader = new THREE.JSONLoader();
-				loader.load( "models/animated/flamingo.js", function( geometry ) {
-
-					morphColorsToFaceColors( geometry );
-
-					var material = new THREE.MeshPhongMaterial( { color: 0xffffff, morphTargets: true, vertexColors: THREE.FaceColors, shading: THREE.FlatShading } );
-					var meshAnim = new THREE.MorphAnimMesh( geometry, material );
-
-					meshAnim.duration = 5000;
-
-					meshAnim.scale.set( 1.5, 1.5, 1.5 );
-					meshAnim.position.y = 150;
-
-					scene1.add( meshAnim );
-					morphs.push( meshAnim );
-=======
 
 				var loader = new THREE.JSONLoader();
 				loader.load( "models/animated/flamingo.js", function( geometry ) {
@@ -118,7 +96,6 @@
 					mixer.clipAction( geometry.animations[ 0 ] ).setDuration( 1 ).play();
 
 					mixers.push( mixer );
->>>>>>> upstream/dev
 
 				} );
 
@@ -127,15 +104,6 @@
 					geometry.computeVertexNormals();
 					geometry.computeMorphNormals();
 
-<<<<<<< HEAD
-					var material = new THREE.MeshPhongMaterial( { color: 0xffffff, specular: 0xffffff, shininess: 20, morphTargets: true, morphNormals: true, vertexColors: THREE.FaceColors, shading: THREE.SmoothShading } );
-					var meshAnim = new THREE.MorphAnimMesh( geometry, material );
-
-					meshAnim.duration = 5000;
-
-					meshAnim.scale.set( 1.5, 1.5, 1.5 );
-					meshAnim.position.y = 150;
-=======
 					var material = new THREE.MeshPhongMaterial( {
 						color: 0xffffff,
 						morphTargets: true,
@@ -153,10 +121,8 @@
 
 					var mixer = new THREE.AnimationMixer( mesh );
 					mixer.clipAction( geometry.animations[ 0 ] ).setDuration( 1 ).play();
->>>>>>> upstream/dev
 
-					scene2.add( meshAnim );
-					morphs.push( meshAnim );
+					mixers.push( mixer );
 
 				} );
 
@@ -218,16 +184,9 @@
 
 				var delta = clock.getDelta();
 
-<<<<<<< HEAD
-				for ( var i = 0; i < morphs.length; i ++ ) {
-
-					morph = morphs[ i ];
-					morph.updateAnimation( 1000 * delta );
-=======
 				for ( var i = 0; i < mixers.length; i ++ ) {
 
 					mixers[ i ].update( delta );
->>>>>>> upstream/dev
 
 				}
 

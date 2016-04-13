@@ -28,9 +28,10 @@ var Sidebar = function ( editor ) {
 
 	var scene = new UI.Span().add(
 		new Sidebar.Scene( editor ),
+		new Sidebar.Script( editor ),
 		new Sidebar.Properties( editor ),
-		new Sidebar.Animation( editor ),
-		new Sidebar.Script( editor )
+		new Sidebar.Animation( editor )
+		
 	);
 	container.add( scene );
 

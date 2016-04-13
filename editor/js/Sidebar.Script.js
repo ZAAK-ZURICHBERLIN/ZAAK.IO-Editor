@@ -46,6 +46,7 @@ Sidebar.Script = function ( editor ) {
 
 		var object = editor.selected;
 
+
 		if ( object === null ) {
 
 			return;
@@ -60,7 +61,9 @@ Sidebar.Script = function ( editor ) {
 
 				( function ( object, script ) {
 
-					var name = new UI.Input( script.name ).setWidth( '130px' ).setFontSize( '12px' );
+					console.log(script);
+
+					var name = new UI.Text( script.name ).setWidth( '130px' ).setFontSize( '12px' );
 					name.onChange( function () {
 
 						editor.execute( new SetScriptValueCommand( editor.selected, script, 'name', this.getValue() ) );
@@ -89,6 +92,54 @@ Sidebar.Script = function ( editor ) {
 
 					} );
 					scriptsContainer.add( remove );
+
+					scriptsContainer.add( new UI.Break() );
+
+
+					// console.log(script.publicVar.length
+					for (var key in script.publicVar) {
+					  if (script.publicVar.hasOwnProperty(key)) {
+					    
+						console.log(key);
+
+						var name = new UI.Text( key ).setWidth( '130px' ).setFontSize( '12px' );
+						scriptsContainer.add( name );
+
+						var url = new UI.Input(script.publicVar[key]).setWidth( '130px' ).setFontSize( '12px' );
+						url.onChange( function () {
+
+							script.publicVar[key] = this.getValue();
+
+						} );
+						scriptsContainer.add( url );
+
+					  }
+					}
+
+					// if(script.name === "VideoPlayer"){
+
+					// 	var name = new UI.Text( "Video Name" ).setWidth( '130px' ).setFontSize( '12px' );
+					// 	scriptsContainer.add( name );
+
+
+					// 	// var url = new UI.Input(script.publicVar.url).setWidth( '130px' ).setFontSize( '12px' );
+					// 	// url.onChange( function () {
+
+					// 	// 	script.publicVar.url = this.getValue();
+
+					// 	// } );
+					// 	// scriptsContainer.add( url );
+
+					// 	var videoRow = new UI.Row();
+					// 	var videoUpload = new UI.Video().onChange( update );
+
+					// 	videoRow.add( new UI.Text( 'Video' ).setWidth( '90px' ) );
+					// 	videoRow.add( videoUpload );
+
+					// 	scriptsContainer.add( videoRow );
+
+
+					// }
 
 					scriptsContainer.add( new UI.Break() );
 

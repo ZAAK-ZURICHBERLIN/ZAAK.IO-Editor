@@ -80,7 +80,6 @@ THREE.WebGLRenderer = function ( parameters ) {
 	// internal state cache
 
 	_currentProgram = null,
-	_currentRenderTarget = null,
 	_currentFramebuffer = null,
 	_currentMaterialId = - 1,
 	_currentGeometryProgram = '',
@@ -88,8 +87,10 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 	_usedTextureUnits = 0,
 
-	_viewport = new THREE.Rectangle( 0, 0, _canvas.width, _canvas.height ),
-
+	_viewportX = 0,
+	_viewportY = 0,
+	_viewportWidth = _canvas.width,
+	_viewportHeight = _canvas.height,
 	_currentWidth = 0,
 	_currentHeight = 0,
 
@@ -216,12 +217,6 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 	//
 
-	function getTargetPixelRatio() {
-
-		return _currentRenderTarget === null ? pixelRatio : 1;
-
-	}
-
 	function glClearColor( r, g, b, a ) {
 
 		if ( _premultipliedAlpha === true ) {
@@ -238,7 +233,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 		state.init();
 
-		_gl.viewport( _viewport.x, _viewport.y, _viewport.width, _viewport.height );
+		_gl.viewport( _viewportX, _viewportY, _viewportWidth, _viewportHeight );
 
 		glClearColor( _clearColor.r, _clearColor.g, _clearColor.b, _clearAlpha );
 
@@ -261,7 +256,6 @@ THREE.WebGLRenderer = function ( parameters ) {
 	this.context = _gl;
 	this.capabilities = capabilities;
 	this.extensions = extensions;
-	this.properties = properties;
 	this.state = state;
 
 	// shadow map
@@ -370,35 +364,34 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 	this.setViewport = function ( x, y, width, height ) {
 
-		if ( _currentRenderTarget === null ) {
+		_viewportX = x * pixelRatio;
+		_viewportY = y * pixelRatio;
 
-			x *= pixelRatio;
-			y *= pixelRatio;
+		_viewportWidth = width * pixelRatio;
+		_viewportHeight = height * pixelRatio;
 
-			width *= pixelRatio;
-			height *= pixelRatio;
+		_gl.viewport( _viewportX, _viewportY, _viewportWidth, _viewportHeight );
 
-			_viewport.set( x, y, width, height );
+	};
 
-		}
+	this.getViewport = function ( dimensions ) {
 
-		_gl.viewport( x, y, width, height );
+		dimensions.x = _viewportX / pixelRatio;
+		dimensions.y = _viewportY / pixelRatio;
+
+		dimensions.z = _viewportWidth / pixelRatio;
+		dimensions.w = _viewportHeight / pixelRatio;
 
 	};
 
 	this.setScissor = function ( x, y, width, height ) {
 
-		if ( _currentRenderTarget === null ) {
-
-			x *= pixelRatio;
-			y *= pixelRatio;
-
-			width *= pixelRatio;
-			height *= pixelRatio;
-
-		}
-
-		_gl.scissor( x, y, width, height );
+		_gl.scissor(
+			x * pixelRatio,
+			y * pixelRatio,
+			width * pixelRatio,
+			height * pixelRatio
+		);
 
 	};
 
@@ -498,7 +491,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 		properties.clear();
 
-	}
+	};
 
 	function onTextureDispose( event ) {
 
@@ -739,7 +732,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			}
 
-			activeInfluences.sort( absNumericalSort );
+			activeInfluences.sort( numericalSort );
 
 			if ( activeInfluences.length > 8 ) {
 
@@ -825,7 +818,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 		if ( index !== null ) {
 
-			dataCount = index.count;
+			dataCount = index.count
 
 		} else if ( position !== undefined ) {
 
@@ -850,7 +843,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			if ( material.wireframe === true ) {
 
-				state.setLineWidth( material.wireframeLinewidth * getTargetPixelRatio() );
+				state.setLineWidth( material.wireframeLinewidth * pixelRatio );
 				renderer.setMode( _gl.LINES );
 
 			} else {
@@ -880,7 +873,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			if ( lineWidth === undefined ) lineWidth = 1; // Not using Line*Material
 
-			state.setLineWidth( lineWidth * getTargetPixelRatio() );
+			state.setLineWidth( lineWidth * pixelRatio );
 
 			if ( object instanceof THREE.LineSegments ) {
 
@@ -1037,9 +1030,9 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 	// Sorting
 
-	function absNumericalSort( a, b ) {
+	function numericalSort ( a, b ) {
 
-		return Math.abs( b[ 0 ] ) - Math.abs( a[ 0 ] );
+		return b[ 0 ] - a[ 0 ];
 
 	}
 
@@ -1147,12 +1140,6 @@ THREE.WebGLRenderer = function ( parameters ) {
 		_infoRender.vertices = 0;
 		_infoRender.faces = 0;
 		_infoRender.points = 0;
-
-		if ( renderTarget === undefined ) {
-
-			renderTarget = null;
-
-		}
 
 		this.setRenderTarget( renderTarget );
 
@@ -1320,7 +1307,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 						var geometry = objects.update( object );
 
-						if ( material instanceof THREE.MultiMaterial ) {
+						if ( material instanceof THREE.MeshFaceMaterial ) {
 
 							var groups = geometry.groups;
 							var materials = material.materials;
@@ -1487,7 +1474,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			material.numSupportedMorphNormals = 0;
 
-			for ( var i = 0; i < _this.maxMorphNormals; i ++ ) {
+			for ( i = 0; i < _this.maxMorphNormals; i ++ ) {
 
 				if ( attributes[ 'morphNormal' + i ] >= 0 ) {
 
@@ -1988,9 +1975,9 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 	function refreshUniformsPoints ( uniforms, material ) {
 
-		uniforms.diffuse.value = material.color;
+		uniforms.psColor.value = material.color;
 		uniforms.opacity.value = material.opacity;
-		uniforms.size.value = material.size;
+		uniforms.size.value = material.size * pixelRatio;
 		uniforms.scale.value = _canvas.height / 2.0; // TODO: Cache this.
 
 		uniforms.map.value = material.map;
@@ -2390,7 +2377,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 								case 'c':
 									_gl.uniform3f( locationProperty, valueProperty.r, valueProperty.g, valueProperty.b );
 									break;
-							}
+							};
 
 						}
 
@@ -3339,7 +3326,6 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			state.bindTexture( _gl.TEXTURE_CUBE_MAP, textureProperties.__webglTexture );
 			setTextureParameters( _gl.TEXTURE_CUBE_MAP, renderTarget.texture, isTargetPowerOfTwo );
-
 			for ( var i = 0; i < 6; i ++ ) {
 
 				setupFrameBufferTexture( renderTargetProperties.__webglFramebuffer[ i ], renderTarget, _gl.COLOR_ATTACHMENT0, _gl.TEXTURE_CUBE_MAP_POSITIVE_X + i );
@@ -3372,8 +3358,6 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 	this.setRenderTarget = function ( renderTarget ) {
 
-		_currentRenderTarget = renderTarget;
-
 		if ( renderTarget && properties.get( renderTarget ).__webglFramebuffer === undefined ) {
 
 			setupRenderTarget( renderTarget );
@@ -3381,7 +3365,7 @@ THREE.WebGLRenderer = function ( parameters ) {
 		}
 
 		var isCube = ( renderTarget instanceof THREE.WebGLRenderTargetCube );
-		var framebuffer, viewport;
+		var framebuffer, width, height, vx, vy;
 
 		if ( renderTarget ) {
 
@@ -3397,20 +3381,28 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 			}
 
-			viewport = renderTarget.viewport;
+			width = renderTarget.width;
+			height = renderTarget.height;
+
+			vx = 0;
+			vy = 0;
 
 		} else {
 
 			framebuffer = null;
 
-			viewport = _viewport;
+			width = _viewportWidth;
+			height = _viewportHeight;
+
+			vx = _viewportX;
+			vy = _viewportY;
 
 		}
 
 		if ( framebuffer !== _currentFramebuffer ) {
 
 			_gl.bindFramebuffer( _gl.FRAMEBUFFER, framebuffer );
-			_gl.viewport( viewport.x, viewport.y, viewport.width, viewport.height );
+			_gl.viewport( vx, vy, width, height );
 
 			_currentFramebuffer = framebuffer;
 
@@ -3423,8 +3415,8 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 		}
 
-		_currentWidth = viewport.width;
-		_currentHeight = viewport.height;
+		_currentWidth = width;
+		_currentHeight = height;
 
 	};
 

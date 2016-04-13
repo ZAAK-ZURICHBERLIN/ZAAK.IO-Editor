@@ -75,6 +75,24 @@ Menubar.File = function ( editor ) {
 		output.metadata.type = 'App';
 		delete output.history;
 
+		// console.log(output.scene.textures.length);
+
+		// for(var i = 0; i < output.scene.textures.length; i++){
+		// 	for(var ii = 0; ii < output.scene.textures.length; ii++){
+		// 		console.log(output.scene.textures[i].image);
+
+		// 		var _oldUUID = output.scene.textures[ii].uuid;
+		// 		var _newUUID = output.scene.textures[i].uuid;
+
+		// 		for(var iii = 0; i < output.scene.materials.length; iii++){
+
+		// 			if(output.scene.materials[iii].map == _oldUUID)
+		// 		}
+			
+		// 	}
+		// }
+
+
 		output = JSON.stringify( output, null, '\t' );
 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 

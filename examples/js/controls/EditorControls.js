@@ -13,6 +13,7 @@ THREE.EditorControls = function ( object, domElement ) {
 
 	this.enabled = true;
 	this.center = new THREE.Vector3();
+	this.controler = object;
 
 	// internals
 
@@ -41,12 +42,12 @@ THREE.EditorControls = function ( object, domElement ) {
 			scale = ( scale.x + scale.y + scale.z ) / 3;
 			center.add( target.geometry.boundingSphere.center.clone().multiplyScalar( scale ) );
 			var radius = target.geometry.boundingSphere.radius * ( scale );
-			var pos = object.position.clone().sub( center ).normalize().multiplyScalar( radius * 2 );
-			object.position.copy( center ).add( pos );
+			var pos = scope.controler.position.clone().sub( center ).normalize().multiplyScalar( radius * 2 );
+			scope.controler.position.copy( center ).add( pos );
 
 		}
 
-		object.lookAt( center );
+		scope.controler.lookAt( center );
 
 		scope.dispatchEvent( changeEvent );
 
@@ -54,12 +55,12 @@ THREE.EditorControls = function ( object, domElement ) {
 
 	this.pan = function ( delta ) {
 
-		var distance = object.position.distanceTo( center );
+		var distance = scope.controler.position.distanceTo( center );
 
 		delta.multiplyScalar( distance * 0.001 );
-		delta.applyMatrix3( normalMatrix.getNormalMatrix( object.matrix ) );
+		delta.applyMatrix3( normalMatrix.getNormalMatrix( scope.controler.matrix ) );
 
-		object.position.add( delta );
+		scope.controler.position.add( delta );
 		center.add( delta );
 
 		scope.dispatchEvent( changeEvent );
@@ -68,15 +69,32 @@ THREE.EditorControls = function ( object, domElement ) {
 
 	this.zoom = function ( delta ) {
 
-		var distance = object.position.distanceTo( center );
 
-		delta.multiplyScalar( distance * 0.001 );
+		if(scope.controler instanceof THREE.PerspectiveCamera !== true){
 
-		if ( delta.length() > distance ) return;
+			scope.controler.zoom = Math.max(scope.controler.zoom - delta.z * 0.001, 0.1);	
 
-		delta.applyMatrix3( normalMatrix.getNormalMatrix( object.matrix ) );
+			// scope.controler.left = scope.controler.left + delta.z*0.01;
+			// // scope.controler.right = scope.controler.right + delta.z*0.01;
+			// scope.controler.top == scope.controler.top + delta.z*0.001;
+			// scope.controler.bottom == scope.controler.bottom + delta.z*0.001;
 
-		object.position.add( delta );
+			scope.controler.updateProjectionMatrix();
+		}
+		else
+		{
+
+			var distance = scope.controler.position.distanceTo( center );
+
+			delta.multiplyScalar( distance * 0.001 );
+
+			if ( delta.length() > distance ) return;
+
+			delta.applyMatrix3( normalMatrix.getNormalMatrix( scope.controler.matrix ) );
+
+			scope.controler.position.add( delta );
+
+		}
 
 		scope.dispatchEvent( changeEvent );
 
@@ -84,7 +102,7 @@ THREE.EditorControls = function ( object, domElement ) {
 
 	this.rotate = function ( delta ) {
 
-		vector.copy( object.position ).sub( center );
+		vector.copy( scope.controler.position ).sub( center );
 
 		var theta = Math.atan2( vector.x, vector.z );
 		var phi = Math.atan2( Math.sqrt( vector.x * vector.x + vector.z * vector.z ), vector.y );
@@ -102,9 +120,9 @@ THREE.EditorControls = function ( object, domElement ) {
 		vector.y = radius * Math.cos( phi );
 		vector.z = radius * Math.sin( phi ) * Math.cos( theta );
 
-		object.position.copy( center ).add( vector );
+		scope.controler.position.copy( center ).add( vector );
 
-		object.lookAt( center );
+		scope.controler.lookAt( center );
 
 		scope.dispatchEvent( changeEvent );
 
@@ -214,7 +232,7 @@ THREE.EditorControls = function ( object, domElement ) {
 		domElement.removeEventListener( 'contextmenu', contextmenu, false );
 		domElement.removeEventListener( 'mousedown', onMouseDown, false );
 		domElement.removeEventListener( 'mousewheel', onMouseWheel, false );
-		domElement.removeEventListener( 'DOMMouseScroll', onMouseWheel, false ); // firefox
+		domElement.removeEventListener( 'MozMousePixelScroll', onMouseWheel, false ); // firefox
 
 		domElement.removeEventListener( 'mousemove', onMouseMove, false );
 		domElement.removeEventListener( 'mouseup', onMouseUp, false );
@@ -229,7 +247,7 @@ THREE.EditorControls = function ( object, domElement ) {
 	domElement.addEventListener( 'contextmenu', contextmenu, false );
 	domElement.addEventListener( 'mousedown', onMouseDown, false );
 	domElement.addEventListener( 'mousewheel', onMouseWheel, false );
-	domElement.addEventListener( 'DOMMouseScroll', onMouseWheel, false ); // firefox
+	domElement.addEventListener( 'MozMousePixelScroll', onMouseWheel, false ); // firefox
 
 	// touch
 
@@ -272,7 +290,7 @@ THREE.EditorControls = function ( object, domElement ) {
 		event.preventDefault();
 		event.stopPropagation();
 
-		var getClosest = function( touch, touches ) {
+		function getClosest( touch, touches ) {
 
 			var closest = touches[ 0 ];
 
@@ -284,7 +302,7 @@ THREE.EditorControls = function ( object, domElement ) {
 
 			return closest;
 
-		};
+		}
 
 		switch ( event.touches.length ) {
 

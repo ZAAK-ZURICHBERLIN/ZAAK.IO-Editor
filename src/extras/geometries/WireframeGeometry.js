@@ -82,7 +82,7 @@ THREE.WireframeGeometry = function ( geometry ) {
 
 			if ( groups.length === 0 ) {
 
-				geometry.addDrawCall( 0, indices.length );
+				geometry.addGroup( 0, indices.length );
 
 			}
 
