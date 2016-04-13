@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Acid Store</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+<link rel="stylesheet" href="css/acid.css" type="text/css" media="screen" title="zulu" charset="utf-8" />
+</head>
+<body>
+<script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+<script src="../build/three.min.js"></script>
+<script src="./js/Library.js"></script>
+<script src="./js/LibraryLoader.js"></script>
+<script src="./js/OrbitControls.js"></script>
+
+<div class="filteritems"><button onclick="filter('_model');">Models</button> | <button onclick="filter('_audio');">Audio</button> | <button onclick="filter('_video');">Video</button> | <button onclick="filter('_code');">Code</button></div>
+
+<canvas id="c"></canvas>
+
+<div id="content"></div>
+
+<script id="template" type="notjs" class="div">
+	<div class="scene"></div>
+	<div class="name">$</div>
+	<div class="author">£</div>
+	<div class="description">?</div>
+	<div class="tags">!</div><br>
+	<button id="addButton">Add</button>
+</script>
+
+<script>
+	var library = new Library();
+	library.loadLibrary("_model")
+
+	function filter(_name){
+		library.loadLibrary(_name);
+	}
+</script>
+
+</body>
+</html>

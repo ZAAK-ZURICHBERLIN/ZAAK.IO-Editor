@@ -89,6 +89,16 @@ Menubar.Status = function ( editor ) {
 		});
 	} );
 
+	editor.signals.sceneGraphChanged.add( function () {
+
+		editor.storage.size( function (size){
+			title.setTextContent( "Size : " + size/10 + "/50Mb");
+
+		});
+
+	} );
+
+
 	return container;
 
 };

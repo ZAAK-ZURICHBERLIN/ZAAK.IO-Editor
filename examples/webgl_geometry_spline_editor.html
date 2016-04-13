@@ -15,7 +15,7 @@
 	</head>
 	<body>
 
-		<script src="../build/three.min.js"></script>
+		<script src="js/three74min.js"></script>
 		<script src="js/controls/OrbitControls.js"></script>
 		<script src="js/controls/TransformControls.js"></script>
 		<script src="js/renderers/Projector.js"></script>
@@ -38,7 +38,7 @@
 			}
 
 			var container, stats;
-			var camera, scene, renderer;
+			var camera, splineCamera, scene, renderer;
 			var splineHelperObjects = [],
 				splineOutline;
 			var splinePointsLength = 4;
@@ -54,14 +54,38 @@
 
 			};
 
+			var binormal = new THREE.Vector3();
+			var normal = new THREE.Vector3();
+
+			var loaded = false;
+
 			init();
-			animate();
 
 			function init() {
 
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
 				scene = new THREE.Scene();
+
+				var loader = new THREE.XHRLoader();
+				loader.crossOrigin = '';
+
+				loader.load( "js/zaak.json", function ( text ) {
+
+				    var loader2 = new THREE.ObjectLoader();
+				    // console.log(JSON.parse(text) );
+					var scen = loader2.parse( JSON.parse(text).scene ) ;
+					scen.scale.set(10,10,10);
+					scene.add(scen);
+				      
+				    init2();  
+
+				} );
+
+			}
+
+			function init2(){
+
 				camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 1, 10000 );
 				camera.position.z = 1000;
 				scene.add( camera );
@@ -80,7 +104,7 @@
 				scene.add( light );
 				spotlight = light;
 
-				var planeGeometry = new THREE.PlaneGeometry( 2000, 2000, 20, 20 );
+				var planeGeometry = new THREE.PlaneGeometry( 2000, 2000 );
 				planeGeometry.rotateX( - Math.PI / 2 );
 				var planeMaterial = new THREE.MeshBasicMaterial( { color: 0xeeeeee } );
 
@@ -124,8 +148,13 @@
 					<input type="checkbox" id="centripetal" checked /> Centripetal Catmull-rom<br />\
 					<input type="checkbox" id="chordal" checked /> Chordal Catmull-rom<br />';
 
+				options.innerHTML += '<br/><br/><input id="animation" type="button" onclick="animateCamera(true)" value="Camera Spline Animation View: OFF"/><br/> Look Ahead <input id="lookAhead" type="checkbox" onchange="animateCamera()" /> Camera Helper <input id="cameraHelper" type="checkbox" onchange="animateCamera()" />';
+
 				container.appendChild( info );
 				container.appendChild( options );
+
+				splineCamera = new THREE.PerspectiveCamera( 84, window.innerWidth / window.innerHeight, 0.01, 1000 );
+				scene.add( splineCamera );
 
 				stats = new Stats();
 				stats.domElement.style.position = 'absolute';
@@ -141,6 +170,7 @@
 				transformControl.addEventListener( 'change', render );
 
 				scene.add( transformControl );
+
 
 				// Hiding transform situation is a little in a mess :()
 				transformControl.addEventListener( 'change', function( e ) {
@@ -249,32 +279,33 @@
 				var curve;
 
 
-				curve = new THREE.CatmullRomCurve3( positions );
-				curve.type = 'catmullrom';
-				curve.mesh = new THREE.Line( geometry.clone(), new THREE.LineBasicMaterial( {
-					color: 0xff0000,
-					opacity: 0.35,
-					linewidth: 2
-					} ) );
-				curve.mesh.castShadow = true;
-				splines.uniform = curve;
+				// curve = new THREE.CatmullRomCurve3( positions );
+				// curve.type = 'catmullrom';
+				// curve.mesh = new THREE.Line( geometry.clone(), new THREE.LineBasicMaterial( {
+				// 	color: 0xff0000,
+				// 	opacity: 0.35,
+				// 	linewidth: 2
+				// 	} ) );
+				// curve.mesh.castShadow = true;
+				// splines.uniform = curve;
 
-				curve = new THREE.CatmullRomCurve3( positions );
-				curve.type = 'centripetal';
-				curve.mesh = new THREE.Line( geometry.clone(), new THREE.LineBasicMaterial( {
-					color: 0x00ff00,
-					opacity: 0.35,
-					linewidth: 2
-					} ) );
-				curve.mesh.castShadow = true;
-				splines.centripetal = curve;
+				// curve = new THREE.CatmullRomCurve3( positions );
+				// curve.type = 'centripetal';
+				// curve.mesh = new THREE.Line( geometry.clone(), new THREE.LineBasicMaterial( {
+				// 	color: 0x00ff00,
+				// 	opacity: 0.35,
+				// 	linewidth: 2
+				// 	} ) );
+				// curve.mesh.castShadow = true;
+				// splines.centripetal = curve;
 
 				curve = new THREE.CatmullRomCurve3( positions );
 				curve.type = 'chordal';
 				curve.mesh = new THREE.Line( geometry.clone(), new THREE.LineBasicMaterial( {
-					color: 0x0000ff,
-					opacity: 0.35,
-					linewidth: 2
+					color: 0x000000,
+					opacity: 0.3,
+					transparent:true,
+					linewidth: 3
 					} ) );
 				curve.mesh.castShadow = true;
 				splines.chordal = curve;
@@ -290,6 +321,9 @@
 						new THREE.Vector3( -53.56300074753207, 171.49711742836848, -14.495472686253045 ),
 						new THREE.Vector3( -91.40118730204415, 176.4306956436485, -6.958271935582161 ),
 						new THREE.Vector3( -383.785318791128, 491.1365363371675, 47.869296953772746 ) ] );
+
+
+				animate();
 
 			}
 
@@ -408,6 +442,23 @@
 
 			}
 
+			function animateCamera( toggle ) {
+
+				if ( toggle ) {
+
+					animation = animation === false;
+					document.getElementById('animation').value = 'Camera Spline Animation View: ' + (animation? 'ON': 'OFF');
+
+				}
+
+				lookAhead = document.getElementById('lookAhead').checked;
+
+				showCameraHelper = document.getElementById('cameraHelper').checked;
+
+				cameraHelper.visible = showCameraHelper;
+				cameraEye.visible = showCameraHelper;
+			}
+
 			function animate() {
 
 				requestAnimationFrame( animate );
@@ -416,14 +467,70 @@
 				controls.update();
 				transformControl.update();
 
+
 			}
 
 			function render() {
 
-				splines.uniform.mesh.visible = uniform.checked;
-				splines.centripetal.mesh.visible = centripetal.checked;
+
+				// splines.uniform.mesh.visible = uniform.checked;
+				// splines.centripetal.mesh.visible = centripetal.checked;
 				splines.chordal.mesh.visible = chordal.checked;
-				renderer.render( scene, camera );
+				// renderer.render( scene, camera );
+				console.log(splines.chordal);
+
+
+				// Try Animate Camera Along Spline
+				var time = Date.now();
+				var looptime = 20 * 1000;
+				var t = ( time % looptime ) / looptime;
+
+				// splines
+				console.log(splines.chordal);
+				var pos = splines.chordal.getPointAt( t );
+				// pos.multiplyScalar( scale );
+
+				// interpolation
+				// var segments = tube.tangents.length;
+				// var pickt = t * segments;
+				// var pick = Math.floor( pickt );
+				// var pickNext = ( pick + 1 ) % segments;
+
+				// binormal.subVectors( tube.binormals[ pickNext ], tube.binormals[ pick ] );
+				// binormal.multiplyScalar( pickt - pick ).add( tube.binormals[ pick ] );
+
+
+				var dir = splines.chordal.getTangentAt( t );
+
+				// var offset = 15;
+
+				normal.copy( binormal ).cross( dir );
+
+				// // We move on a offset on its binormal
+				// pos.add( normal.clone().multiplyScalar( offset ) );
+
+				splineCamera.position.copy( pos );
+				// cameraEye.position.copy( pos );
+
+
+				// Camera Orientation 1 - default look at
+				// splineCamera.lookAt( lookAt );
+
+				// Using arclength for stablization in look ahead.
+				var lookAt = splines.chordal.getPointAt( ( t + 30 / splines.chordal.getLength() ) % 1 );
+
+				// Camera Orientation 2 - up orientation via normal
+				lookAt.copy( pos ).add( dir );
+				splineCamera.matrix.lookAt(splineCamera.position, lookAt, normal);
+				splineCamera.rotation.setFromRotationMatrix( splineCamera.matrix, splineCamera.rotation.order );
+
+				// cameraHelper.update();
+
+				// parent.rotation.y += ( targetRotation - parent.rotation.y ) * 0.05;
+
+				renderer.render( scene, animation === true ? splineCamera : camera );
+
+
 
 			}
 

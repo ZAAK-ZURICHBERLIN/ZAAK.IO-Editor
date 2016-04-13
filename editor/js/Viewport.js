@@ -19,8 +19,19 @@ var Viewport = function ( editor ) {
 
 	// helpers
 
-	var grid = new THREE.GridHelper( 500, 25 );
+	var grid = new THREE.GridHelper( 30, 1 );
 	sceneHelpers.add( grid );
+
+	//
+
+	var camera = editor.camera;
+	var perspCam = true;	
+
+	//
+
+	var renderer = null;
+
+	//
 
 	// instantiate a loader
 	var loader = new THREE.JSONLoader();
@@ -29,22 +40,18 @@ var Viewport = function ( editor ) {
 	// load a resource
 	loader.load(
 		// resource URL
-		// DUMMY,
-		'3D/dummy.json',
+		DUMMY,
+		// '3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
 			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
 			sceneHelpers.add( vrHuman );
-
+			vrHuman.scale.set(0.008,0.008,0.008);
 			vrHuman.rotation.set(0,3.14,0);
 		}
 
 	);
 
-
-	//
-
-	var camera = editor.camera;
 
 	//
 
@@ -54,7 +61,9 @@ var Viewport = function ( editor ) {
 	selectionBox.visible = false;
 	sceneHelpers.add( selectionBox );
 
-	var matrix = new THREE.Matrix4();
+	var objectPositionOnDown = null;
+	var objectRotationOnDown = null;
+	var objectScaleOnDown = null;
 
 	var transformControls = new THREE.TransformControls( camera, container.dom );
 	transformControls.addEventListener( 'change', function () {
@@ -71,6 +80,8 @@ var Viewport = function ( editor ) {
 
 			}
 
+			signals.refreshSidebarObject3D.dispatch( object );
+
 		}
 
 		render();
@@ -80,35 +91,56 @@ var Viewport = function ( editor ) {
 
 		var object = transformControls.object;
 
-		matrix.copy( object.matrix );
+		objectPositionOnDown = object.position.clone();
+		objectRotationOnDown = object.rotation.clone();
+		objectScaleOnDown = object.scale.clone();
 
 		controls.enabled = false;
 
 	} );
+
 	transformControls.addEventListener( 'mouseUp', function () {
 
 		var object = transformControls.object;
 
-		if ( matrix.equals( object.matrix ) === false ) {
+		if ( object !== null ) {
 
-			( function ( matrix1, matrix2 ) {
+			switch ( transformControls.getMode() ) {
 
-				editor.history.add(
-					function () {
-						matrix1.decompose( object.position, object.quaternion, object.scale );
-						signals.objectChanged.dispatch( object );
-					},
-					function () {
-						matrix2.decompose( object.position, object.quaternion, object.scale );
-						signals.objectChanged.dispatch( object );
+				case 'translate':
+
+					if ( ! objectPositionOnDown.equals( object.position ) ) {
+
+						editor.execute( new SetPositionCommand( object, object.position, objectPositionOnDown ) );
+
 					}
-				);
 
-			} )( matrix.clone(), object.matrix.clone() );
+					break;
+
+				case 'rotate':
+
+					if ( ! objectRotationOnDown.equals( object.rotation ) ) {
+
+						editor.execute( new SetRotationCommand( object, object.rotation, objectRotationOnDown ) );
+
+					}
+
+					break;
+
+				case 'scale':
+
+					if ( ! objectScaleOnDown.equals( object.scale ) ) {
+
+						editor.execute( new SetScaleCommand( object, object.scale, objectScaleOnDown ) );
+
+					}
+
+					break;
+
+			}
 
 		}
 
-		signals.objectChanged.dispatch( object );
 		controls.enabled = true;
 
 	} );
@@ -134,11 +166,13 @@ var Viewport = function ( editor ) {
 
 		mouse.set( ( point.x * 2 ) - 1, - ( point.y * 2 ) + 1 );
 
+		// var usedCam = (camera.inPerspectiveMode) ? camera.cameraP : camera.cameraO;
+
 		raycaster.setFromCamera( mouse, camera );
 
 		return raycaster.intersectObjects( objects );
 
-	};
+	}
 
 	var onDownPosition = new THREE.Vector2();
 	var onUpPosition = new THREE.Vector2();
@@ -149,11 +183,11 @@ var Viewport = function ( editor ) {
 		var rect = dom.getBoundingClientRect();
 		return [ ( x - rect.left ) / rect.width, ( y - rect.top ) / rect.height ];
 
-	};
+	}
 
 	function handleClick() {
 
-		if ( onDownPosition.distanceTo( onUpPosition ) == 0 ) {
+		if ( onDownPosition.distanceTo( onUpPosition ) === 0 ) {
 
 			var intersects = getIntersects( onUpPosition, objects );
 
@@ -183,7 +217,7 @@ var Viewport = function ( editor ) {
 
 		}
 
-	};
+	}
 
 	function onMouseDown( event ) {
 
@@ -194,7 +228,7 @@ var Viewport = function ( editor ) {
 
 		document.addEventListener( 'mouseup', onMouseUp, false );
 
-	};
+	}
 
 	function onMouseUp( event ) {
 
@@ -205,7 +239,7 @@ var Viewport = function ( editor ) {
 
 		document.removeEventListener( 'mouseup', onMouseUp, false );
 
-	};
+	}
 
 	function onTouchStart( event ) {
 
@@ -216,7 +250,7 @@ var Viewport = function ( editor ) {
 
 		document.addEventListener( 'touchend', onTouchEnd, false );
 
-	};
+	}
 
 	function onTouchEnd( event ) {
 
@@ -229,7 +263,7 @@ var Viewport = function ( editor ) {
 
 		document.removeEventListener( 'touchend', onTouchEnd, false );
 
-	};
+	}
 
 	function onDoubleClick( event ) {
 
@@ -246,7 +280,7 @@ var Viewport = function ( editor ) {
 
 		}
 
-	};
+	}
 
 	container.dom.addEventListener( 'mousedown', onMouseDown, false );
 	container.dom.addEventListener( 'touchstart', onTouchStart, false );
@@ -295,12 +329,39 @@ var Viewport = function ( editor ) {
 
 	} );
 
+	signals.switchCameraMode.add( function () {
+
+		var position = camera.position;
+
+		if (camera instanceof THREE.PerspectiveCamera) {
+            camera = new THREE.OrthographicCamera(window.innerWidth / -16, window.innerWidth / 16, window.innerHeight / 16, window.innerHeight / -16, -200, 10000);
+
+        } else {
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
+
+        }
+
+      	camera.position.x = position.x;
+        camera.position.y = position.y;
+        camera.position.z = position.z;
+
+       
+        controls.controler = camera; // update
+        transformControls.controler = camera; // update
+
+        editor.focus(editor.selected);
+		// render();
+
+	} );
+
 	signals.cameraPositionSnap.add( function ( mode ) {
 
 		//Needs Update to work without selected object
 
-		var distance;
+		var distance = camera.position.length();
 		var newPos;
+
+		console.log(distance);
 
 		if(editor.selected)
 			distance = editor.selected.position.distanceTo(camera.position);
@@ -345,8 +406,15 @@ var Viewport = function ( editor ) {
 		else
 		{
 
-			controls.center.set( 0, 0, 0 );
-			render();
+			// console.log(newPos);
+			// controls.center.set( 0, 0, 0 );
+			// controls.focus
+			// render();
+			camera.position.set(newPos.x,  
+				newPos.y, 
+				newPos.z);
+
+			controls.focus(editor.scene);
 		}
 
 		signals.cameraChanged.dispatch( camera );
@@ -371,8 +439,6 @@ var Viewport = function ( editor ) {
 
 	} );
 
-
-
 	signals.rendererChanged.add( function ( newRenderer ) {
 
 		if ( renderer !== null ) {
@@ -382,6 +448,7 @@ var Viewport = function ( editor ) {
 		}
 
 		renderer = newRenderer;
+		editor.renderer = renderer;
 
 		renderer.autoClear = false;
 		renderer.autoUpdateScene = false;
@@ -438,9 +505,13 @@ var Viewport = function ( editor ) {
 
 	} );
 
-	signals.geometryChanged.add( function ( geometry ) {
+	signals.geometryChanged.add( function ( object ) {
 
-		selectionBox.update( editor.selected );
+		if ( object !== null ) {
+
+			selectionBox.update( object );
+
+		}
 
 		render();
 
@@ -448,24 +519,22 @@ var Viewport = function ( editor ) {
 
 	signals.objectAdded.add( function ( object ) {
 
-		var materialsNeedUpdate = false;
-
 		object.traverse( function ( child ) {
-
-			if ( child instanceof THREE.Light ) materialsNeedUpdate = true;
 
 			objects.push( child );
 
 		} );
 
-		if ( materialsNeedUpdate === true ) updateMaterials();
-
 	} );
 
 	signals.objectChanged.add( function ( object ) {
 
-		selectionBox.update( object );
-		transformControls.update();
+		if ( editor.selected === object ) {
+
+			selectionBox.update( object );
+			transformControls.update();
+
+		}
 
 		if ( object instanceof THREE.PerspectiveCamera ) {
 
@@ -485,17 +554,11 @@ var Viewport = function ( editor ) {
 
 	signals.objectRemoved.add( function ( object ) {
 
-		var materialsNeedUpdate = false;
-
 		object.traverse( function ( child ) {
-
-			if ( child instanceof THREE.Light ) materialsNeedUpdate = true;
 
 			objects.splice( objects.indexOf( child ), 1 );
 
 		} );
-
-		if ( materialsNeedUpdate === true ) updateMaterials();
 
 	} );
 
@@ -512,6 +575,16 @@ var Viewport = function ( editor ) {
 	} );
 
 	signals.materialChanged.add( function ( material ) {
+
+		render();
+
+	} );
+
+	//@elephantatwork, changeable bgColor
+	signals.bgColorChanged.add(function ( bgColor ) {
+		console.log("ha");
+		renderer.setClearColor( bgColor, 1 );
+		editor.config.setKey( 'backgroundColor', bgColor);
 
 		render();
 
@@ -535,21 +608,9 @@ var Viewport = function ( editor ) {
 
 			}
 
-			updateMaterials();
-
 			oldFogType = fogType;
 
 		}
-
-		render();
-
-	} );
-
-	//@elephantatwork, changeable bgColor
-	signals.bgColorChanged.add(function ( bgColor ) {
-
-		renderer.setClearColor( bgColor, 1 );
-		editor.config.setKey( 'backgroundColor', bgColor);
 
 		render();
 
@@ -604,35 +665,11 @@ var Viewport = function ( editor ) {
 
 	//
 
-	var renderer = null;
+	// var renderer = null;
 
-	animate();
+	//animate();
 
 	//
-
-	function updateMaterials() {
-
-		editor.scene.traverse( function ( node ) {
-
-			if ( node.material ) {
-
-				node.material.needsUpdate = true;
-
-				if ( node.material instanceof THREE.MeshFaceMaterial ) {
-
-					for ( var i = 0; i < node.material.materials.length; i ++ ) {
-
-						node.material.materials[ i ].needsUpdate = true;
-
-					}
-
-				}
-
-			}
-
-		} );
-
-	}
 
 	function updateFog( root ) {
 
@@ -648,14 +685,26 @@ var Viewport = function ( editor ) {
 
 	}
 
-	function animate() {
+	var lastTimeMsec = null;
+
+	function animate( now ) {
 
 		requestAnimationFrame( animate );
 
-		// animations
-		// console.log(snap)
+		// call each update function
+		lastTimeMsec	= lastTimeMsec || now-1000/60;
+		var delta	= Math.min(200, now - lastTimeMsec);
+		lastTimeMsec	= now;
+		// call each update function
+		editor.RenderFcts.forEach(function( _function ){
+			_function(delta/1000, now/1000);
+			render();
+		
+		})
+		
+		/*
 
-		// editor.storage.size();
+		// animations
 
 		if ( THREE.AnimationHandler.animations.length > 0 ) {
 
@@ -677,6 +726,10 @@ var Viewport = function ( editor ) {
 
 		}
 
+		*/
+
+		render();
+
 	}
 
 	function render() {
@@ -697,4 +750,4 @@ var Viewport = function ( editor ) {
 
 	return container;
 
-}
+};

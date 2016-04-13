@@ -3,7 +3,7 @@
 	background: #fff;
 	padding: 0;
 	width: 100%;
-	height: 140px;
+	height: 300px;
 	font-size: 12px;
 	cursor: default;
 	overflow: auto;
@@ -20,11 +20,18 @@
 		background-color: #f8f8f8;
 	}
 
+.Panel.Collapsible.collapsed .Static .Button {
+	border-left-color: #444;
+}
+
+.Panel.Collapsible:not(.collapsed) .Static .Button {
+	border-top-color: #444;
+}
+
 input.Number {
 	color: #0080f0!important;
-	font-size: 12px;							/** TODO: Use of !imporant is not ideal **/
-	background-color: transparent!important;	/* For now this is a quick fix a rendering issue due to inherited background */
-	border: 1px solid transparent;
+	font-size: 12px;
+	border: 0px;
 	padding: 2px;
 	cursor: col-resize;
 }
@@ -32,41 +39,38 @@ input.Number {
 #viewport {
 	position: absolute;
 	top: 32px;
-	left: 0px;
+	left: 0;
 	right: 300px;
 	bottom: 32px;
 }
 
 	#viewport #info {
-		text-shadow: 1px 1px 0px rgba(0,0,0,0.25);
+		text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
 		pointer-events: none;
 	}
 
 img.ri {
-        position: absolute;
-        max-width: 90%;
-        top: 10%;
-        left: -10%;
-        z-index:2;
+    position: absolute;
+    max-width: 90%;
+    top: 10%;
+    left: -10%;
+    z-index:2;
 }
 
 img.ri:empty {
-        top: 50%;
-        left: 50%;
-        -webkit-transform: translate(-50%, -50%);
-        -moz-transform: translate(-50%, -50%);
-        -ms-transform: translate(-50%, -50%);
-        -o-transform: translate(-50%, -50%);
-        transform: translate(-50%, -50%);
+    top: 50%;
+    left: 50%;
+    -webkit-transform: translate(-50%, -50%);
+    -moz-transform: translate(-50%, -50%);
+    -ms-transform: translate(-50%, -50%);
+    -o-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);
 }
-
-
-#preloader {}	
 
 #script {
 	position: absolute;
 	top: 32px;
-	left: 0px;
+	left: 0;
 	right: 300px;
 	bottom: 32px;
 	opacity: 0.9;
@@ -75,7 +79,7 @@ img.ri:empty {
 #player {
 	position: absolute;
 	top: 32px;
-	left: 0px;
+	left: 0;
 	right: 300px;
 	bottom: 32px;
 }
@@ -85,10 +89,10 @@ img.ri:empty {
 	width: 100%;
 	height: 32px;
 	background: #eee;
-	padding: 0px;
-	margin: 0px;
-	right: 0px;
-	top: 0px;
+	padding: 0;
+	margin: 0;
+	right: 0;
+	top: 0;
 }
 
 	#menubar .menu {
@@ -100,24 +104,24 @@ img.ri:empty {
 	#menubar .menu.right {
 		float: right;
 		cursor: auto;
+		padding-right: 0;
 		text-align: right;
 	}
 
 		#menubar .menu .title {
 			display: inline-block;
 			color: #888;
-			margin: 0px;
+			margin: 0;
 			padding: 8px;
 		}
 
 		#menubar .menu .options {
 			position: absolute;
 			display: none;
-			padding: 5px 0px;
+			padding: 5px 0;
 			background: #eee;
 			width: 150px;
 		}
-
 		#menubar .menu .button {
 			display: inline-block;
 			color: #888;
@@ -140,6 +144,7 @@ img.ri:empty {
 			text-align: left;
 		}
 
+
 		#menubar .menu:hover .options {
 			display: block;
 		}
@@ -152,7 +157,7 @@ img.ri:empty {
 				color: #666;
 				background-color: transparent;
 				padding: 5px 10px;
-				margin: 0px !important;
+				margin: 0 !important;
 			}
 
 				#menubar .menu .options .option:hover {
@@ -165,11 +170,18 @@ img.ri:empty {
 					background: transparent;
 				}
 
+		#menubar .menu .options .inactive {
+			color: #bbb;
+			background-color: transparent;
+			padding: 5px 10px;
+			margin: 0 !important;
+		}
+
 #sidebar {
 	position: absolute;
-	right: 0px;
+	right: 0;
 	top: 32px;
-	bottom: 0px;
+	bottom: 0;
 	width: 300px;
 	background: #eee;
 	overflow: auto;
@@ -187,24 +199,41 @@ img.ri:empty {
 	}
 
 	#sidebar .Panel {
-		margin-bottom: 10px;
-	}
-
-	#sidebar .Panel.collapsed {
-		margin-bottom: 0px;
-	}
-
-	#sidebar > .Panel {
 		color: #888;
 		padding: 10px;
 		border-top: 1px solid #ccc;
 	}
 
+	#sidebar .Panel.collapsed {
+		margin-bottom: 0;
+	}
+
+	#sidebar .Row {
+		min-height: 20px;
+		margin-bottom: 10px;
+	}
+
+#tabs {
+	background-color: #ddd;
+	border-top: 1px solid #ccc;
+}
+
+	#tabs span {
+		color: #aaa;
+		border-right: 1px solid #ccc;
+		padding: 10px;
+	}
+
+	#tabs span.selected {
+		color: #888;
+		background-color: #eee;
+	}
+
 #toolbar {
 	position: absolute;
-	left: 0px;
+	left: 0;
 	right: 300px;
-	bottom: 0px;
+	bottom: 0;
 	height: 32px;
 	background: #eee;
 	color: #333;

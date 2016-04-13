@@ -30,6 +30,7 @@ var EditorShortCutsList = function () {
 		'camera/front':'1',
 		'camera/left':'3',
 		'camera/top':'7',
+		'camera/switch':'5'
 	};
 
 	if ( window.localStorage[ name ] === undefined ) {

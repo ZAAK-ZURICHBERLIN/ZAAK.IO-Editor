@@ -1,211 +1,221 @@
 /**
  * @author mrdoob / http://mrdoob.com/
  */
-
 var MainEditor = function () {
 
+	this.editor = new Editor();
 	this.init();
-}
+
+};
 
 MainEditor.prototype = {
 
 
 	init: function(){
 
-			window.URL = window.URL || window.webkitURL;
-			window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
+		window.URL = window.URL || window.webkitURL;
+		window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
 
-			Number.prototype.format = function (){
-				return this.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
-			};
+		Number.prototype.format = function (){
+			// return this.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1,");
+		};
 
-            this.editor = new Editor();
-			var editor = this.editor;
+		// var	editor = new Editor();
+		var scope = this;
 
-			var shortcuts = new EditorShortCuts(editor);
+		var viewport = new Viewport( scope.editor );
+		document.body.appendChild( viewport.dom );
 
-			var viewport = new Viewport( editor );
-			document.body.appendChild( viewport.dom );
+		var script = new Script( scope.editor );
+		document.body.appendChild( script.dom );
 
-			var player = new Player( editor );
-			document.body.appendChild( player.dom );
+		var player = new Player( scope.editor );
+		document.body.appendChild( player.dom );
 
-			var script = new Script( editor );
-			document.body.appendChild( script.dom );
+		var toolbar = new Toolbar( scope.editor );
+		document.body.appendChild( toolbar.dom );
 
-			var toolbar = new Toolbar( editor );
-			document.body.appendChild( toolbar.dom );
+		var menubar = new Menubar( scope.editor );
+		document.body.appendChild( menubar.dom );
 
-			var menubar = new Menubar( editor );
-			document.body.appendChild( menubar.dom );
+		var sidebar = new Sidebar( scope.editor );
+		document.body.appendChild( sidebar.dom );
 
-			var sidebar = new Sidebar( editor );
-			document.body.appendChild( sidebar.dom );
+		var modal = new UI.Modal();
+		document.body.appendChild( modal.dom );
 
-			editor.config.setKey( 'autosave', false ); // Hacky
-			editor.setTheme( editor.config.getKey( 'theme' ) );
+		var shortcuts = new EditorShortCuts(scope.editor);
 
-			editor.storage.init( function () {
+		//
 
-				editor.storage.get( function ( state ) {
+		scope.editor.setTheme( editor.config.getKey( 'theme' ) );
 
-					if ( state !== undefined ) {
+		scope.editor.storage.init( function () {
 
-						editor.fromJSON( state );
+			scope.editor.storage.get( function ( state ) {
 
-					}
+				if ( state !== undefined ) {
 
-					var selected = editor.config.getKey( 'selected' );
+					scope.editor.fromJSON( state );
 
-					if ( selected !== undefined ) {
+				}
 
-						editor.selectByUuid( selected );
+				var selected = scope.editor.config.getKey( 'selected' );
 
-					}
+				if ( selected !== undefined ) {
 
-				} );
+					scope.editor.selectByUuid( selected );
 
-				//
+				}
 
-				var timeout;
-
-				var sceneChanged = function(){
-
-					editor.signals.unsaveProject.dispatch();
-
-					if ( editor.config.getKey( 'autosave' ) === false ) return;
-
-					// else {
-
-					// 	saveState(1000);
-
-					// }
-
-				};
-
-				var manualSave = function () {
-
-					saveState(1000);
-					// console.log("manualSave");
-				};
-
-				// var saveState = function ( scene ) {
-				var saveState = function ( time ) {
-
-					console.log("h2");
-
-					clearTimeout( timeout );
-
-					timeout = setTimeout( function () {
-
-						editor.signals.savingStarted.dispatch();
-
-						timeout = setTimeout( function () {
-
-							editor.storage.set( editor.toJSON() );
-
-							editor.signals.savingFinished.dispatch();
-
-						}, 100 );
-
-					}, time );
-
-				};
-
-				var signals = editor.signals;
-
-				signals.editorCleared.add( sceneChanged );
-				signals.geometryChanged.add( sceneChanged );
-				signals.objectAdded.add( sceneChanged );
-				signals.objectChanged.add( sceneChanged );
-				signals.objectRemoved.add( sceneChanged );
-				signals.materialChanged.add( sceneChanged );
-				signals.sceneGraphChanged.add( sceneChanged );
-				// signals.scriptChanged.add( saveState );
-				signals.saveProject.add( manualSave );
 			} );
 
 			//
 
-			document.addEventListener( 'dragover', function ( event ) {
+			var timeout;
 
-				event.preventDefault();
-				event.dataTransfer.dropEffect = 'copy';
+			var sceneChanged = function(){
 
-			}, false );
+				scope.editor.signals.unsaveProject.dispatch();
 
-			document.addEventListener( 'drop', function ( event ) {
+				if ( scope.editor.config.getKey( 'autosave' ) === false ) return;
 
-				event.preventDefault();
+				// else {
 
-				if ( event.dataTransfer.files.length > 0 ) {
+				// 	saveState(1000);
 
-					editor.loader.loadFile( event.dataTransfer.files[ 0 ] );
-
-				}
-
-			}, false );
-
-			document.addEventListener( 'keydown', function ( event ) {
-
-				switch ( event.keyCode ) {
-
-					case 8:
-						event.preventDefault(); // prevent browser back
-						break;
-
-					default:
-						shortcuts.keyCheck( event.keyCode );
-						break;
-				}
-
-			}, false );
-
-			var onWindowResize = function ( event ) {
-
-				editor.signals.windowResize.dispatch();
+				// }
 
 			};
 
-			window.addEventListener( 'resize', onWindowResize, false );
+			var manualSave = function () {
 
-			onWindowResize();
+				saveState(1000);
+				// console.log("manualSave");
+			};
 
-			//
+			// var saveState = function ( scene ) {
+			var saveState = function ( time ) {
 
-			// var file = null;
-			// var hash = window.location.hash;
+				clearTimeout( timeout );
 
-			// if ( hash.substr( 1, 4 ) === 'app=' ) file = hash.substr( 5 );
-			// if ( hash.substr( 1, 6 ) === 'scene=' ) file = hash.substr( 7 );
+				timeout = setTimeout( function () {
 
-			// if ( file !== null ) {
+					scope.editor.signals.savingStarted.dispatch();
 
-			// 	if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
+					timeout = setTimeout( function () {
 
-			// 		var loader = new THREE.XHRLoader();
-			// 		loader.crossOrigin = '';
-			// 		loader.load( file, function ( text ) {
+						scope.editor.storage.set( editor.toJSON() );
 
-			// 			var json = JSON.parse( text );
+						scope.editor.signals.savingFinished.dispatch();
 
-			// 			editor.clear();
-			// 			editor.fromJSON( json );
+					}, 100 );
 
-			// 		} );
+				}, time );
 
-			// 	}
+			};
 
-			// }
+			var signals = scope.editor.signals;
 
-			window.addEventListener( 'message', function ( event ) {
+			signals.editorCleared.add( sceneChanged );
+			signals.geometryChanged.add( sceneChanged );
+			signals.objectAdded.add( sceneChanged );
+			signals.objectChanged.add( sceneChanged );
+			signals.objectRemoved.add( sceneChanged );
+			signals.materialChanged.add( sceneChanged );
+			signals.sceneGraphChanged.add( sceneChanged );
+			signals.scriptChanged.add( saveState );
+			signals.saveProject.add( manualSave );
 
-				editor.clear();
-				editor.fromJSON( event.data );
+			signals.showModal.add( function ( content ) {
 
-			}, false );
+				modal.show( content );
 
+			} );
 
+		} );
+
+		//
+
+		document.addEventListener( 'dragover', function ( event ) {
+
+			event.preventDefault();
+			event.dataTransfer.dropEffect = 'copy';
+
+		}, false );
+
+		document.addEventListener( 'drop', function ( event ) {
+
+			event.preventDefault();
+
+			console.log(event.dataTransfer.files[0]);
+
+			if ( event.dataTransfer.files.length > 0 ) {
+
+				scope.editor.loader.loadFile( event.dataTransfer.files[ 0 ] );
+
+			}
+
+		}, false );
+
+		document.addEventListener( 'keydown', function ( event ) {
+
+			switch ( event.keyCode ) {
+
+				case 79:
+					scope.editor.camera.toOrthographic();
+
+					// this.editor.camera.toPerspective();
+					break;
+
+				case 8:
+					event.preventDefault(); // prevent browser back
+
+					break;
+
+				default:
+					shortcuts.keyCheck( event.keyCode );
+					break;
+
+			}
+
+		}, false );
+
+		function onWindowResize( event ) {
+
+			scope.editor.signals.windowResize.dispatch();
+
+		}
+		
+
+		window.addEventListener( 'resize', onWindowResize, false );
+
+		onWindowResize();
+
+		//
+
+		var hash = window.location.hash;
+
+		if ( hash.substr( 1, 5 ) === 'file=' ) {
+
+			var file = hash.substr( 6 );
+
+			if ( confirm( 'Any unsaved data will be lost. Are you sure?' ) ) {
+
+				var loader = new THREE.XHRLoader();
+				loader.crossOrigin = '';
+				loader.load( file, function ( text ) {
+
+					var json = JSON.parse( text );
+
+					scope.editor.clear();
+					scope.editor.fromJSON( json );
+
+				} );
+
+			}
+
+		}
 
 	}
-}
+};

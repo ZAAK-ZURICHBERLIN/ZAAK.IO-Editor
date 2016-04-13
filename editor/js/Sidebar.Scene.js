@@ -6,20 +6,14 @@ Sidebar.Scene = function ( editor ) {
 
 	var signals = editor.signals;
 
-	var container = new UI.CollapsiblePanel();
-	container.setCollapsed( editor.config.getKey( 'ui/sidebar/scene/collapsed' ) );
-	container.onCollapsedChange( function ( boolean ) {
-
-		editor.config.setKey( 'ui/sidebar/scene/collapsed', boolean );
-
-	} );
-
-	container.addStatic( new UI.Text( 'SCENE' ) );
-	container.add( new UI.Break() );
+	var container = new UI.Panel();
+	container.setBorderTop( '0' );
+	container.setPaddingTop( '20px' );
 
 	var ignoreObjectSelectedSignal = false;
 
 	var outliner = new UI.Outliner( editor );
+	outliner.setId( 'outliner' );
 	outliner.onChange( function () {
 
 		ignoreObjectSelectedSignal = true;
@@ -37,6 +31,7 @@ Sidebar.Scene = function ( editor ) {
 	container.add( outliner );
 	container.add( new UI.Break() );
 
+	//bg
 	
 	var bgColorRow = new UI.Panel();
 	var bgColor = new UI.Color().setHexValue( editor.config.getKey('backgroundColor'));
@@ -62,7 +57,7 @@ Sidebar.Scene = function ( editor ) {
 
 	};
 
-	var fogTypeRow = new UI.Panel();
+	var fogTypeRow = new UI.Row();
 	var fogType = new UI.Select().setOptions( {
 
 		'None': 'None',
@@ -86,7 +81,7 @@ Sidebar.Scene = function ( editor ) {
 
 	// fog color
 
-	var fogColorRow = new UI.Panel();
+	var fogColorRow = new UI.Row();
 	fogColorRow.setDisplay( 'none' );
 
 	var fogColor = new UI.Color().setValue( '#aaaaaa' )
@@ -103,7 +98,7 @@ Sidebar.Scene = function ( editor ) {
 
 	// fog near
 
-	var fogNearRow = new UI.Panel();
+	var fogNearRow = new UI.Row();
 	fogNearRow.setDisplay( 'none' );
 
 	var fogNear = new UI.Number( 1 ).setWidth( '60px' ).setRange( 0, Infinity ).onChange( updateFogParameters );
@@ -113,7 +108,7 @@ Sidebar.Scene = function ( editor ) {
 
 	container.add( fogNearRow );
 
-	var fogFarRow = new UI.Panel();
+	var fogFarRow = new UI.Row();
 	fogFarRow.setDisplay( 'none' );
 
 	// fog far
@@ -127,7 +122,7 @@ Sidebar.Scene = function ( editor ) {
 
 	// fog density
 
-	var fogDensityRow = new UI.Panel();
+	var fogDensityRow = new UI.Row();
 	fogDensityRow.setDisplay( 'none' );
 
 	var fogDensity = new UI.Number( 0.00025 ).setWidth( '60px' ).setRange( 0, 0.1 ).setPrecision( 5 ).onChange( updateFogParameters );
@@ -146,8 +141,20 @@ Sidebar.Scene = function ( editor ) {
 
 		var options = [];
 
-		// options.push( { value: camera.id, html: '<span class="type ' + camera.type + '"></span> ' + camera.name } );
-		options.push( { static: true, value: scene.id, html: '<span class="type ' + scene.type + '"></span> ' + scene.name } );
+		options.push( { static: true, value: camera.id, html: '<span class="type ' + camera.type + '"></span> ' + camera.name } );
+		options.push( { static: true, value: scene.id, html: '<span class="type ' + scene.type + '"></span> ' + scene.name + getScript( scene.uuid ) } );
+
+		function getScript( uuid ) {
+
+			if ( editor.scripts[ uuid ] !== undefined ) {
+
+				return ' <span class="type Script"></span>';
+
+			}
+
+			return '';
+
+		}
 
 		( function addObjects( objects, pad ) {
 
@@ -166,6 +173,8 @@ Sidebar.Scene = function ( editor ) {
 					html += ' <span class="type ' + material.type + '"></span> ' + material.name;
 
 				}
+
+				html += getScript( object.uuid );
 
 				options.push( { value: object.id, html: html } );
 

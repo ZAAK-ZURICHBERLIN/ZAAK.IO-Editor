@@ -20,14 +20,14 @@ Sidebar.Script = function ( editor ) {
 
 	//
 
-	var scriptsContainer = new UI.Panel();
+	var scriptsContainer = new UI.Row();
 	container.add( scriptsContainer );
 
 	var newScript = new UI.Button( 'New' );
 	newScript.onClick( function () {
 
 		var script = { name: '', source: 'function update( event ) {}' };
-		editor.addScript( editor.selected, script );
+		editor.execute( new AddScriptCommand( editor.selected, script ) );
 
 	} );
 	container.add( newScript );
@@ -46,6 +46,7 @@ Sidebar.Script = function ( editor ) {
 
 		var object = editor.selected;
 
+
 		if ( object === null ) {
 
 			return;
@@ -60,12 +61,12 @@ Sidebar.Script = function ( editor ) {
 
 				( function ( object, script ) {
 
-					var name = new UI.Input( script.name ).setWidth( '130px' ).setFontSize( '12px' );
+					console.log(script);
+
+					var name = new UI.Text( script.name ).setWidth( '130px' ).setFontSize( '12px' );
 					name.onChange( function () {
 
-						script.name = this.getValue();
-
-						signals.scriptChanged.dispatch();
+						editor.execute( new SetScriptValueCommand( editor.selected, script, 'name', this.getValue() ) );
 
 					} );
 					scriptsContainer.add( name );
@@ -85,12 +86,60 @@ Sidebar.Script = function ( editor ) {
 
 						if ( confirm( 'Are you sure?' ) ) {
 
-							editor.removeScript( editor.selected, script );
+							editor.execute( new RemoveScriptCommand( editor.selected, script ) );
 
 						}
 
 					} );
 					scriptsContainer.add( remove );
+
+					scriptsContainer.add( new UI.Break() );
+
+
+					// console.log(script.publicVar.length
+					for (var key in script.publicVar) {
+					  if (script.publicVar.hasOwnProperty(key)) {
+					    
+						console.log(key);
+
+						var name = new UI.Text( key ).setWidth( '130px' ).setFontSize( '12px' );
+						scriptsContainer.add( name );
+
+						var url = new UI.Input(script.publicVar[key]).setWidth( '130px' ).setFontSize( '12px' );
+						url.onChange( function () {
+
+							script.publicVar[key] = this.getValue();
+
+						} );
+						scriptsContainer.add( url );
+
+					  }
+					}
+
+					// if(script.name === "VideoPlayer"){
+
+					// 	var name = new UI.Text( "Video Name" ).setWidth( '130px' ).setFontSize( '12px' );
+					// 	scriptsContainer.add( name );
+
+
+					// 	// var url = new UI.Input(script.publicVar.url).setWidth( '130px' ).setFontSize( '12px' );
+					// 	// url.onChange( function () {
+
+					// 	// 	script.publicVar.url = this.getValue();
+
+					// 	// } );
+					// 	// scriptsContainer.add( url );
+
+					// 	var videoRow = new UI.Row();
+					// 	var videoUpload = new UI.Video().onChange( update );
+
+					// 	videoRow.add( new UI.Text( 'Video' ).setWidth( '90px' ) );
+					// 	videoRow.add( videoUpload );
+
+					// 	scriptsContainer.add( videoRow );
+
+
+					// }
 
 					scriptsContainer.add( new UI.Break() );
 
@@ -122,6 +171,7 @@ Sidebar.Script = function ( editor ) {
 
 	signals.scriptAdded.add( update );
 	signals.scriptRemoved.add( update );
+	signals.scriptChanged.add( update );
 
 	return container;
 

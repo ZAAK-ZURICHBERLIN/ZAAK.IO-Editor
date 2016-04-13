@@ -72,7 +72,7 @@ UI.Texture = function ( mapping ) {
 
 		}
 
-	}
+	};
 
 	this.dom = dom;
 	this.texture = null;
@@ -134,6 +134,141 @@ UI.Texture.prototype.onChange = function ( callback ) {
 
 };
 
+//Video
+UI.Video = function ( mapping ) {
+
+	UI.Element.call( this );
+
+	var scope = this;
+
+	var dom = document.createElement( 'span' );
+
+	var input = document.createElement( 'input' );
+	input.type = 'file';
+	input.addEventListener( 'change', function ( event ) {
+
+		loadFile( event.target.files[ 0 ] );
+
+	} );
+
+	var canvas = document.createElement( 'canvas' );
+	canvas.width = 32;
+	canvas.height = 16;
+	canvas.style.cursor = 'pointer';
+	canvas.style.marginRight = '5px';
+	canvas.style.border = '1px solid #888';
+	canvas.addEventListener( 'click', function ( event ) {
+
+		input.click();
+
+	}, false );
+	canvas.addEventListener( 'drop', function ( event ) {
+
+		event.preventDefault();
+		event.stopPropagation();
+		loadFile( event.dataTransfer.files[ 0 ] );
+
+	}, false );
+	dom.appendChild( canvas );
+
+	var name = document.createElement( 'input' );
+	name.disabled = true;
+	name.style.width = '64px';
+	name.style.border = '1px solid #ccc';
+	dom.appendChild( name );
+
+	var loadFile = function ( file ) {
+
+		if ( file.type.match( 'video.*' ) ) {
+
+			var reader = new FileReader();
+			reader.addEventListener( 'load', function ( event ) {
+
+				var video = document.createElement( 'video' );
+				video.addEventListener( 'load', function( event ) {
+
+					var videoTexture = new THREE.Texture( this );
+					videoTexture.sourceFile = file.name;
+					videoTexture.needsUpdate = true;
+
+					scope.setValue( videoTexture );
+
+					if ( scope.onChangeCallback ) scope.onChangeCallback();
+
+				}, false );
+
+				video.src = event.target.result;
+
+			}, false );
+
+			reader.readAsDataURL( file );
+
+		}
+
+	};
+
+	this.dom = dom;
+	this.texture = null;
+	this.onChangeCallback = null;
+
+	return this;
+
+};
+
+UI.Video.prototype = Object.create( UI.Element.prototype );
+UI.Video.prototype.constructor = UI.Texture;
+
+UI.Video.prototype.getValue = function () {
+
+	return this.video;
+
+};
+
+UI.Video.prototype.setValue = function ( video ) {
+
+	var canvas = this.dom.children[ 0 ];
+	var name = this.dom.children[ 1 ];
+	var context = canvas.getContext( '2d' );
+
+	if ( video !== null ) {
+
+		console.log(video.sourceFile);
+
+		// var vid = texture.image;
+
+		// if ( image !== undefined && image.width > 0 ) {
+
+		// 	name.value = texture.sourceFile;
+
+		// 	var scale = canvas.width / image.width;
+		// 	context.drawImage( image, 0, 0, image.width * scale, image.height * scale );
+
+		// } else {
+
+		// 	name.value = texture.sourceFile + ' (error)';
+		// 	context.clearRect( 0, 0, canvas.width, canvas.height );
+
+		// }
+
+	} else {
+
+		name.value = '';
+		context.clearRect( 0, 0, canvas.width, canvas.height );
+
+	}
+
+	this.texture = texture;
+
+};
+
+UI.Video.prototype.onChange = function ( callback ) {
+
+	this.onChangeCallback = callback;
+
+	return this;
+
+};
+
 // Outliner
 
 UI.Outliner = function ( editor ) {
@@ -158,12 +293,12 @@ UI.Outliner = function ( editor ) {
 
 			if ( item.nextSibling === null ) {
 
-				editor.moveObject( object, editor.scene );
+				editor.execute( new MoveObjectCommand( object, editor.scene ) );
 
 			} else {
 
 				var nextObject = scene.getObjectById( item.nextSibling.value );
-				editor.moveObject( object, nextObject.parent, nextObject );
+				editor.execute( new MoveObjectCommand( object, nextObject.parent, nextObject ) );
 
 			}
 
@@ -171,48 +306,54 @@ UI.Outliner = function ( editor ) {
 	} );
 
 	// Broadcast for object selection after arrow navigation
-	var changeEvent = document.createEvent('HTMLEvents');
+	var changeEvent = document.createEvent( 'HTMLEvents' );
 	changeEvent.initEvent( 'change', true, true );
 
 	// Prevent native scroll behavior
-	dom.addEventListener( 'keydown', function (event) {
+	dom.addEventListener( 'keydown', function ( event ) {
 
 		switch ( event.keyCode ) {
 			case 38: // up
 			case 40: // down
-			event.preventDefault();
-			event.stopPropagation();
-			break;
+				event.preventDefault();
+				event.stopPropagation();
+				break;
 		}
 
-	}, false);
+	}, false );
 
 	// Keybindings to support arrow navigation
-	dom.addEventListener( 'keyup', function (event) {
+	dom.addEventListener( 'keyup', function ( event ) {
 
-		switch ( event.keyCode ) {
-			case 38: // up
-			case 40: // down
-			scope.selectedIndex += ( event.keyCode == 38 ) ? -1 : 1;
+		function select( index ) {
 
-			if ( scope.selectedIndex >= 0 && scope.selectedIndex < scope.options.length ) {
+			if ( index >= 0 && index < scope.options.length ) {
+
+				scope.selectedIndex = index;
 
 				// Highlight selected dom elem and scroll parent if needed
-				scope.setValue( scope.options[ scope.selectedIndex ].value );
-
+				scope.setValue( scope.options[ index ].value );
 				scope.dom.dispatchEvent( changeEvent );
 
 			}
 
-			break;
 		}
 
-	}, false);
+		switch ( event.keyCode ) {
+			case 38: // up
+				select( scope.selectedIndex - 1 );
+				break;
+			case 40: // down
+				select( scope.selectedIndex + 1 );
+				break;
+		}
+
+	}, false );
 
 	this.dom = dom;
 
 	this.options = [];
-	this.selectedIndex = -1;
+	this.selectedIndex = - 1;
 	this.selectedValue = null;
 
 	return this;
@@ -242,7 +383,7 @@ UI.Outliner.prototype.setOptions = function ( options ) {
 		var option = options[ i ];
 
 		var div = document.createElement( 'div' );
-		div.className = 'option ' + ( option.static === true ? '': 'draggable' );
+		div.className = 'option ' + ( option.static === true ? '' : 'draggable' );
 		div.innerHTML = option.html;
 		div.value = option.value;
 		scope.dom.appendChild( div );
@@ -286,7 +427,7 @@ UI.Outliner.prototype.setValue = function ( value ) {
 
 			if ( this.dom.scrollTop > y ) {
 
-				this.dom.scrollTop = y
+				this.dom.scrollTop = y;
 
 			} else if ( this.dom.scrollTop < minScroll ) {
 
@@ -307,5 +448,36 @@ UI.Outliner.prototype.setValue = function ( value ) {
 	this.selectedValue = value;
 
 	return this;
+
+};
+
+UI.THREE = {};
+
+UI.THREE.Boolean = function ( boolean, text ) {
+
+	UI.Span.call( this );
+
+	this.setMarginRight( '10px' );
+
+	this.checkbox = new UI.Checkbox( boolean );
+	this.text = new UI.Text( text ).setMarginLeft( '3px' );
+
+	this.add( this.checkbox );
+	this.add( this.text );
+
+};
+
+UI.THREE.Boolean.prototype = Object.create( UI.Span.prototype );
+UI.THREE.Boolean.prototype.constructor = UI.THREE.Boolean;
+
+UI.THREE.Boolean.prototype.getValue = function () {
+
+	return this.checkbox.getValue();
+
+};
+
+UI.THREE.Boolean.prototype.setValue = function ( value ) {
+
+	return this.checkbox.setValue( value );
 
 };

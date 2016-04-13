@@ -37,7 +37,7 @@ Sidebar.Sounds = function ( editor ) {
 	var playButton = new UI.Button( 'Play' );
 	playButton.onClick( function () {
 
-		editor.selected.sounds.play();		
+		editor.selected.sound.play();		
 
 	} );
 
@@ -80,15 +80,15 @@ Sidebar.Sounds = function ( editor ) {
 
 	signals.objectSelected.add( function ( object ) {
 
-		if ( object ) {
+		if ( object && object.sound ) {
 
 			container.setDisplay( '' );
 			
-			if ( !object.sounds ) object.sounds = {};
+			// if ( !object.sounds ) object.sounds = {};
 
-			var sounds = object.sounds;
+			var sound = object.sound;
 			
-			soundsConstant.setValue( sounds.constant );
+			soundsConstant.setValue( sound.audioClip );
 
 			updateRows();
 

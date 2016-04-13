@@ -1,24 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>ZAAK PLUS Editor</title>
+		<title>three.js / editor</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 	</head>
 	<body ontouchstart="">
 		<link href="css/main.css" rel="stylesheet" />
-		<link id="theme" href="css/dark.css" rel="stylesheet" />
+		<link id="theme" href="css/light.css" rel="stylesheet" />
+		<script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
+		
+
+		<!-- preview -->
+		<link rel="stylesheet" href="css/platform.css">
+
 
 		<script src="../build/three.js"></script>
 		<script src="../examples/js/libs/system.min.js"></script>
+		<script src="js/libs/lodash.core.js"></script>
 
 		<script src="../examples/js/controls/EditorControls.js"></script>
 		<script src="../examples/js/controls/TransformControls.js"></script>
+
+		<script src="../examples/js/libs/jszip.min.js"></script>
+		<script src="../examples/js/loaders/AMFLoader.js"></script>
 		<script src="../examples/js/loaders/AWDLoader.js"></script>
 		<script src="../examples/js/loaders/BabylonLoader.js"></script>
 		<script src="../examples/js/loaders/ColladaLoader.js"></script>
+		<script src="../examples/js/loaders/KMZLoader.js"></script>
 		<script src="../examples/js/loaders/MD2Loader.js"></script>
 		<script src="../examples/js/loaders/OBJLoader.js"></script>
+		<script src="../examples/js/loaders/PlayCanvasLoader.js"></script>
 		<script src="../examples/js/loaders/PLYLoader.js"></script>
 		<script src="../examples/js/loaders/STLLoader.js"></script>
 		<script src="../examples/js/loaders/UTF8Loader.js"></script>
@@ -67,7 +79,6 @@
 		<script src="js/libs/ternjs/doc_comment.js"></script>
 		<script src="js/libs/tern-threejs/threejs.js"></script>
 
-		<script src="../examples/js/libs/jszip.min.js"></script>
 		<script src="js/libs/sortable.min.js"></script>
 		<script src="js/libs/signals.min.js"></script>
 		<script src="js/libs/ui.js"></script>
@@ -91,15 +102,15 @@
 		<script src="js/Menubar.Edit.js"></script>
 		<script src="js/Menubar.Add.js"></script>
 		<script src="js/Menubar.Play.js"></script>
-		<script src="js/Menubar.View.js"></script>
 		<script src="js/Menubar.Examples.js"></script>
 		<script src="js/Menubar.Help.js"></script>
 		<script src="js/Menubar.Status.js"></script>
 		<script src="js/Sidebar.js"></script>
-		<script src="js/Sidebar.Project.js"></script>
 		<script src="js/Sidebar.Scene.js"></script>
-		<script src="js/Sidebar.Object3D.js"></script>
-		<script src="js/Sidebar.Animation.js"></script>
+		<script src="js/Sidebar.Project.js"></script>
+		<script src="js/Sidebar.Settings.js"></script>
+		<script src="js/Sidebar.Properties.js"></script>
+		<script src="js/Sidebar.Object.js"></script>
 		<script src="js/Sidebar.Geometry.js"></script>
 		<script src="js/Sidebar.Geometry.Geometry.js"></script>
 		<script src="js/Sidebar.Geometry.BufferGeometry.js"></script>
@@ -115,40 +126,59 @@
 		<script src="../examples/js/geometries/TeapotBufferGeometry.js"></script>
 		<script src="js/Sidebar.Geometry.TeapotBufferGeometry.js"></script>
 		<script src="js/Sidebar.Material.js"></script>
+		<script src="js/Sidebar.Animation.js"></script>
 		<script src="js/Sidebar.Script.js"></script>
+		<script src="js/Sidebar.History.js"></script>
 		<script src="js/Toolbar.js"></script>
 		<script src="js/Viewport.js"></script>
 		<script src="js/Viewport.Info.js"></script>
+		<script src="js/Command.js"></script>
+		<script src="js/commands/AddObjectCommand.js"></script>
+		<script src="js/commands/RemoveObjectCommand.js"></script>
+		<script src="js/commands/MoveObjectCommand.js"></script>
+		<script src="js/commands/SetPositionCommand.js"></script>
+		<script src="js/commands/SetRotationCommand.js"></script>
+		<script src="js/commands/SetScaleCommand.js"></script>
+		<script src="js/commands/SetValueCommand.js"></script>
+		<script src="js/commands/SetUuidCommand.js"></script>
+		<script src="js/commands/SetColorCommand.js"></script>
+		<script src="js/commands/SetGeometryCommand.js"></script>
+		<script src="js/commands/SetGeometryValueCommand.js"></script>
+		<script src="js/commands/MultiCmdsCommand.js"></script>
+		<script src="js/commands/AddScriptCommand.js"></script>
+		<script src="js/commands/RemoveScriptCommand.js"></script>
+		<script src="js/commands/SetScriptValueCommand.js"></script>
+		<script src="js/commands/SetMaterialCommand.js"></script>
+		<script src="js/commands/SetMaterialValueCommand.js"></script>
+		<script src="js/commands/SetMaterialColorCommand.js"></script>
+		<script src="js/commands/SetMaterialMapCommand.js"></script>
+		<script src="js/commands/SetSceneCommand.js"></script>
 
-		<!-- Sam Imports -->
 		<script src="js/EditorShortCuts.js"></script>
-		<script src="js/EditorShortCutsList.js"></script>
-
-		<script src="js/Menubar.Light.js"></script>
-		<script src="js/Menubar.Navigation.js"></script>
-
-		<script src="js/Sidebar.Sounds.js"></script>
-		<script src='js/SoundCollection.js'></script>
-		<script src='js/WebAudiox.js'></script>
-
-		<script src="fonts/helvetiker_regular.typeface.js"></script>
-		<script src="fonts/helvetiker_bold.typeface.js"></script>
-		<script src="fonts/gentilis_regular.typeface.js"></script>
-		<script src="fonts/optimer_regular.typeface.js"></script>
-
-		<script src="js/Sidebar.Geometry.TextGeometry.js"></script>
-
+		<script src="js/EditorShortCutsList.js"></script>		
+		
 		<script src="js/MainEditor.js"></script>
-		<script src="js/Menubar.Plus.js"></script>
 
+		<!-- Viewer -->
 
-		<div id="preloader"><img src="http://zaak.ch/plus/preloader/loader_white.gif" height="100px" width="auto" class="ri"></div>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.18.2/TweenMax.min.js"></script>
+		
 
-
+<!-- 		<div id="preview3d"><img src="http://zaak.ch/plus/preloader/loader_white.gif" height="512px" width="auto" class="ri"></div> -->
 		<script>
 
+			var DUMMY = '3D/dummy.json';
 			var main = new MainEditor();
 
+			function closeIFrame(){
+				$(".modal-overlay").remove();
+                $("#preview").remove();
+			}
+
 		</script>
+
+<!-- 
+		<div id="library" style="position:absolute; left:30%; bottom:0; right:30%; height:20%"><iframe src="library.html"></div> -->
+
 	</body>
 </html>

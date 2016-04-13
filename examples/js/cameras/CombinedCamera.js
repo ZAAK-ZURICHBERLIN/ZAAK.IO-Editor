@@ -22,7 +22,7 @@ THREE.CombinedCamera = function ( width, height, fov, near, far, orthoNear, orth
 
 	// We could also handle the projectionMatrix internally, but just wanted to test nested camera objects
 
-	this.cameraO = new THREE.OrthographicCamera( width / - 2, width / 2, height / 2, height / - 2, 	orthoNear, orthoFar );
+	this.cameraO = new THREE.OrthographicCamera( width / - 4, width / 4, height / 4, height / - 4, 	orthoNear, orthoFar );
 	this.cameraP = new THREE.PerspectiveCamera( fov, width / height, near, far );
 
 	this.zoom = 1;
@@ -41,7 +41,7 @@ THREE.CombinedCamera.prototype.toPerspective = function () {
 	this.near = this.cameraP.near;
 	this.far = this.cameraP.far;
 
-	this.cameraP.fov =  this.fov / this.zoom ;
+	this.cameraP.fov =  (this.fov / this.zoom)  ;
 
 	this.cameraP.updateProjectionMatrix();
 
@@ -70,8 +70,13 @@ THREE.CombinedCamera.prototype.toOrthographic = function () {
 	var planeWidth = planeHeight * aspect;
 	var halfWidth = planeWidth / 2;
 
-	halfHeight /= this.zoom;
-	halfWidth /= this.zoom;
+	//old
+	// halfHeight /= this.zoom;
+	// halfWidth /= this.zoom;
+
+	//new
+	halfHeight /= ((this.cameraP.far/50)*this.zoom);
+	halfWidth /= ((this.cameraP.far/50)*this.zoom);
 
 	this.cameraO.left = - halfWidth;
 	this.cameraO.right = halfWidth;
@@ -88,10 +93,14 @@ THREE.CombinedCamera.prototype.toOrthographic = function () {
 	// this.cameraO.top = this.top / this.zoom;
 	// this.cameraO.bottom = this.bottom / this.zoom;
 
+	//new
+	this.cameraO.far = this.cameraP.far+((this.cameraP.far/25)*this.zoom)-0.5;
+
 	this.cameraO.updateProjectionMatrix();
 
 	this.near = this.cameraO.near;
-	this.far = this.cameraO.far;
+	this.far = this.cameraO.far; 
+
 	this.projectionMatrix = this.cameraO.projectionMatrix;
 
 	this.inPerspectiveMode = false;

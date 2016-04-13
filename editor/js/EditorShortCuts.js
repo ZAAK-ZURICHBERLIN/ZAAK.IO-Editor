@@ -1,6 +1,6 @@
 /**
  * @author elephantatwork, Samuel Vonäsch
- * keyboard reco code @author Jérome Etienne
+ * keyboard Recognition code @author Jérome Etienne
  */
 
 var EditorShortCuts = function (editor) {
@@ -63,7 +63,7 @@ EditorShortCuts.prototype = {
 
 	keyCheck: function( keyCode ){
 
-		//File
+		//Create the a json file and export it
 		if( this.pressed(this.shortcuts.getKey('file/exportscene' ))) {
 
 			var output = this.editor.scene.toJSON();
@@ -74,6 +74,8 @@ EditorShortCuts.prototype = {
 
 		}
 		
+		//Create Raymond the raycast blocker.
+		if( this.pressed(this.shortcuts.getKey('history/undo' ))) this.editor.history.undo();
 
 
 		//History
@@ -94,13 +96,24 @@ EditorShortCuts.prototype = {
 		//Sccale
 		if( this.pressed(this.shortcuts.getKey('transform/scale' ))) this.editor.signals.transformModeChanged.dispatch( 'scale' );
 
-		//Delete Shortcut -HHACK IT ATM
+		//Delete Shortcut -HACK IT ATM, pressing x doesnt work
 		if( event.keyCode == 88 ) {
-			this.editor.destoryCurrent();
+			if(editor.selected != null && editor.selected.parent != null)
+				editor.execute( new RemoveObjectCommand( editor.selected ) );
 		}
 
 		//Clone Object
-		if( this.pressed(this.shortcuts.getKey( 'edit/clone' ))) this.editor.cloneObject();
+		if( this.pressed(this.shortcuts.getKey( 'edit/clone' ))) {
+			var _uuid = editor.selected.uuid;
+			var _object = editor.selected.clone();
+
+			editor.execute( new AddObjectCommand( _object ) );
+			var _script = editor.scripts[_uuid];
+			console.log(_object);
+			console.log(_script);
+
+			editor.execute( new AddScriptCommand( _object, _script  ) );
+		}
 
 		//Hide Current
 		if( this.pressed(this.shortcuts.getKey( 'view/hide' ))) this.editor.hide();
@@ -114,14 +127,8 @@ EditorShortCuts.prototype = {
 		//Focus object
 		if( this.pressed(this.shortcuts.getKey( 'view/focus' ))) this.editor.focus(this.editor.selected);
 
-		// //Camera Positions - Hack Style
-		// if(keyboard.pressed("7")) this.editor.signals.cameraPositionSnap.dispatch( 'top' );
-		// if(keyboard.pressed("3")) this.editor.signals.cameraPositionSnap.dispatch( 'left' );
-		// if(keyboard.pressed("1")) this.editor.signals.cameraPositionSnap.dispatch( 'front' );
 
-		// if(keyboard.pressed("alt+7")) this.editor.signals.cameraPositionSnap.dispatch( 'bottom' );
-		// if(keyboard.pressed("alt+3")) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
-		// if(keyboard.pressed("alt+1")) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
+		if( this.pressed(this.shortcuts.getKey( 'camera/switch' ))) this.editor.signals.switchCameraMode.dispatch();
 
 		//Camera Positions - Hack Style
 		if( this.pressed(this.shortcuts.getKey( 'camera/top' ))) this.editor.signals.cameraPositionSnap.dispatch( 'top' );
@@ -134,6 +141,7 @@ EditorShortCuts.prototype = {
 
 	},
 
+	//Ugly and should be here
 	exportString: function ( output, filename ) {
 		
 		//export scnee hack

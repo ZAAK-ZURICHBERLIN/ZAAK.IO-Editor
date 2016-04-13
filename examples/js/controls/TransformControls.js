@@ -619,11 +619,14 @@
 		this.visible = false;
 		this.translationSnap = null;
 		this.rotationSnap = null;
-		this.space = "world";
+		this.space = "local";
 		this.size = 1;
 		this.axis = null;
+		this.controler = camera;
 
 		var scope = this;
+
+		// var currentCam;
 
 		var _mode = "translate";
 		var _dragging = false;
@@ -738,6 +741,12 @@
 
 		};
 
+		this.getMode = function () {
+
+			return _mode;
+
+		};
+
 		this.setMode = function ( mode ) {
 
 			_mode = mode ? mode : _mode;
@@ -787,13 +796,21 @@
 			worldPosition.setFromMatrixPosition( scope.object.matrixWorld );
 			worldRotation.setFromRotationMatrix( tempMatrix.extractRotation( scope.object.matrixWorld ) );
 
-			camera.updateMatrixWorld();
-			camPosition.setFromMatrixPosition( camera.matrixWorld );
-			camRotation.setFromRotationMatrix( tempMatrix.extractRotation( camera.matrixWorld ) );
+			scope.controler.updateMatrixWorld();
+			camPosition.setFromMatrixPosition( scope.controler.matrixWorld );
+			camRotation.setFromRotationMatrix( tempMatrix.extractRotation( scope.controler.matrixWorld ) );
 
-			scale = worldPosition.distanceTo( camPosition ) / 6 * scope.size;
-			this.position.copy( worldPosition );
+			if(scope.controler instanceof THREE.PerspectiveCamera){
+
+				scale = worldPosition.distanceTo( camPosition ) / 6 * scope.size;
+
+			}else{
+
+				scale = Math.max(10 - scope.controler.zoom,1.5);
+			}
+
 			this.scale.set( scale, scale, scale );
+			this.position.copy( worldPosition );
 
 			eye.copy( camPosition ).sub( worldPosition ).normalize();
 
@@ -1117,7 +1134,8 @@
 			var y = ( pointer.clientY - rect.top ) / rect.height;
 
 			pointerVector.set( ( x * 2 ) - 1, - ( y * 2 ) + 1 );
-			ray.setFromCamera( pointerVector, camera );
+
+			ray.setFromCamera( pointerVector, scope.controler );
 
 			var intersections = ray.intersectObjects( objects, true );
 			return intersections[ 0 ] ? intersections[ 0 ] : false;

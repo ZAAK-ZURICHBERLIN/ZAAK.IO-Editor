@@ -1,0 +1,42 @@
+{
+    "meta": {
+        "limit": 20,
+        "next": "/api/v1/user?offset=20&limit=20&format=json",
+        "offset": 0,
+        "previous": null,
+        "total_count": 2000
+    },
+    "objects": [
+        {
+            "name": "PacuPacu",
+            "slug": "pacman",
+            "media": "/media/asset_store/c93d6508/20b4/45d5/a6b8/c19cb98cf33e.mp3",
+            "content_type": "audio/mp3",
+            "resource_uri": "/api/v1/asset_store/abb8143f-15b8-4560-9f70-9b5520104738",
+            "categories": [
+                "audio"
+            ],
+            "tags": [
+                "pacman, arcade"
+            ],
+            "user": {
+                "name": "vreni",
+                "profile": {
+                    "avatar": "/media/profile_images/2f67c819/3b46/4320/bc8a/a5aa9b5c5e83.png",
+                    "bio": "",
+                    "date_joined": "December 2015",
+                    "followed_by": false,
+                    "following": false,
+                    "name": "vreni",
+                    "resource_uri": "/api/v1/user_profile/vreni",
+                    "slug": "vreni",
+                    "uri": "/vreni",
+                    "website": ""
+                },
+                "resource_uri": "/api/v1/user/vreni",
+                "slug": "vreni"
+            },
+            "uuid": "abb8143f-15b8-4560-9f70-9b5520104738"
+        }
+    ]
+}
