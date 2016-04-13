@@ -129,237 +129,246 @@ Menubar.File = function ( editor ) {
 
 	// Export Geometry
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Geometry' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Geometry' );
+	// option.onClick( function () {
 
-		var object = editor.selected;
+	// 	var object = editor.selected;
 
-		if ( object === null ) {
+	// 	if ( object === null ) {
 
-			alert( 'No object selected.' );
-			return;
+	// 		alert( 'No object selected.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var geometry = object.geometry;
+	// 	var geometry = object.geometry;
 
-		if ( geometry === undefined ) {
+	// 	if ( geometry === undefined ) {
 
-			alert( 'The selected object doesn\'t have geometry.' );
-			return;
+	// 		alert( 'The selected object doesn\'t have geometry.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var output = geometry.toJSON();
+	// 	var output = geometry.toJSON();
 
-		try {
+	// 	try {
 
-			output = JSON.stringify( output, null, '\t' );
-			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 		output = JSON.stringify( output, null, '\t' );
+	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		} catch ( e ) {
+	// 	} catch ( e ) {
 
-			output = JSON.stringify( output );
+	// 		output = JSON.stringify( output );
 
-		}
+	// 	}
 
-		saveString( output, 'geometry.json' );
+	// 	saveString( output, 'geometry.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	// Export Geometry
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Geometry' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Geometry' );
+	// option.onClick( function () {
 
-		var object = editor.selected;
+	// 	var object = editor.selected;
 
-		if ( object === null ) {
+	// 	if ( object === null ) {
 
-			alert( 'No object selected.' );
-			return;
+	// 		alert( 'No object selected.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var geometry = object.geometry;
+	// 	var geometry = object.geometry;
 
-		if ( geometry === undefined ) {
+	// 	if ( geometry === undefined ) {
 
-			alert( 'The selected object doesn\'t have geometry.' );
-			return;
+	// 		alert( 'The selected object doesn\'t have geometry.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var output = geometry.toJSON();
+	// 	var output = geometry.toJSON();
 
-		try {
+	// 	try {
 
-			output = JSON.stringify( output, null, '\t' );
-			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 		output = JSON.stringify( output, null, '\t' );
+	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		} catch ( e ) {
+	// 	} catch ( e ) {
 
-			output = JSON.stringify( output );
+	// 		output = JSON.stringify( output );
 
-		}
+	// 	}
 
-		saveString( output, 'geometry.json' );
+	// 	saveString( output, 'geometry.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	// Export Object
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Object' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Object' );
+	// option.onClick( function () {
 
-		var object = editor.selected;
+	// 	var object = editor.selected;
 
-		if ( object === null ) {
+	// 	if ( object === null ) {
 
-			alert( 'No object selected' );
-			return;
+	// 		alert( 'No object selected' );
+	// 		return;
 
-		}
+	// 	}
 
-		var output = object.toJSON();
+	// 	var output = object.toJSON();
 
-		try {
+	// 	try {
 
-			output = JSON.stringify( output, null, '\t' );
-			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 		output = JSON.stringify( output, null, '\t' );
+	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		} catch ( e ) {
+	// 	} catch ( e ) {
 
-			output = JSON.stringify( output );
+	// 		output = JSON.stringify( output );
 
-		}
+	// 	}
 
-		saveString( output, 'model.json' );
+	// 	saveString( output, 'model.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
-	// Export Scene
+	// // Export Scene
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Scene' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Scene' );
+	// option.onClick( function () {
 
-		var output = editor.scene.toJSON();
+	// 	var output = editor.scene.toJSON();
 
-		try {
+	// 	try {
 
-			output = JSON.stringify( output, null, '\t' );
-			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 		output = JSON.stringify( output, null, '\t' );
+	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		} catch ( e ) {
+	// 	} catch ( e ) {
 
-			output = JSON.stringify( output );
+	// 		output = JSON.stringify( output );
 
-		}
+	// 	}
 
-		saveString( output, 'scene.json' );
+	// 	saveString( output, 'scene.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
-	// Export OBJ
+	// // Export OBJ
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export OBJ' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export OBJ' );
+	// option.onClick( function () {
 
-		var object = editor.selected;
+	// 	var object = editor.selected;
 
-		if ( object === null ) {
+	// 	if ( object === null ) {
 
-			alert( 'No object selected.' );
-			return;
+	// 		alert( 'No object selected.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var exporter = new THREE.OBJExporter();
+	// 	var exporter = new THREE.OBJExporter();
 
-		saveString( exporter.parse( object ), 'model.obj' );
+	// 	saveString( exporter.parse( object ), 'model.obj' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
-	// Export STL
+	// // Export STL
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export STL' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export STL' );
+	// option.onClick( function () {
 
-		var exporter = new THREE.STLExporter();
+	// 	var exporter = new THREE.STLExporter();
 
-		saveString( exporter.parse( editor.scene ), 'model.stl' );
+	// 	saveString( exporter.parse( editor.scene ), 'model.stl' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	//
 
 	options.add( new UI.HorizontalRule() );
 
 	// Publish
+	var option = new UI.Panel();
+    option.setClass( 'option' );
+    option.setTextContent( 'Publish' );
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Publish' );
-	option.onClick( function () {
+    option.onClick( function () {
+        var output = editor.scene.toJSON();
+        App.Helper.Save(output);
+    } );
+    options.add( option );
 
-		var zip = new JSZip();
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Publish' );
+	// option.onClick( function () {
 
-		//
+	// 	var zip = new JSZip();
 
-		var output = editor.toJSON();
-		output.metadata.type = 'App';
-		delete output.history;
+	// 	//
 
-		output = JSON.stringify( output, null, '\t' );
-		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 	var output = editor.toJSON();
+	// 	output.metadata.type = 'App';
+	// 	delete output.history;
 
-		zip.file( 'app.json', output );
+	// 	output = JSON.stringify( output, null, '\t' );
+	// 	output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		//
+	// 	zip.file( 'app.json', output );
 
-		var manager = new THREE.LoadingManager( function () {
+	// 	//
 
-			save( zip.generate( { type: 'blob' } ), 'download.zip' );
+	// 	var manager = new THREE.LoadingManager( function () {
 
-		} );
+	// 		save( zip.generate( { type: 'blob' } ), 'download.zip' );
 
-		var loader = new THREE.XHRLoader( manager );
-		loader.load( 'js/libs/app/index.html', function ( content ) {
+	// 	} );
 
-			zip.file( 'index.html', content );
+	// 	var loader = new THREE.XHRLoader( manager );
+	// 	loader.load( 'js/libs/app/index.html', function ( content ) {
 
-		} );
-		loader.load( 'js/libs/app.js', function ( content ) {
+	// 		zip.file( 'index.html', content );
 
-			zip.file( 'js/app.js', content );
+	// 	} );
+	// 	loader.load( 'js/libs/app.js', function ( content ) {
 
-		} );
-		loader.load( '../build/three.min.js', function ( content ) {
+	// 		zip.file( 'js/app.js', content );
 
-			zip.file( 'js/three.min.js', content );
+	// 	} );
+	// 	loader.load( '../build/three.min.js', function ( content ) {
 
-		} );
+	// 		zip.file( 'js/three.min.js', content );
 
-	} );
-	options.add( option );
+	// 	} );
+
+	// } );
+	// options.add( option );
 
 
 	//
