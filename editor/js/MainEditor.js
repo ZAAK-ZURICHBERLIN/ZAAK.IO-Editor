@@ -41,6 +41,9 @@ MainEditor.prototype = {
 		var sidebar = new Sidebar( scope.editor );
 		document.body.appendChild( sidebar.dom );
 
+		var sidebarLeft = new SidebarLeft( scope.editor );
+		document.body.appendChild( sidebarLeft.dom );
+
 		var modal = new UI.Modal();
 		document.body.appendChild( modal.dom );
 

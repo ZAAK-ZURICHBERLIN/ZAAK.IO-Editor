@@ -4,8 +4,9 @@
 
 var Sidebar = function ( editor ) {
 
+
 	var container = new UI.Panel();
-	container.setId( 'sidebar' );
+	container.setId( 'sidebar-right' );
 
 	//
 
@@ -27,10 +28,10 @@ var Sidebar = function ( editor ) {
 	//
 
 	var scene = new UI.Span().add(
-		new Sidebar.Scene( editor ),
-		new Sidebar.Script( editor ),
-		new Sidebar.Properties( editor ),
-		new Sidebar.Animation( editor )
+		new Sidebar.Scene( editor )
+		// new Sidebar.Script( editor ),
+		// new Sidebar.Properties( editor ),
+		// new Sidebar.Animation( editor )
 		
 	);
 	container.add( scene );
@@ -77,6 +78,10 @@ var Sidebar = function ( editor ) {
 
 	select( 'SCENE' );
 
+	//Events
+	// signals.sceneGraphChanged.add( refreshUI );
+
+	editor.sidebarProject = container;
 	return container;
 
 };

@@ -115,6 +115,9 @@ var Editor = function () {
 	this.shortcuts = new EditorShortCutsList();
 	this.isolationMode = false;
 
+	this.sidebarObject = null;
+	this.sidebarProject = null;
+
 
 	var SCREEN_WIDTH = window.innerWidth;
 	var SCREEN_HEIGHT = window.innerHeight;

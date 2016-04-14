@@ -144,6 +144,28 @@ EditorShortCuts.prototype = {
 		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
 		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
 
+
+		//Toggle ObjectView
+		if( this.pressed(this.shortcuts.getKey( 'view/objectView' ))) {
+
+			// console.log(this.editor.sidebarObject.dom);
+			if(this.editor.sidebarObject.dom.style.visibility == 'hidden')
+				this.editor.sidebarObject.dom.style.visibility = 'visible';
+			else  
+				this.editor.sidebarObject.dom.style.visibility = 'hidden';
+		};
+
+
+		//Toggle Project View
+		if( this.pressed(this.shortcuts.getKey( 'view/projectView' ))){
+			if(this.editor.sidebarProject.dom.style.visibility == 'hidden')
+				this.editor.sidebarProject.dom.style.visibility = 'visible';
+			else  
+				this.editor.sidebarProject.dom.style.visibility = 'hidden';
+
+		};
+
+
 	},
 
 	//Ugly and should be here

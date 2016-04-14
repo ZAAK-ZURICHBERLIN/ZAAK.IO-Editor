@@ -26,6 +26,8 @@ var EditorShortCutsList = function () {
 		'view/isolate':'i',
 		'view/focus':'f',
 		'view/showgrid':'space',
+		'view/projectView':'t',
+		'view/objectView':'n',
 
 		'camera/front':'1',
 		'camera/left':'3',
