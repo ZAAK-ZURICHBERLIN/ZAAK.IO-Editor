@@ -188,6 +188,7 @@ MainEditor.prototype = {
 			scope.editor.signals.windowResize.dispatch();
 
 		}
+		
 
 		window.addEventListener( 'resize', onWindowResize, false );
 
@@ -2248,1246 +2249,6 @@ THREE.AMFLoader.prototype = {
 	}
 
 };
-
-// File:examples/js/loaders/AWDLoader.js
-
-/**
- * Author: Pierre Lepers
- * Date: 09/12/2013 17:21
- */
-
-( function () {
-
-	var UNCOMPRESSED  = 0,
-			DEFLATE       = 1,
-			LZMA          = 2,
-
-			AWD_FIELD_INT8      = 1,
-			AWD_FIELD_INT16     = 2,
-			AWD_FIELD_INT32     = 3,
-			AWD_FIELD_UINT8     = 4,
-			AWD_FIELD_UINT16    = 5,
-			AWD_FIELD_UINT32    = 6,
-			AWD_FIELD_FLOAT32   = 7,
-			AWD_FIELD_FLOAT64   = 8,
-			AWD_FIELD_BOOL      = 21,
-			AWD_FIELD_COLOR     = 22,
-			AWD_FIELD_BADDR     = 23,
-			AWD_FIELD_STRING    = 31,
-			AWD_FIELD_BYTEARRAY = 32,
-			AWD_FIELD_VECTOR2x1 = 41,
-			AWD_FIELD_VECTOR3x1 = 42,
-			AWD_FIELD_VECTOR4x1 = 43,
-			AWD_FIELD_MTX3x2    = 44,
-			AWD_FIELD_MTX3x3    = 45,
-			AWD_FIELD_MTX4x3    = 46,
-			AWD_FIELD_MTX4x4    = 47,
-
-			BOOL       = 21,
-			COLOR      = 22,
-			BADDR      = 23,
-
-			INT8    = 1,
-			INT16   = 2,
-			INT32   = 3,
-			UINT8   = 4,
-			UINT16  = 5,
-			UINT32  = 6,
-			FLOAT32 = 7,
-			FLOAT64 = 8;
-
-	var littleEndian = true;
-
-	function Block() {
-
-		this.id = 0;
-		this.data = null;
-
-	}
-
-	AWDProperties = function() {}
-
-	AWDProperties.prototype = {
-		set : function( key, value ) {
-
-			this[ key ] = value;
-
-		},
-
-		get : function( key, fallback ) {
-
-			if ( this.hasOwnProperty( key ) )
-				return this[ key ];
-			else return fallback;
-
-		}
-	}
-
-	THREE.AWDLoader = function ( manager ) {
-
-		this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
-
-		this.trunk = new THREE.Object3D();
-
-		this.materialFactory = undefined;
-
-		this._url     = '';
-		this._baseDir = '';
-
-		this._data;
-		this._ptr = 0;
-
-		this._version =  [];
-		this._streaming = false;
-		this._optimized_for_accuracy = false;
-		this._compression = 0;
-		this._bodylen = 0xFFFFFFFF;
-
-		this._blocks = [ new Block() ];
-
-		this._accuracyMatrix  = false;
-		this._accuracyGeo     = false;
-		this._accuracyProps   = false;
-
-	};
-
-	THREE.AWDLoader.prototype = {
-
-		constructor: THREE.AWDLoader,
-
-		load: function ( url, onLoad, onProgress, onError ) {
-
-			var scope = this;
-
-			this._url = url;
-			this._baseDir = url.substr( 0, url.lastIndexOf( '/' ) + 1 );
-
-			var loader = new THREE.XHRLoader( this.manager );
-			loader.setResponseType( 'arraybuffer' );
-			loader.load( url, function ( text ) {
-
-				onLoad( scope.parse( text ) );
-
-			}, onProgress, onError );
-
-		},
-
-		parse: function ( data ) {
-
-			var blen = data.byteLength;
-
-			this._ptr = 0;
-			this._data = new DataView( data );
-
-			this._parseHeader( );
-
-			if ( this._compression != 0  ) {
-
-				console.error( 'compressed AWD not supported' );
-
-			}
-
-			if ( ! this._streaming && this._bodylen != data.byteLength - this._ptr ) {
-
-				console.error( 'AWDLoader: body len does not match file length', this._bodylen,  blen - this._ptr );
-
-			}
-
-			while ( this._ptr < blen ) {
-
-				this.parseNextBlock();
-
-			}
-
-			return this.trunk;
-
-		},
-
-		parseNextBlock: function() {
-
-			var assetData,
-					ns, type, len, block,
-					blockId = this.readU32(),
-					ns      = this.readU8(),
-					type    = this.readU8(),
-					flags   = this.readU8(),
-					len     = this.readU32();
-
-
-			switch ( type ) {
-				case 1:
-					assetData = this.parseMeshData( len );
-					break;
-				case 22:
-					assetData = this.parseContainer( len );
-					break;
-				case 23:
-					assetData = this.parseMeshInstance( len );
-					break;
-				case 81:
-					assetData = this.parseMaterial( len );
-					break;
-				case 82:
-					assetData = this.parseTexture( len );
-					break;
-				case 101:
-					assetData = this.parseSkeleton( len );
-					break;
-
-	//      case 111:
-	//        assetData = this.parseMeshPoseAnimation(len, true);
-	//        break;
-				case 112:
-					assetData = this.parseMeshPoseAnimation( len, false );
-					break;
-				case 113:
-					assetData = this.parseVertexAnimationSet( len );
-					break;
-				case 102:
-					assetData = this.parseSkeletonPose( len );
-					break;
-				case 103:
-					assetData = this.parseSkeletonAnimation( len );
-					break;
-				case 122:
-					assetData = this.parseAnimatorSet( len );
-					break;
-				// case 121:
-				//  assetData = parseUVAnimation(len);
-				//  break;
-				default:
-					//debug('Ignoring block!',type, len);
-					this._ptr += len;
-					break;
-			}
-
-
-			// Store block reference for later use
-			this._blocks[ blockId ] = block = new Block();
-			block.data = assetData;
-			block.id = blockId;
-
-
-		},
-
-		_parseHeader: function () {
-
-			var version = this._version,
-					awdmagic =
-							( this.readU8() << 16 )
-					|   ( this.readU8() << 8 )
-					|     this.readU8();
-
-			if ( awdmagic != 4282180 )
-				throw new Error( "AWDLoader - bad magic" );
-
-			version[ 0 ] = this.readU8();
-			version[ 1 ] = this.readU8();
-
-			var flags = this.readU16();
-
-			this._streaming = ( flags & 0x1 ) == 0x1;
-
-			if ( ( version[ 0 ] === 2 ) && ( version[ 1 ] === 1 ) ) {
-
-				this._accuracyMatrix =  ( flags & 0x2 ) === 0x2;
-				this._accuracyGeo =     ( flags & 0x4 ) === 0x4;
-				this._accuracyProps =   ( flags & 0x8 ) === 0x8;
-
-			}
-
-			this._geoNrType     = this._accuracyGeo     ? FLOAT64 : FLOAT32;
-			this._matrixNrType  = this._accuracyMatrix  ? FLOAT64 : FLOAT32;
-			this._propsNrType   = this._accuracyProps   ? FLOAT64 : FLOAT32;
-
-			this._optimized_for_accuracy  = ( flags & 0x2 ) === 0x2;
-
-			this._compression = this.readU8();
-			this._bodylen = this.readU32();
-
-		},
-
-		parseContainer: function ( len ) {
-
-			var parent,
-					ctr     = new THREE.Object3D(),
-					par_id  = this.readU32(),
-					mtx     = this.parseMatrix4();
-
-			ctr.name = this.readUTF();
-			ctr.applyMatrix( mtx );
-
-			parent = this._blocks[ par_id ].data || this.trunk;
-			parent.add( ctr );
-
-			this.parseProperties( {
-				1: this._matrixNrType,
-				2: this._matrixNrType,
-				3: this._matrixNrType,
-				4: UINT8
-			} );
-
-			ctr.extra = this.parseUserAttributes();
-
-			return ctr;
-
-		},
-
-		parseMeshInstance: function ( len ) {
-
-			var name,
-					mesh, geometries, meshLen, meshes,
-					par_id, data_id,
-					mtx,
-					materials, mat, mat_id,
-					num_materials,
-					materials_parsed,
-					parent,
-					i;
-
-			par_id        = this.readU32();
-			mtx           = this.parseMatrix4();
-			name          = this.readUTF();
-			data_id       = this.readU32();
-			num_materials = this.readU16();
-
-			geometries = this.getBlock( data_id );
-
-			materials = [];
-			materials_parsed = 0;
-
-			for ( i = 0; i < num_materials; i ++ ) {
-
-				mat_id = this.readU32();
-				mat = this.getBlock( mat_id );
-				materials.push( mat );
-
-			}
-
-			meshLen = geometries.length;
-			meshes = [];
-
-			// TODO : BufferGeometry don't support "geometryGroups" for now.
-			// so we create sub meshes for each groups
-			if ( meshLen  > 1 ) {
-
-				mesh = new THREE.Object3D();
-				for ( i = 0; i < meshLen; i ++ ) {
-
-					var sm = new THREE.Mesh( geometries[ i ] );
-					meshes.push( sm );
-					mesh.add( sm );
-
-				}
-
-			} else {
-
-				mesh = new THREE.Mesh( geometries[ 0 ] );
-				meshes.push( mesh );
-
-			}
-
-			mesh.applyMatrix( mtx );
-			mesh.name = name;
-
-
-			parent = this.getBlock( par_id ) || this.trunk;
-			parent.add( mesh );
-
-
-			var matLen = materials.length;
-			var maxLen = Math.max( meshLen, matLen );
-			for ( i = 0; i < maxLen; i ++ )
-				meshes[ i % meshLen ].material = materials[ i % matLen ];
-
-
-			// Ignore for now
-			this.parseProperties( null );
-			mesh.extra = this.parseUserAttributes();
-
-			return mesh;
-
-		},
-
-		parseMaterial: function ( len ) {
-
-			var name,
-					type,
-					props,
-					mat,
-					attributes,
-					finalize,
-					num_methods,
-					methods_parsed;
-
-			name        = this.readUTF();
-			type        = this.readU8();
-			num_methods = this.readU8();
-
-			//log( "AWDLoader parseMaterial ",name )
-
-			// Read material numerical properties
-			// (1=color, 2=bitmap url, 11=alpha_blending, 12=alpha_threshold, 13=repeat)
-			props = this.parseProperties( {
-				1:  AWD_FIELD_INT32,
-				2:  AWD_FIELD_BADDR,
-				11: AWD_FIELD_BOOL,
-				12: AWD_FIELD_FLOAT32,
-				13: AWD_FIELD_BOOL
-			} );
-
-			methods_parsed = 0;
-
-			while ( methods_parsed < num_methods ) {
-
-				var method_type = this.readU16();
-				this.parseProperties( null );
-				this.parseUserAttributes();
-
-			}
-
-			attributes = this.parseUserAttributes();
-
-			if ( this.materialFactory !== undefined ) {
-
-				mat = this.materialFactory( name );
-				if ( mat ) return mat;
-
-			}
-
-			mat = new THREE.MeshPhongMaterial();
-
-			if ( type === 1 ) {
-
-				// Color material
-				mat.color.setHex( props.get( 1, 0xcccccc ) );
-
-			} else if ( type === 2 ) {
-
-				// Bitmap material
-				var tex_addr = props.get( 2, 0 );
-				mat.map = this.getBlock( tex_addr );
-
-			}
-
-			mat.extra = attributes;
-			mat.alphaThreshold = props.get( 12, 0.0 );
-			mat.repeat = props.get( 13, false );
-
-
-			return mat;
-
-		},
-
-		parseTexture: function( len ) {
-
-			var name = this.readUTF(),
-					type = this.readU8(),
-					asset,
-					data_len;
-
-			// External
-			if ( type === 0 ) {
-
-				data_len = this.readU32();
-				var url = this.readUTFBytes( data_len );
-				console.log( url );
-
-				asset = this.loadTexture( url );
-
-			} else {
-				// embed texture not supported
-			}
-			// Ignore for now
-			this.parseProperties( null );
-
-			this.parseUserAttributes();
-			return asset;
-
-		},
-
-		loadTexture: function( url ) {
-
-			var tex = new THREE.Texture();
-
-			var loader = new THREE.ImageLoader( this.manager );
-
-			loader.load( this._baseDir + url, function( image ) {
-
-				tex.image = image;
-				tex.needsUpdate = true;
-
-			} );
-
-			return tex;
-
-		},
-
-		parseSkeleton: function( len ) {
-
-			// Array<Bone>
-			var name          = this.readUTF(),
-					num_joints    = this.readU16(),
-					skeleton      = [],
-					joints_parsed = 0;
-
-			this.parseProperties( null );
-
-			while ( joints_parsed < num_joints ) {
-
-				var joint, ibp;
-
-				// Ignore joint id
-				this.readU16();
-
-				joint = new THREE.Bone();
-				joint.parent = this.readU16() - 1; // 0=null in AWD
-				joint.name = this.readUTF();
-
-				ibp = this.parseMatrix4();
-				joint.skinMatrix = ibp;
-
-				// Ignore joint props/attributes for now
-				this.parseProperties( null );
-				this.parseUserAttributes();
-
-				skeleton.push( joint );
-				joints_parsed ++;
-
-			}
-
-			// Discard attributes for now
-			this.parseUserAttributes();
-
-
-			return skeleton;
-
-		},
-
-		parseSkeletonPose: function( blockID ) {
-
-			var name = this.readUTF();
-
-			var num_joints = this.readU16();
-			this.parseProperties( null );
-
-			// debug( 'parse Skeleton Pose. joints : ' + num_joints);
-
-			var pose = [];
-
-			var joints_parsed = 0;
-
-			while ( joints_parsed < num_joints ) {
-
-				var joint_pose;
-
-				var has_transform; //:uint;
-				var mtx_data;
-
-				has_transform = this.readU8();
-
-				if ( has_transform === 1 ) {
-
-					mtx_data = this.parseMatrix4();
-
-				} else {
-
-					mtx_data = new THREE.Matrix4();
-
-				}
-				pose[ joints_parsed ] = mtx_data;
-				joints_parsed ++;
-
-			}
-
-			// Skip attributes for now
-			this.parseUserAttributes();
-
-			return pose;
-
-		},
-
-		parseSkeletonAnimation: function( blockID ) {
-
-			var frame_dur;
-			var pose_addr;
-			var pose;
-
-			var name = this.readUTF();
-
-			var clip = [];
-
-			var num_frames = this.readU16();
-			this.parseProperties( null );
-
-			var frames_parsed = 0;
-			var returnedArray;
-
-			// debug( 'parse Skeleton Animation. frames : ' + num_frames);
-
-			while ( frames_parsed < num_frames ) {
-
-				pose_addr = this.readU32();
-				frame_dur = this.readU16();
-
-				pose = this._blocks[ pose_addr ].data;
-				// debug( 'pose address ',pose[2].elements[12],pose[2].elements[13],pose[2].elements[14] );
-				clip.push( {
-					pose : pose,
-					duration : frame_dur
-				} );
-
-				frames_parsed ++;
-
-			}
-
-			if ( clip.length === 0 ) {
-
-				// debug("Could not this SkeletonClipNode, because no Frames where set.");
-				return;
-
-			}
-			// Ignore attributes for now
-			this.parseUserAttributes();
-			return clip;
-
-		},
-
-		parseVertexAnimationSet: function( len ) {
-
-			var poseBlockAdress,
-					name           = this.readUTF(),
-					num_frames     = this.readU16(),
-					props          = this.parseProperties( { 1: UINT16 } ),
-					frames_parsed  = 0,
-					skeletonFrames = [];
-
-			while ( frames_parsed < num_frames ) {
-
-				poseBlockAdress = this.readU32();
-				skeletonFrames.push( this._blocks[ poseBlockAdress ].data );
-				frames_parsed ++;
-
-			}
-
-			this.parseUserAttributes();
-
-
-			return skeletonFrames;
-
-		},
-
-		parseAnimatorSet: function( len ) {
-
-			var targetMesh;
-
-			var animSetBlockAdress; //:int
-
-			var targetAnimationSet; //:AnimationSetBase;
-			var outputString = ""; //:String = "";
-			var name = this.readUTF();
-			var type = this.readU16();
-
-			var props = this.parseProperties( { 1: BADDR } );
-
-			animSetBlockAdress = this.readU32();
-			var targetMeshLength = this.readU16();
-
-			var meshAdresses = []; //:Vector.<uint> = new Vector.<uint>;
-
-			for ( var i = 0; i < targetMeshLength; i ++ )
-				meshAdresses.push( this.readU32() );
-
-			var activeState = this.readU16();
-			var autoplay = Boolean( this.readU8() );
-			this.parseUserAttributes();
-			this.parseUserAttributes();
-
-			var returnedArray;
-			var targetMeshes = []; //:Vector.<Mesh> = new Vector.<Mesh>;
-
-			for ( i = 0; i < meshAdresses.length; i ++ ) {
-
-				//      returnedArray = getAssetByID(meshAdresses[i], [AssetType.MESH]);
-				//      if (returnedArray[0])
-				targetMeshes.push( this._blocks[ meshAdresses[ i ]].data );
-
-			}
-
-			targetAnimationSet = this._blocks[ animSetBlockAdress ].data;
-			var thisAnimator;
-
-			if ( type == 1 ) {
-
-
-				thisAnimator = {
-					animationSet : targetAnimationSet,
-					skeleton : this._blocks[ props.get( 1, 0 ) ].data
-				};
-
-			} else if ( type == 2 ) {
-				// debug( "vertex Anim???");
-			}
-
-
-			for ( i = 0; i < targetMeshes.length; i ++ ) {
-
-				targetMeshes[ i ].animator = thisAnimator;
-
-			}
-			// debug("Parsed a Animator: Name = " + name);
-
-			return thisAnimator;
-
-		},
-
-		parseMeshData: function ( len ) {
-
-			var name      = this.readUTF(),
-				num_subs  = this.readU16(),
-				geom,
-				subs_parsed = 0,
-				props,
-				buffer,
-				skinW, skinI,
-				geometries = [];
-
-			props = this.parseProperties( {
-				1: this._geoNrType,
-				2: this._geoNrType
-			} );
-
-			// Loop through sub meshes
-			while ( subs_parsed < num_subs ) {
-
-				var sm_len, sm_end, attrib;
-
-				geom = new THREE.BufferGeometry();
-				geom.name = name;
-				geometries.push( geom );
-
-
-				sm_len = this.readU32();
-				sm_end = this._ptr + sm_len;
-
-
-				// Ignore for now
-				this.parseProperties( { 1: this._geoNrType, 2: this._geoNrType } );
-
-				// Loop through data streams
-				while ( this._ptr < sm_end ) {
-
-					var idx = 0,
-							str_type  = this.readU8(),
-							str_ftype = this.readU8(),
-							str_len   = this.readU32(),
-							str_end   = str_len + this._ptr;
-
-					// VERTICES
-					// ------------------
-					if ( str_type === 1 ) {
-
-						buffer = new Float32Array( ( str_len / 12 ) * 3 );
-						attrib = new THREE.BufferAttribute( buffer, 3 );
-
-						geom.addAttribute( 'position', attrib );
-						idx = 0;
-
-						while ( this._ptr < str_end ) {
-
-							buffer[ idx ]   = - this.readF32();
-							buffer[ idx + 1 ] = this.readF32();
-							buffer[ idx + 2 ] = this.readF32();
-							idx += 3;
-
-						}
-
-					}
-
-					// INDICES
-					// -----------------
-					else if ( str_type === 2 ) {
-
-						buffer = new Uint16Array( str_len / 2 );
-						attrib = new THREE.BufferAttribute( buffer, 1 );
-						geom.setIndex( attrib );
-
-						idx = 0;
-
-						while ( this._ptr < str_end ) {
-
-							buffer[ idx + 1 ]   = this.readU16();
-							buffer[ idx ]     = this.readU16();
-							buffer[ idx + 2 ]   = this.readU16();
-							idx += 3;
-
-						}
-
-					}
-
-					// UVS
-					// -------------------
-					else if ( str_type === 3 ) {
-
-						buffer = new Float32Array( ( str_len / 8 ) * 2 );
-						attrib = new THREE.BufferAttribute( buffer, 2 );
-
-						geom.addAttribute( 'uv', attrib );
-						idx = 0;
-
-						while ( this._ptr < str_end ) {
-
-							buffer[ idx ]   = this.readF32();
-							buffer[ idx + 1 ] = 1.0 - this.readF32();
-							idx += 2;
-
-						}
-
-					}
-
-					// NORMALS
-					else if ( str_type === 4 ) {
-
-						buffer = new Float32Array( ( str_len / 12 ) * 3 );
-						attrib = new THREE.BufferAttribute( buffer, 3 );
-						geom.addAttribute( 'normal', attrib );
-						idx = 0;
-
-						while ( this._ptr < str_end ) {
-
-							buffer[ idx ]   = - this.readF32();
-							buffer[ idx + 1 ] = this.readF32();
-							buffer[ idx + 2 ] = this.readF32();
-							idx += 3;
-
-						}
-
-					}
-
-					// else if (str_type == 6) {
-					//   skinI = new Float32Array( str_len>>1 );
-					//   idx = 0
-
-					//   while (this._ptr < str_end) {
-					//     skinI[idx]   = this.readU16();
-					//     idx++;
-					//   }
-
-					// }
-					// else if (str_type == 7) {
-					//   skinW = new Float32Array( str_len>>2 );
-					//   idx = 0;
-
-					//   while (this._ptr < str_end) {
-					//     skinW[idx]   = this.readF32();
-					//     idx++;
-					//   }
-					// }
-					else {
-
-						this._ptr = str_end;
-
-					}
-
-				}
-
-				this.parseUserAttributes();
-
-				geom.computeBoundingSphere();
-				subs_parsed ++;
-
-			}
-
-			//geom.computeFaceNormals();
-
-			this.parseUserAttributes();
-			//finalizeAsset(geom, name);
-
-			return geometries;
-
-		},
-
-		parseMeshPoseAnimation: function( len, poseOnly ) {
-
-			var num_frames = 1,
-					num_submeshes,
-					frames_parsed,
-					subMeshParsed,
-					frame_dur,
-					x, y, z,
-
-					str_len,
-					str_end,
-					geom,
-					subGeom,
-					idx = 0,
-					clip = {},
-					indices,
-					verts,
-					num_Streams,
-					streamsParsed,
-					streamtypes = [],
-
-					props,
-					thisGeo,
-					name = this.readUTF(),
-					geoAdress = this.readU32();
-
-			var mesh = this.getBlock( geoAdress );
-
-			if ( mesh === null ) {
-
-				console.log( "parseMeshPoseAnimation target mesh not found at:", geoAdress );
-				return;
-
-			}
-
-			geom = mesh.geometry;
-			geom.morphTargets = [];
-
-			if ( ! poseOnly )
-				num_frames = this.readU16();
-
-			num_submeshes = this.readU16();
-			num_Streams = this.readU16();
-
-			// debug("VA num_frames : ", num_frames );
-			// debug("VA num_submeshes : ", num_submeshes );
-			// debug("VA numstreams : ", num_Streams );
-
-			streamsParsed = 0;
-			while ( streamsParsed < num_Streams ) {
-
-				streamtypes.push( this.readU16() );
-				streamsParsed ++;
-
-			}
-			props = this.parseProperties( { 1: BOOL, 2: BOOL } );
-
-			clip.looping = props.get( 1, true );
-			clip.stitchFinalFrame = props.get( 2, false );
-
-			frames_parsed = 0;
-
-			while ( frames_parsed < num_frames ) {
-
-				frame_dur = this.readU16();
-				subMeshParsed = 0;
-
-				while ( subMeshParsed < num_submeshes ) {
-
-					streamsParsed = 0;
-					str_len = this.readU32();
-					str_end = this._ptr + str_len;
-
-					while ( streamsParsed < num_Streams ) {
-
-						if ( streamtypes[ streamsParsed ] === 1 ) {
-
-							//geom.addAttribute( 'morphTarget'+frames_parsed, Float32Array, str_len/12, 3 );
-							var buffer = new Float32Array( str_len / 4 );
-							geom.morphTargets.push( {
-								array : buffer
-							} );
-
-							//buffer = geom.attributes['morphTarget'+frames_parsed].array
-							idx = 0;
-
-							while ( this._ptr < str_end ) {
-
-								buffer[ idx ]     = this.readF32();
-								buffer[ idx + 1 ]   = this.readF32();
-								buffer[ idx + 2 ]   = this.readF32();
-								idx += 3;
-
-							}
-
-
-							subMeshParsed ++;
-
-						} else
-							this._ptr = str_end;
-						streamsParsed ++;
-
-					}
-
-				}
-
-
-				frames_parsed ++;
-
-			}
-
-			this.parseUserAttributes();
-
-			return null;
-
-		},
-
-		getBlock: function ( id ) {
-
-			return this._blocks[ id ].data;
-
-		},
-
-		parseMatrix4: function () {
-
-			var mtx = new THREE.Matrix4();
-			var e = mtx.elements;
-
-			e[ 0 ] = this.readF32();
-			e[ 1 ] = this.readF32();
-			e[ 2 ] = this.readF32();
-			e[ 3 ] = 0.0;
-			//e[3] = 0.0;
-
-			e[ 4 ] = this.readF32();
-			e[ 5 ] = this.readF32();
-			e[ 6 ] = this.readF32();
-			//e[7] = this.readF32();
-			e[ 7 ] = 0.0;
-
-			e[ 8 ] = this.readF32();
-			e[ 9 ] = this.readF32();
-			e[ 10 ] = this.readF32();
-			//e[11] = this.readF32();
-			e[ 11 ] = 0.0;
-
-			e[ 12 ] = - this.readF32();
-			e[ 13 ] = this.readF32();
-			e[ 14 ] = this.readF32();
-			//e[15] = this.readF32();
-			e[ 15 ] = 1.0;
-			return mtx;
-
-		},
-
-		parseProperties: function ( expected ) {
-
-			var list_len = this.readU32();
-			var list_end = this._ptr + list_len;
-
-			var props = new AWDProperties();
-
-			if ( expected ) {
-
-				while ( this._ptr < list_end ) {
-
-					var key = this.readU16();
-					var len = this.readU32();
-					var type;
-
-					if ( expected.hasOwnProperty( key ) ) {
-
-						type = expected[ key ];
-						props.set( key, this.parseAttrValue( type, len ) );
-
-					} else {
-
-						this._ptr += len;
-
-					}
-
-				}
-
-			}
-
-			return props;
-
-		},
-
-		parseUserAttributes: function () {
-
-			// skip for now
-			this._ptr = this.readU32() + this._ptr;
-			return null;
-
-		},
-
-		parseAttrValue: function ( type, len ) {
-
-			var elem_len;
-			var read_func;
-
-			switch ( type ) {
-				case AWD_FIELD_INT8:
-					elem_len = 1;
-					read_func = this.readI8;
-					break;
-				case AWD_FIELD_INT16:
-					elem_len = 2;
-					read_func = this.readI16;
-					break;
-				case AWD_FIELD_INT32:
-					elem_len = 4;
-					read_func = this.readI32;
-					break;
-				case AWD_FIELD_BOOL:
-				case AWD_FIELD_UINT8:
-					elem_len = 1;
-					read_func = this.readU8;
-					break;
-				case AWD_FIELD_UINT16:
-					elem_len = 2;
-					read_func = this.readU16;
-					break;
-				case AWD_FIELD_UINT32:
-				case AWD_FIELD_BADDR:
-					elem_len = 4;
-					read_func = this.readU32;
-					break;
-				case AWD_FIELD_FLOAT32:
-					elem_len = 4;
-					read_func = this.readF32;
-					break;
-				case AWD_FIELD_FLOAT64:
-					elem_len = 8;
-					read_func = this.readF64;
-					break;
-				case AWD_FIELD_VECTOR2x1:
-				case AWD_FIELD_VECTOR3x1:
-				case AWD_FIELD_VECTOR4x1:
-				case AWD_FIELD_MTX3x2:
-				case AWD_FIELD_MTX3x3:
-				case AWD_FIELD_MTX4x3:
-				case AWD_FIELD_MTX4x4:
-					elem_len = 8;
-					read_func = this.readF64;
-					break;
-			}
-
-			if ( elem_len < len ) {
-
-				var list;
-				var num_read;
-				var num_elems;
-
-				list = [];
-				num_read = 0;
-				num_elems = len / elem_len;
-
-				while ( num_read < num_elems ) {
-
-					list.push( read_func.call( this ) );
-					num_read ++;
-
-				}
-
-				return list;
-
-			} else {
-
-				return read_func.call( this );
-
-			}
-
-		},
-
-		readU8: function () {
-
-			return this._data.getUint8( this._ptr ++ );
-
-		},
-		readI8: function () {
-
-			return this._data.getInt8( this._ptr ++ );
-
-		},
-		readU16: function () {
-
-			var a = this._data.getUint16( this._ptr, littleEndian );
-			this._ptr += 2;
-			return a;
-
-		},
-		readI16: function () {
-
-			var a = this._data.getInt16( this._ptr, littleEndian );
-			this._ptr += 2;
-			return a;
-
-		},
-		readU32: function () {
-
-			var a = this._data.getUint32( this._ptr, littleEndian );
-			this._ptr += 4;
-			return a;
-
-		},
-		readI32: function () {
-
-			var a = this._data.getInt32( this._ptr, littleEndian );
-			this._ptr += 4;
-			return a;
-
-		},
-		readF32: function () {
-
-			var a = this._data.getFloat32( this._ptr, littleEndian );
-			this._ptr += 4;
-			return a;
-
-		},
-		readF64: function () {
-
-			var a = this._data.getFloat64( this._ptr, littleEndian );
-			this._ptr += 8;
-			return a;
-
-		},
-
-		/**
-	 * Converts a UTF-8 byte array to JavaScript's 16-bit Unicode.
-	 * @param {Array.<number>} bytes UTF-8 byte array.
-	 * @return {string} 16-bit Unicode string.
-	 */
-		readUTF: function () {
-
-			var len = this.readU16();
-			return this.readUTFBytes( len );
-
-		},
-
-		/**
-		 * Converts a UTF-8 byte array to JavaScript's 16-bit Unicode.
-		 * @param {Array.<number>} bytes UTF-8 byte array.
-		 * @return {string} 16-bit Unicode string.
-		 */
-		readUTFBytes: function ( len ) {
-
-			// TODO(user): Use native implementations if/when available
-			var out = [], c = 0;
-
-			while ( out.length < len ) {
-
-				var c1 = this._data.getUint8( this._ptr ++, littleEndian );
-				if ( c1 < 128 ) {
-
-					out[ c ++ ] = String.fromCharCode( c1 );
-
-				} else if ( c1 > 191 && c1 < 224 ) {
-
-					var c2 = this._data.getUint8( this._ptr ++, littleEndian );
-					out[ c ++ ] = String.fromCharCode( ( c1 & 31 ) << 6 | c2 & 63 );
-
-				} else {
-
-					var c2 = this._data.getUint8( this._ptr ++, littleEndian );
-					var c3 = this._data.getUint8( this._ptr ++, littleEndian );
-					out[ c ++ ] = String.fromCharCode(
-							( c1 & 15 ) << 12 | ( c2 & 63 ) << 6 | c3 & 63
-					);
-
-				}
-
-			}
-			return out.join( '' );
-
-		}
-
-	};
-
-} )();
 
 // File:examples/js/loaders/BabylonLoader.js
 
@@ -24348,237 +23109,246 @@ Menubar.File = function ( editor ) {
 
 	// Export Geometry
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Geometry' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Geometry' );
+	// option.onClick( function () {
 
-		var object = editor.selected;
+	// 	var object = editor.selected;
 
-		if ( object === null ) {
+	// 	if ( object === null ) {
 
-			alert( 'No object selected.' );
-			return;
+	// 		alert( 'No object selected.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var geometry = object.geometry;
+	// 	var geometry = object.geometry;
 
-		if ( geometry === undefined ) {
+	// 	if ( geometry === undefined ) {
 
-			alert( 'The selected object doesn\'t have geometry.' );
-			return;
+	// 		alert( 'The selected object doesn\'t have geometry.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var output = geometry.toJSON();
+	// 	var output = geometry.toJSON();
 
-		try {
+	// 	try {
 
-			output = JSON.stringify( output, null, '\t' );
-			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 		output = JSON.stringify( output, null, '\t' );
+	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		} catch ( e ) {
+	// 	} catch ( e ) {
 
-			output = JSON.stringify( output );
+	// 		output = JSON.stringify( output );
 
-		}
+	// 	}
 
-		saveString( output, 'geometry.json' );
+	// 	saveString( output, 'geometry.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	// Export Geometry
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Geometry' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Geometry' );
+	// option.onClick( function () {
 
-		var object = editor.selected;
+	// 	var object = editor.selected;
 
-		if ( object === null ) {
+	// 	if ( object === null ) {
 
-			alert( 'No object selected.' );
-			return;
+	// 		alert( 'No object selected.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var geometry = object.geometry;
+	// 	var geometry = object.geometry;
 
-		if ( geometry === undefined ) {
+	// 	if ( geometry === undefined ) {
 
-			alert( 'The selected object doesn\'t have geometry.' );
-			return;
+	// 		alert( 'The selected object doesn\'t have geometry.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var output = geometry.toJSON();
+	// 	var output = geometry.toJSON();
 
-		try {
+	// 	try {
 
-			output = JSON.stringify( output, null, '\t' );
-			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 		output = JSON.stringify( output, null, '\t' );
+	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		} catch ( e ) {
+	// 	} catch ( e ) {
 
-			output = JSON.stringify( output );
+	// 		output = JSON.stringify( output );
 
-		}
+	// 	}
 
-		saveString( output, 'geometry.json' );
+	// 	saveString( output, 'geometry.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	// Export Object
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Object' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Object' );
+	// option.onClick( function () {
 
-		var object = editor.selected;
+	// 	var object = editor.selected;
 
-		if ( object === null ) {
+	// 	if ( object === null ) {
 
-			alert( 'No object selected' );
-			return;
+	// 		alert( 'No object selected' );
+	// 		return;
 
-		}
+	// 	}
 
-		var output = object.toJSON();
+	// 	var output = object.toJSON();
 
-		try {
+	// 	try {
 
-			output = JSON.stringify( output, null, '\t' );
-			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 		output = JSON.stringify( output, null, '\t' );
+	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		} catch ( e ) {
+	// 	} catch ( e ) {
 
-			output = JSON.stringify( output );
+	// 		output = JSON.stringify( output );
 
-		}
+	// 	}
 
-		saveString( output, 'model.json' );
+	// 	saveString( output, 'model.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
-	// Export Scene
+	// // Export Scene
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export Scene' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export Scene' );
+	// option.onClick( function () {
 
-		var output = editor.scene.toJSON();
+	// 	var output = editor.scene.toJSON();
 
-		try {
+	// 	try {
 
-			output = JSON.stringify( output, null, '\t' );
-			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 		output = JSON.stringify( output, null, '\t' );
+	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		} catch ( e ) {
+	// 	} catch ( e ) {
 
-			output = JSON.stringify( output );
+	// 		output = JSON.stringify( output );
 
-		}
+	// 	}
 
-		saveString( output, 'scene.json' );
+	// 	saveString( output, 'scene.json' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
-	// Export OBJ
+	// // Export OBJ
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export OBJ' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export OBJ' );
+	// option.onClick( function () {
 
-		var object = editor.selected;
+	// 	var object = editor.selected;
 
-		if ( object === null ) {
+	// 	if ( object === null ) {
 
-			alert( 'No object selected.' );
-			return;
+	// 		alert( 'No object selected.' );
+	// 		return;
 
-		}
+	// 	}
 
-		var exporter = new THREE.OBJExporter();
+	// 	var exporter = new THREE.OBJExporter();
 
-		saveString( exporter.parse( object ), 'model.obj' );
+	// 	saveString( exporter.parse( object ), 'model.obj' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
-	// Export STL
+	// // Export STL
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Export STL' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Export STL' );
+	// option.onClick( function () {
 
-		var exporter = new THREE.STLExporter();
+	// 	var exporter = new THREE.STLExporter();
 
-		saveString( exporter.parse( editor.scene ), 'model.stl' );
+	// 	saveString( exporter.parse( editor.scene ), 'model.stl' );
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	//
 
 	options.add( new UI.HorizontalRule() );
 
 	// Publish
+	var option = new UI.Panel();
+    option.setClass( 'option' );
+    option.setTextContent( 'Publish' );
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Publish' );
-	option.onClick( function () {
+    option.onClick( function () {
+        var output = editor.scene.toJSON();
+        App.Helper.Save(output);
+    } );
+    options.add( option );
 
-		var zip = new JSZip();
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Publish' );
+	// option.onClick( function () {
 
-		//
+	// 	var zip = new JSZip();
 
-		var output = editor.toJSON();
-		output.metadata.type = 'App';
-		delete output.history;
+	// 	//
 
-		output = JSON.stringify( output, null, '\t' );
-		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 	var output = editor.toJSON();
+	// 	output.metadata.type = 'App';
+	// 	delete output.history;
 
-		zip.file( 'app.json', output );
+	// 	output = JSON.stringify( output, null, '\t' );
+	// 	output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		//
+	// 	zip.file( 'app.json', output );
 
-		var manager = new THREE.LoadingManager( function () {
+	// 	//
 
-			save( zip.generate( { type: 'blob' } ), 'download.zip' );
+	// 	var manager = new THREE.LoadingManager( function () {
 
-		} );
+	// 		save( zip.generate( { type: 'blob' } ), 'download.zip' );
 
-		var loader = new THREE.XHRLoader( manager );
-		loader.load( 'js/libs/app/index.html', function ( content ) {
+	// 	} );
 
-			zip.file( 'index.html', content );
+	// 	var loader = new THREE.XHRLoader( manager );
+	// 	loader.load( 'js/libs/app/index.html', function ( content ) {
 
-		} );
-		loader.load( 'js/libs/app.js', function ( content ) {
+	// 		zip.file( 'index.html', content );
 
-			zip.file( 'js/app.js', content );
+	// 	} );
+	// 	loader.load( 'js/libs/app.js', function ( content ) {
 
-		} );
-		loader.load( '../build/three.min.js', function ( content ) {
+	// 		zip.file( 'js/app.js', content );
 
-			zip.file( 'js/three.min.js', content );
+	// 	} );
+	// 	loader.load( '../build/three.min.js', function ( content ) {
 
-		} );
+	// 		zip.file( 'js/three.min.js', content );
 
-	} );
-	options.add( option );
+	// 	} );
+
+	// } );
+	// options.add( option );
 
 
 	//
@@ -24952,7 +23722,7 @@ Menubar.Add = function ( editor ) {
 	option.onClick( function () {
 
         // preview box
-        var preview = "<div id='preview' class='modal-box' style='height:600px;width:900px;text-align: center;'> \
+        var preview = "<div id='preview' class='modal-box' style='height:100%;width:100%;text-align: center;'> \
         <header style='background-color:#333;'> \
             <a class='js-modal-close close' style='top:1.5%;'>×</a> \
         </header> \
@@ -25619,9 +24389,10 @@ var Sidebar = function ( editor ) {
 
 	var scene = new UI.Span().add(
 		new Sidebar.Scene( editor ),
+		new Sidebar.Script( editor ),
 		new Sidebar.Properties( editor ),
-		new Sidebar.Animation( editor ),
-		new Sidebar.Script( editor )
+		new Sidebar.Animation( editor )
+		
 	);
 	container.add( scene );
 
@@ -25706,108 +24477,108 @@ Sidebar.Scene = function ( editor ) {
 	container.add( outliner );
 	container.add( new UI.Break() );
 
-	//bg
+	// //bg
 	
-	var bgColorRow = new UI.Panel();
-	var bgColor = new UI.Color().setHexValue( editor.config.getKey('backgroundColor'));
-	bgColor.onChange( function () {
-		signals.bgColorChanged.dispatch( bgColor.getHexValue() );
+	// var bgColorRow = new UI.Panel();
+	// var bgColor = new UI.Color().setHexValue( editor.config.getKey('backgroundColor'));
+	// bgColor.onChange( function () {
+	// 	signals.bgColorChanged.dispatch( bgColor.getHexValue() );
 
-	} );
+	// } );
 
-	bgColorRow.add( new UI.Text( 'Background color' ).setWidth( '90px' ) );
-	bgColorRow.add( bgColor );
+	// bgColorRow.add( new UI.Text( 'Background color' ).setWidth( '90px' ) );
+	// bgColorRow.add( bgColor );
 
-	container.add( bgColorRow );
+	// container.add( bgColorRow );
 
-	// fog
+	// // fog
 
-	var updateFogParameters = function () {
+	// var updateFogParameters = function () {
 
-		var near = fogNear.getValue();
-		var far = fogFar.getValue();
-		var density = fogDensity.getValue();
+	// 	var near = fogNear.getValue();
+	// 	var far = fogFar.getValue();
+	// 	var density = fogDensity.getValue();
 
-		signals.fogParametersChanged.dispatch( near, far, density );
+	// 	signals.fogParametersChanged.dispatch( near, far, density );
 
-	};
+	// };
 
-	var fogTypeRow = new UI.Row();
-	var fogType = new UI.Select().setOptions( {
+	// var fogTypeRow = new UI.Row();
+	// var fogType = new UI.Select().setOptions( {
 
-		'None': 'None',
-		'Fog': 'Linear',
-		'FogExp2': 'Exponential'
+	// 	'None': 'None',
+	// 	'Fog': 'Linear',
+	// 	'FogExp2': 'Exponential'
 
-	} ).setWidth( '150px' );
-	fogType.onChange( function () {
+	// } ).setWidth( '150px' );
+	// fogType.onChange( function () {
 
-		var type = fogType.getValue();
-		signals.fogTypeChanged.dispatch( type );
+	// 	var type = fogType.getValue();
+	// 	signals.fogTypeChanged.dispatch( type );
 
-		refreshFogUI();
+	// 	refreshFogUI();
 
-	} );
+	// } );
 
-	fogTypeRow.add( new UI.Text( 'Fog' ).setWidth( '90px' ) );
-	fogTypeRow.add( fogType );
+	// fogTypeRow.add( new UI.Text( 'Fog' ).setWidth( '90px' ) );
+	// fogTypeRow.add( fogType );
 
-	container.add( fogTypeRow );
+	// container.add( fogTypeRow );
 
-	// fog color
+	// // fog color
 
-	var fogColorRow = new UI.Row();
-	fogColorRow.setDisplay( 'none' );
+	// var fogColorRow = new UI.Row();
+	// fogColorRow.setDisplay( 'none' );
 
-	var fogColor = new UI.Color().setValue( '#aaaaaa' )
-	fogColor.onChange( function () {
+	// var fogColor = new UI.Color().setValue( '#aaaaaa' )
+	// fogColor.onChange( function () {
 
-		signals.fogColorChanged.dispatch( fogColor.getHexValue() );
+	// 	signals.fogColorChanged.dispatch( fogColor.getHexValue() );
 
-	} );
+	// } );
 
-	fogColorRow.add( new UI.Text( 'Fog color' ).setWidth( '90px' ) );
-	fogColorRow.add( fogColor );
+	// fogColorRow.add( new UI.Text( 'Fog color' ).setWidth( '90px' ) );
+	// fogColorRow.add( fogColor );
 
-	container.add( fogColorRow );
+	// container.add( fogColorRow );
 
-	// fog near
+	// // fog near
 
-	var fogNearRow = new UI.Row();
-	fogNearRow.setDisplay( 'none' );
+	// var fogNearRow = new UI.Row();
+	// fogNearRow.setDisplay( 'none' );
 
-	var fogNear = new UI.Number( 1 ).setWidth( '60px' ).setRange( 0, Infinity ).onChange( updateFogParameters );
+	// var fogNear = new UI.Number( 1 ).setWidth( '60px' ).setRange( 0, Infinity ).onChange( updateFogParameters );
 
-	fogNearRow.add( new UI.Text( 'Fog near' ).setWidth( '90px' ) );
-	fogNearRow.add( fogNear );
+	// fogNearRow.add( new UI.Text( 'Fog near' ).setWidth( '90px' ) );
+	// fogNearRow.add( fogNear );
 
-	container.add( fogNearRow );
+	// container.add( fogNearRow );
 
-	var fogFarRow = new UI.Row();
-	fogFarRow.setDisplay( 'none' );
+	// var fogFarRow = new UI.Row();
+	// fogFarRow.setDisplay( 'none' );
 
-	// fog far
+	// // fog far
 
-	var fogFar = new UI.Number( 5000 ).setWidth( '60px' ).setRange( 0, Infinity ).onChange( updateFogParameters );
+	// var fogFar = new UI.Number( 5000 ).setWidth( '60px' ).setRange( 0, Infinity ).onChange( updateFogParameters );
 
-	fogFarRow.add( new UI.Text( 'Fog far' ).setWidth( '90px' ) );
-	fogFarRow.add( fogFar );
+	// fogFarRow.add( new UI.Text( 'Fog far' ).setWidth( '90px' ) );
+	// fogFarRow.add( fogFar );
 
-	container.add( fogFarRow );
+	// container.add( fogFarRow );
 
-	// fog density
+	// // fog density
 
-	var fogDensityRow = new UI.Row();
-	fogDensityRow.setDisplay( 'none' );
+	// var fogDensityRow = new UI.Row();
+	// fogDensityRow.setDisplay( 'none' );
 
-	var fogDensity = new UI.Number( 0.00025 ).setWidth( '60px' ).setRange( 0, 0.1 ).setPrecision( 5 ).onChange( updateFogParameters );
+	// var fogDensity = new UI.Number( 0.00025 ).setWidth( '60px' ).setRange( 0, 0.1 ).setPrecision( 5 ).onChange( updateFogParameters );
 
-	fogDensityRow.add( new UI.Text( 'Fog density' ).setWidth( '90px' ) );
-	fogDensityRow.add( fogDensity );
+	// fogDensityRow.add( new UI.Text( 'Fog density' ).setWidth( '90px' ) );
+	// fogDensityRow.add( fogDensity );
 
-	container.add( fogDensityRow );
+	// container.add( fogDensityRow );
 
-	//
+	// //
 
 	var refreshUI = function () {
 
@@ -25867,43 +24638,43 @@ Sidebar.Scene = function ( editor ) {
 
 		}
 
-		if ( scene.fog ) {
+		// if ( scene.fog ) {
 
-			fogColor.setHexValue( scene.fog.color.getHex() );
+		// 	fogColor.setHexValue( scene.fog.color.getHex() );
 
-			if ( scene.fog instanceof THREE.Fog ) {
+		// 	if ( scene.fog instanceof THREE.Fog ) {
 
-				fogType.setValue( "Fog" );
-				fogNear.setValue( scene.fog.near );
-				fogFar.setValue( scene.fog.far );
+		// 		fogType.setValue( "Fog" );
+		// 		fogNear.setValue( scene.fog.near );
+		// 		fogFar.setValue( scene.fog.far );
 
-			} else if ( scene.fog instanceof THREE.FogExp2 ) {
+		// 	} else if ( scene.fog instanceof THREE.FogExp2 ) {
 
-				fogType.setValue( "FogExp2" );
-				fogDensity.setValue( scene.fog.density );
+		// 		fogType.setValue( "FogExp2" );
+		// 		fogDensity.setValue( scene.fog.density );
 
-			}
+		// 	}
 
-		} else {
+		// } else {
 
-			fogType.setValue( "None" );
+		// 	fogType.setValue( "None" );
 
-		}
+		// }
 
-		refreshFogUI();
-
-	};
-
-	var refreshFogUI = function () {
-
-		var type = fogType.getValue();
-
-		fogColorRow.setDisplay( type === 'None' ? 'none' : '' );
-		fogNearRow.setDisplay( type === 'Fog' ? '' : 'none' );
-		fogFarRow.setDisplay( type === 'Fog' ? '' : 'none' );
-		fogDensityRow.setDisplay( type === 'FogExp2' ? '' : 'none' );
+		// refreshFogUI();
 
 	};
+
+	// var refreshFogUI = function () {
+
+	// 	var type = fogType.getValue();
+
+	// 	fogColorRow.setDisplay( type === 'None' ? 'none' : '' );
+	// 	fogNearRow.setDisplay( type === 'Fog' ? '' : 'none' );
+	// 	fogFarRow.setDisplay( type === 'Fog' ? '' : 'none' );
+	// 	fogDensityRow.setDisplay( type === 'FogExp2' ? '' : 'none' );
+
+	// };
 
 	refreshUI();
 
@@ -26021,6 +24792,159 @@ Sidebar.Project = function ( editor ) {
 	vrRow.add( vr );
 
 	container.add( vrRow );
+	container.add( new UI.Break() );
+
+	//bg
+	
+	var bgColorRow = new UI.Panel();
+	var bgColor = new UI.Color().setHexValue( editor.config.getKey('backgroundColor'));
+	bgColor.onChange( function () {
+		signals.bgColorChanged.dispatch( bgColor.getHexValue() );
+
+	} );
+
+	bgColorRow.add( new UI.Text( 'Background color' ).setWidth( '90px' ) );
+	bgColorRow.add( bgColor );
+
+	container.add( bgColorRow );
+
+	// fog
+
+	var updateFogParameters = function () {
+
+		var near = fogNear.getValue();
+		var far = fogFar.getValue();
+		var density = fogDensity.getValue();
+
+		signals.fogParametersChanged.dispatch( near, far, density );
+
+	};
+
+	var fogTypeRow = new UI.Row();
+	var fogType = new UI.Select().setOptions( {
+
+		'None': 'None',
+		'Fog': 'Linear',
+		'FogExp2': 'Exponential'
+
+	} ).setWidth( '150px' );
+	fogType.onChange( function () {
+
+		var type = fogType.getValue();
+		signals.fogTypeChanged.dispatch( type );
+
+		refreshFogUI();
+
+	} );
+
+	fogTypeRow.add( new UI.Text( 'Fog' ).setWidth( '90px' ) );
+	fogTypeRow.add( fogType );
+
+	container.add( fogTypeRow );
+
+	// fog color
+
+	var fogColorRow = new UI.Row();
+	fogColorRow.setDisplay( 'none' );
+
+	var fogColor = new UI.Color().setValue( '#aaaaaa' )
+	fogColor.onChange( function () {
+
+		signals.fogColorChanged.dispatch( fogColor.getHexValue() );
+
+	} );
+
+	fogColorRow.add( new UI.Text( 'Fog color' ).setWidth( '90px' ) );
+	fogColorRow.add( fogColor );
+
+	container.add( fogColorRow );
+
+	// fog near
+
+	var fogNearRow = new UI.Row();
+	fogNearRow.setDisplay( 'none' );
+
+	var fogNear = new UI.Number( 1 ).setWidth( '60px' ).setRange( 0, Infinity ).onChange( updateFogParameters );
+
+	fogNearRow.add( new UI.Text( 'Fog near' ).setWidth( '90px' ) );
+	fogNearRow.add( fogNear );
+
+	container.add( fogNearRow );
+
+	var fogFarRow = new UI.Row();
+	fogFarRow.setDisplay( 'none' );
+
+	// fog far
+
+	var fogFar = new UI.Number( 5000 ).setWidth( '60px' ).setRange( 0, Infinity ).onChange( updateFogParameters );
+
+	fogFarRow.add( new UI.Text( 'Fog far' ).setWidth( '90px' ) );
+	fogFarRow.add( fogFar );
+
+	container.add( fogFarRow );
+
+	// fog density
+
+	var fogDensityRow = new UI.Row();
+	fogDensityRow.setDisplay( 'none' );
+
+	var fogDensity = new UI.Number( 0.00025 ).setWidth( '60px' ).setRange( 0, 0.1 ).setPrecision( 5 ).onChange( updateFogParameters );
+
+	fogDensityRow.add( new UI.Text( 'Fog density' ).setWidth( '90px' ) );
+	fogDensityRow.add( fogDensity );
+
+	container.add( fogDensityRow );
+
+	//
+
+	var refreshUI = function () {
+
+		var scene = editor.scene;
+
+		if ( scene.fog ) {
+
+			fogColor.setHexValue( scene.fog.color.getHex() );
+
+			if ( scene.fog instanceof THREE.Fog ) {
+
+				fogType.setValue( "Fog" );
+				fogNear.setValue( scene.fog.near );
+				fogFar.setValue( scene.fog.far );
+
+			} else if ( scene.fog instanceof THREE.FogExp2 ) {
+
+				fogType.setValue( "FogExp2" );
+				fogDensity.setValue( scene.fog.density );
+
+			}
+
+		} else {
+
+			fogType.setValue( "None" );
+
+		}
+
+		refreshFogUI();
+
+	};
+
+	var refreshFogUI = function () {
+
+		var type = fogType.getValue();
+
+		fogColorRow.setDisplay( type === 'None' ? 'none' : '' );
+		fogNearRow.setDisplay( type === 'Fog' ? '' : 'none' );
+		fogFarRow.setDisplay( type === 'Fog' ? '' : 'none' );
+		fogDensityRow.setDisplay( type === 'FogExp2' ? '' : 'none' );
+
+	};
+
+	refreshUI();
+
+	// events
+
+	signals.sceneGraphChanged.add( refreshUI );
+
 
 	//
 
