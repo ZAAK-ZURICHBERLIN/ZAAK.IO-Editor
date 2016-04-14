@@ -90,35 +90,35 @@ var LibraryLoader = function ( library ) {
 
 				break;
 
-			case 'ctm':
+			// case 'ctm':
 
-				var reader = new FileReader();
-				reader.addEventListener( 'load', function ( event ) {
+			// 	var reader = new FileReader();
+			// 	reader.addEventListener( 'load', function ( event ) {
 
-					var data = new Uint8Array( event.target.result );
+			// 		var data = new Uint8Array( event.target.result );
 
-					var stream = new CTM.Stream( data );
-					stream.offset = 0;
+			// 		var stream = new CTM.Stream( data );
+			// 		stream.offset = 0;
 
-					var loader = new THREE.CTMLoader();
-					loader.createModel( new CTM.File( stream ), function( geometry ) {
+			// 		var loader = new THREE.CTMLoader();
+			// 		loader.createModel( new CTM.File( stream ), function( geometry ) {
 
-						geometry.sourceType = "ctm";
-						geometry.sourceFile = file.name;
+			// 			geometry.sourceType = "ctm";
+			// 			geometry.sourceFile = file.name;
 
-						var material = new THREE.MeshStandardMaterial();
+			// 			var material = new THREE.MeshStandardMaterial();
 
-						var mesh = new THREE.Mesh( geometry, material );
-						mesh.name = filename;
+			// 			var mesh = new THREE.Mesh( geometry, material );
+			// 			mesh.name = filename;
 
-						// editor.execute( new AddObjectCommand( mesh ) );
+			// 			// editor.execute( new AddObjectCommand( mesh ) );
 
-					} );
+			// 		} );
 
-				}, false );
-				reader.readAsArrayBuffer( file );
+			// 	}, false );
+			// 	reader.readAsArrayBuffer( file );
 
-				break;
+			// 	break;
 
 			case 'dae':
 

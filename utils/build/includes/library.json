@@ -1,0 +1,6 @@
+[
+	"editor/library/Library.js",
+	"editor/library/LibraryLoader.js",
+	"examples/js/controls/OrbitControls.js"
+
+]

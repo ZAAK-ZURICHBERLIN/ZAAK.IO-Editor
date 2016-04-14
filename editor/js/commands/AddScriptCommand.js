@@ -25,6 +25,9 @@ AddScriptCommand.prototype = {
 
 	execute: function () {
 
+		console.log(this.script);
+		console.log(this.object);
+
 		if ( this.editor.scripts[ this.object.uuid ] === undefined ) {
 
 			this.editor.scripts[ this.object.uuid ] = [];

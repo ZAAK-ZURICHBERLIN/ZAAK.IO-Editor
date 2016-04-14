@@ -60,7 +60,8 @@ Sidebar.Object = function ( editor ) {
 	objectTypeRow.add( new UI.Text( 'Type' ).setWidth( '90px' ) );
 	objectTypeRow.add( objectType );
 
-	container.add( objectTypeRow );
+	//REMOVED
+	// container.add( objectTypeRow );
 
 	// uuid
 
@@ -78,7 +79,8 @@ Sidebar.Object = function ( editor ) {
 	objectUUIDRow.add( objectUUID );
 	objectUUIDRow.add( objectUUIDRenew );
 
-	container.add( objectUUIDRow );
+	//REMOVED
+	// container.add( objectUUIDRow );
 
 	// name
 
@@ -295,7 +297,8 @@ Sidebar.Object = function ( editor ) {
 	objectUserDataRow.add( new UI.Text( 'User data' ).setWidth( '90px' ) );
 	objectUserDataRow.add( objectUserData );
 
-	container.add( objectUserDataRow );
+	//REMOVED
+	// container.add( objectUserDataRow );
 
 
 	//

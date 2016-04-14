@@ -11,7 +11,7 @@
             "name": "Pacman",
             "slug": "pacman",
             "media": "/media/asset_store/c93d6508/20b4/45d5/a6b8/c19cb98cf33e.mp3",
-            "content_type": "audio/mp3",
+            "content_type": "code",
             "resource_uri": "/api/v1/asset_store/abb8143f-15b8-4560-9f70-9b5520104738",
             "categories": [
                 "audio"

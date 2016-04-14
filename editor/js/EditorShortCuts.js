@@ -106,13 +106,18 @@ EditorShortCuts.prototype = {
 		if( this.pressed(this.shortcuts.getKey( 'edit/clone' ))) {
 			var _uuid = editor.selected.uuid;
 			var _object = editor.selected.clone();
+			var _scripts = editor.scripts[_uuid];
 
+			// console.log(_scipts)
+			
+			// console.log(_script[0]);
+			
 			editor.execute( new AddObjectCommand( _object ) );
-			var _script = editor.scripts[_uuid];
-			console.log(_object);
-			console.log(_script);
-
-			editor.execute( new AddScriptCommand( _object, _script  ) );
+			var length = _scripts.length-1;
+			for(var i = 0; i<_scripts.length; i++){
+				console.log(i);
+				editor.execute( new AddScriptCommand( _object, _scripts[i]  ) );
+			}
 		}
 
 		//Hide Current
@@ -226,9 +231,9 @@ EditorShortCuts.prototype = {
 	 */
 	eventMatches: function( event, keyDesc ) {
 
-		var aliases	= THREEx.KeyboardState.ALIAS
-		var aliasKeys	= Object.keys(aliases)
-		var keys	= keyDesc.split("+")
+		var aliases	= EditorShortCuts.ALIAS;
+		var aliasKeys	= Object.keys(aliases);
+		var keys	= keyDesc.split("+");
 		// log to debug
 		// console.log("eventMatches", event, event.keyCode, event.shiftKey, event.ctrlKey, event.altKey, event.metaKey)
 		for(var i = 0; i < keys.length; i++){

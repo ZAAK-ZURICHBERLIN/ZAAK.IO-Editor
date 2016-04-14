@@ -177,7 +177,43 @@ img.ri:empty {
 			margin: 0 !important;
 		}
 
-#sidebar {
+#sidebar-right {
+	position: absolute;
+	left: 0;
+	top: 32px;
+	bottom: 0;
+	width: 300px;
+	background: #eee;
+	overflow: auto;
+}
+
+	#sidebar-right * {
+		vertical-align: middle;
+	}
+
+	#sidebar-right input,
+	#sidebar-right textarea,
+	#sidebar-right select {
+		border: 1px solid transparent;
+		color: #444;
+	}
+
+	#sidebar-right .Panel {
+		color: #888;
+		padding: 10px;
+		border-top: 1px solid #ccc;
+	}
+
+	#sidebar-right .Panel.collapsed {
+		margin-bottom: 0;
+	}
+
+	#sidebar-right .Row {
+		min-height: 20px;
+		margin-bottom: 10px;
+	}
+
+#sidebar-left {
 	position: absolute;
 	right: 0;
 	top: 32px;
@@ -187,31 +223,31 @@ img.ri:empty {
 	overflow: auto;
 }
 
-	#sidebar * {
+	#sidebar-left * {
 		vertical-align: middle;
 	}
 
-	#sidebar input,
-	#sidebar textarea,
-	#sidebar select {
+	#sidebar-left input,
+	#sidebar-left textarea,
+	#sidebar-left select {
 		border: 1px solid transparent;
 		color: #444;
 	}
 
-	#sidebar .Panel {
+	#sidebar-left .Panel {
 		color: #888;
 		padding: 10px;
 		border-top: 1px solid #ccc;
 	}
 
-	#sidebar .Panel.collapsed {
+	#sidebar-left .Panel.collapsed {
 		margin-bottom: 0;
 	}
 
-	#sidebar .Row {
+	#sidebar-left .Row {
 		min-height: 20px;
 		margin-bottom: 10px;
-	}
+	}	
 
 #tabs {
 	background-color: #ddd;

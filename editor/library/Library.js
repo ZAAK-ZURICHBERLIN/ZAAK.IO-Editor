@@ -2,7 +2,7 @@
 /**
  * @author Samuel Vonäsch / http://zaak.io
  */
-var Library = function() {
+var Library = function(_src) {
 	
 	var canvas;
 
@@ -18,6 +18,8 @@ var Library = function() {
 	var id = 0;
 
 	var uniformDimension = 1;
+
+	var librarySource = _src;
 
 
 	init();
@@ -43,7 +45,7 @@ var Library = function() {
 		    content.removeChild(content.firstChild);
 		}
 
-		var libraryURL = "./js/acid"+_filter+".json";
+		var libraryURL = librarySource+ "/lib"+_filter+".json";
 
 		var loader = new THREE.XHRLoader();
 		loader.crossOrigin = '';
@@ -135,7 +137,7 @@ var Library = function() {
 		// console.log(_butt);
 		_butt.addEventListener('click', function(){
 			 window.parent.main.editor.addScriptNew(_script);
-			 parent.closeIFrame();
+			 window.parent.closeIFrame();
 			 // $(".modal-box, .modal-overlay").fadeOut(500, function() {
     //             $(".modal-overlay").remove();
 
@@ -155,11 +157,7 @@ var Library = function() {
 
 		// make a list item
 		var element = document.createElement( "div" );
-		// element.type = "button";
-		// element.addEventListener('click', function(){
-		//     window.parent.editor.loader.loadFile(file);
-		//      parent.closeIFrame();
-		// });
+
 		element.className = "list-item";
 		var _libraryEntry = getDisplayName(_object);
 		var tags = _libraryEntry.tags[0];
@@ -169,7 +167,7 @@ var Library = function() {
 		// console.log(_butt);
 		_butt.addEventListener('click', function(){
 			 window.parent.editor.loader.loadFile(file);
-			 parent.closeIFrame();
+			 window.parent.closeIFrame();
 			 // $(".modal-box, .modal-overlay").fadeOut(500, function() {
     //             $(".modal-overlay").remove();
 
@@ -217,35 +215,6 @@ var Library = function() {
 		light.position.set( 1, 1, 1 );
 		scene.add( light );
 		scenes.push( scene );
-
-		// Look up the element that represents the area
-		// we want to render the scene
-		// scene.element = element.querySelector(".scene");
-		// content.appendChild( element );
-
-		// _object.geometry.computeBoundingBox();
-
-		// var width = _object.geometry.boundingBox.max.x - _object.geometry.boundingBox.min.x;
-		// var height = _object.geometry.boundingBox.max.y - _object.geometry.boundingBox.min.y;
-		// var depth = _object.geometry.boundingBox.max.z - _object.geometry.boundingBox.min.z;
-
-		// var _size = uniformDimension / Math.max(depth, Math.max(width,height));
-		
-		// _object.scale.set(_size,_size,_size);
-
-		// console.log(_object.scale);
-
-		// // radius = _object.geometry.boundingSphere.radius;
-		// // distanceFactor = Math.abs( camera.aspect * radius / Math.sin( camera.fov ));
-		// camera.position.z = 5;
-
-		// scene.add(_object);
-
-		// var light = new THREE.HemisphereLight( 0xffbbbb, 0x444488 );
-		// light.position.set( - 0.5, 0.8, 1 );
-		// scene.add( light );
-
-		// scenes.push( scene );
 
 
 	};

@@ -218,7 +218,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	this.dispose = function() {
 
-		scope.domElement.removeEventListener( 'contextmenu', contextmenu, false );
+		scope.domElement.removeEventListener( 'contextmenu', onContextMenu, false );
 		scope.domElement.removeEventListener( 'mousedown', onMouseDown, false );
 		scope.domElement.removeEventListener( 'mousewheel', onMouseWheel, false );
 		scope.domElement.removeEventListener( 'MozMousePixelScroll', onMouseWheel, false ); // firefox
@@ -900,13 +900,13 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	};
 
-	onContextMenu = function( event ) {
+	function onContextMenu( event ) {
 
 		//console.log( 'onContextMenu' );
 
 		event.preventDefault();
 
-	}
+	};
 
 	//
 

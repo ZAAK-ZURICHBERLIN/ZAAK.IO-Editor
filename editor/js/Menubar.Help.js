@@ -18,24 +18,24 @@ Menubar.Help = function ( editor ) {
 
 	// Source code
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Source code' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Source code' );
+	// option.onClick( function () {
 
-		window.open( 'https://github.com/mrdoob/three.js/tree/master/editor', '_blank' )
+	// 	window.open( 'https://github.com/mrdoob/three.js/tree/master/editor', '_blank' )
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	// About
 
 	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'About' );
+	option.setTextContent( 'Exit to Platform' );
 	option.onClick( function () {
 
-		window.open( 'http://threejs.org', '_blank' );
+		window.open( 'http://zaak.io', '_blank' );
 
 	} );
 	options.add( option );
