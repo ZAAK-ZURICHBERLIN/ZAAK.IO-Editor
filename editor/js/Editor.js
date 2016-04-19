@@ -158,7 +158,7 @@ Editor.prototype = {
 			this.addObject( scene.children[ 0 ] );
 
 		}
-		console.log("why");
+		// console.log("why");
 		this.signals.sceneGraphChanged.active = true;
 		this.signals.sceneGraphChanged.dispatch();
 

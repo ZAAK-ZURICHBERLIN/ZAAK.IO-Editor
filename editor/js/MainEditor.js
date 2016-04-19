@@ -51,7 +51,7 @@ MainEditor.prototype = {
 
 		//
 
-		scope.editor.setTheme( editor.config.getKey( 'theme' ) );
+		scope.editor.setTheme( THEME );
 
 		scope.editor.storage.init( function () {
 

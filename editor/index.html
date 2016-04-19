@@ -7,7 +7,7 @@
 	</head>
 	<body ontouchstart="">
 		<link href="css/main.css" rel="stylesheet" />
-		<link id="theme" href="css/light.css" rel="stylesheet" />
+		<link id="theme" href="css/dark.css" rel="stylesheet" />
 		<script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
 		
 
@@ -172,7 +172,12 @@
 <!-- 		<div id="preview3d"><img src="http://zaak.ch/plus/preloader/loader_white.gif" height="512px" width="auto" class="ri"></div> -->
 		<script>
 
+			var STATIC_URL = '';//'{{ STATIC_URL|escapejs }}';
+	        var API_URL = '';//'{{ API_URL|escapejs }}';
+	        var BASE_URL = '';//'{{ BASE_URL|escapejs }}';
+
 			var DUMMY = '3D/dummy.json';
+			var THEME =  BASE_URL + STATIC_URL + 'css/light.css';
 			var main = new MainEditor();
 
 			function closeIFrame(){

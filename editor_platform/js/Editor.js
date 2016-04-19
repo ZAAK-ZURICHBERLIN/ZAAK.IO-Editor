@@ -53,7 +53,7 @@ MainEditor.prototype = {
 
 		//
 
-		scope.editor.setTheme( editor.config.getKey( 'theme' ) );
+		scope.editor.setTheme( THEME );
 
 		scope.editor.storage.init( function () {
 
@@ -25124,7 +25124,7 @@ Sidebar.Settings = function ( editor ) {
 	themeRow.add( new UI.Text( 'Theme' ).setWidth( '90px' ) );
 	themeRow.add( theme );
 
-	container.add( themeRow );
+	// container.add( themeRow );
 
 	return container;
 
@@ -32733,7 +32733,7 @@ Editor.prototype = {
 			this.addObject( scene.children[ 0 ] );
 
 		}
-		console.log("why");
+		// console.log("why");
 		this.signals.sceneGraphChanged.active = true;
 		this.signals.sceneGraphChanged.dispatch();
 

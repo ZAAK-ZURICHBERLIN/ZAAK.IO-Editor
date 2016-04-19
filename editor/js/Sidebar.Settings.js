@@ -40,7 +40,7 @@ Sidebar.Settings = function ( editor ) {
 	themeRow.add( new UI.Text( 'Theme' ).setWidth( '90px' ) );
 	themeRow.add( theme );
 
-	container.add( themeRow );
+	// container.add( themeRow );
 
 	return container;
 
