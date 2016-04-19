@@ -50,7 +50,7 @@ MainEditor.prototype = {
 		var shortcuts = new EditorShortCuts(scope.editor);
 
 		//
-
+		//document.getElementById( 'theme' ).href
 		scope.editor.setTheme( THEME );
 
 		scope.editor.storage.init( function () {

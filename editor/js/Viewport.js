@@ -310,18 +310,21 @@ var Viewport = function ( editor ) {
 
 	signals.themeChanged.add( function ( value ) {
 
-		switch ( value ) {
+		grid.setColors( 0x444444, 0x888888 );
+		clearColor = 0xaaaaaa;
 
-			case 'css/light.css':
-				grid.setColors( 0x444444, 0x888888 );
-				clearColor = 0xaaaaaa;
-				break;
-			case 'css/dark.css':
-				grid.setColors( 0xbbbbbb, 0x888888 );
-				clearColor = 0x333333;
-				break;
+		// switch ( value ) {
 
-		}
+		// 	case 'css/light.css':
+		// 		grid.setColors( 0x444444, 0x888888 );
+		// 		clearColor = 0xaaaaaa;
+		// 		break;
+		// 	case 'css/dark.css':
+		// 		grid.setColors( 0xbbbbbb, 0x888888 );
+		// 		clearColor = 0x333333;
+		// 		break;
+
+		// }
 
 		renderer.setClearColor( clearColor );
 
