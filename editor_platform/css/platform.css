@@ -11,8 +11,8 @@ iframe {
 .modal-box {
     display: none;
     position: absolute;
-    z-index: 1000;
     width: 50%;
+    z-index: 1000;
     background: white;
     border-bottom: 1px solid #aaa;
     border-radius: 4px;

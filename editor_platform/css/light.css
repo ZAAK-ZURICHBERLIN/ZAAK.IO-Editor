@@ -3,7 +3,7 @@
 	background: #fff;
 	padding: 0;
 	width: 100%;
-	height: 300px;
+	/*height: 80;*/
 	font-size: 12px;
 	cursor: default;
 	overflow: auto;
@@ -39,9 +39,10 @@ input.Number {
 #viewport {
 	position: absolute;
 	top: 32px;
-	left: 0;
+	width:100%;
+/*	left: 300px;
 	right: 300px;
-	bottom: 32px;
+*/	bottom: 32px;
 }
 
 	#viewport #info {
@@ -93,6 +94,7 @@ img.ri:empty {
 	margin: 0;
 	right: 0;
 	top: 0;
+	z-index: 100;
 }
 
 	#menubar .menu {
@@ -177,41 +179,77 @@ img.ri:empty {
 			margin: 0 !important;
 		}
 
-#sidebar {
+#sidebar-right {
 	position: absolute;
 	right: 0;
 	top: 32px;
-	bottom: 0;
+	bottom: 32px;
 	width: 300px;
 	background: #eee;
 	overflow: auto;
 }
 
-	#sidebar * {
+	#sidebar-right * {
 		vertical-align: middle;
 	}
 
-	#sidebar input,
-	#sidebar textarea,
-	#sidebar select {
+	#sidebar-right input,
+	#sidebar-right textarea,
+	#sidebar-right select {
 		border: 1px solid transparent;
 		color: #444;
 	}
 
-	#sidebar .Panel {
+	#sidebar-right .Panel {
 		color: #888;
 		padding: 10px;
 		border-top: 1px solid #ccc;
 	}
 
-	#sidebar .Panel.collapsed {
+	#sidebar-right .Panel.collapsed {
 		margin-bottom: 0;
 	}
 
-	#sidebar .Row {
+	#sidebar-right .Row {
 		min-height: 20px;
 		margin-bottom: 10px;
 	}
+
+#sidebar-left {
+	position: absolute;
+	left: 0;
+	top: 32px;
+	bottom: 32px;
+	width: 300px;
+	background: #eee;
+	overflow: auto;
+}
+
+	#sidebar-left * {
+		vertical-align: middle;
+	}
+
+	#sidebar-left input,
+	#sidebar-left textarea,
+	#sidebar-left select {
+		border: 1px solid transparent;
+		color: #444;
+	}
+
+	#sidebar-left .Panel {
+		color: #888;
+		padding: 10px;
+		border-top: 1px solid #ccc;
+	}
+
+	#sidebar-left .Panel.collapsed {
+		margin-bottom: 0;
+	}
+
+	#sidebar-left .Row {
+		min-height: 20px;
+		margin-bottom: 10px;
+	}	
 
 #tabs {
 	background-color: #ddd;
