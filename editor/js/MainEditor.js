@@ -220,5 +220,11 @@ MainEditor.prototype = {
 
 		}
 
+		function takeScreenshot() {
+		    var dataUrl = renderer.domElement.toDataURL("image/png");
+		    if (CARDBOARD_DEBUG) console.debug("SCREENSHOT: " + dataUrl);
+		    return renderer.domElement.toDataURL("image/png");
+		}
+
 	}
 };
