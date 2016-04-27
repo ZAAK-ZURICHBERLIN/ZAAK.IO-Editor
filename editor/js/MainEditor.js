@@ -127,7 +127,7 @@ MainEditor.prototype = {
 			signals.objectRemoved.add( sceneChanged );
 			signals.materialChanged.add( sceneChanged );
 			signals.sceneGraphChanged.add( sceneChanged );
-			signals.scriptChanged.add( saveState );
+			//signals.scriptChanged.add( saveState );
 			signals.saveProject.add( manualSave );
 
 			signals.showModal.add( function ( content ) {
