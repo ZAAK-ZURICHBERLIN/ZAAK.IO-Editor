@@ -49,6 +49,7 @@
 	"editor/js/Menubar.Help.js",
 	"editor/js/Menubar.Status.js",
 	"editor/js/Sidebar.js",
+	"editor/js/SidebarLeft.js",
 	"editor/js/Sidebar.Scene.js",
 	"editor/js/Sidebar.Project.js",
 	"editor/js/Sidebar.Settings.js",

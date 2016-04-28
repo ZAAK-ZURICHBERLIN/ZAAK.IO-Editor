@@ -14,6 +14,8 @@
 		<script src="js/three.min.js"></script>
 		<script src="js/editor.js"></script>
 
+		<link rel="stylesheet" href="css/platform.css">
+
 
 		<link rel="stylesheet" href="js/libs/codemirror/codemirror.css">
 		<link rel="stylesheet" href="js/libs/codemirror/theme/monokai.css">
@@ -50,7 +52,12 @@
 
 		<script>
 
-            var DUMMY = '3D/dummy.json';
+            var STATIC_URL = '';//'{{ STATIC_URL|escapejs }}';
+	        var API_URL = '';//'{{ API_URL|escapejs }}';
+	        var BASE_URL = '';//'{{ BASE_URL|escapejs }}';
+
+			var DUMMY = BASE_URL + STATIC_URL + '3D/dummy.json';
+			var THEME =  BASE_URL + STATIC_URL + 'css/light.css';
 			var main = new MainEditor();
 
 			function closeIFrame(){

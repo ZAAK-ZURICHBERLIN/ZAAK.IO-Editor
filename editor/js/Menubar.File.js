@@ -320,6 +320,8 @@ Menubar.File = function ( editor ) {
 
     option.onClick( function () {
         var output = editor.scene.toJSON();
+        output.metadata.type = 'App';
+		delete output.history;
         App.Helper.Save(output);
     } );
     options.add( option );

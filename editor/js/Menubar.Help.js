@@ -9,7 +9,7 @@ Menubar.Help = function ( editor ) {
 
 	var title = new UI.Panel();
 	title.setClass( 'title' );
-	title.setTextContent( 'Help' );
+	title.setTextContent( 'Exit' );
 	container.add( title );
 
 	var options = new UI.Panel();
@@ -35,7 +35,7 @@ Menubar.Help = function ( editor ) {
 	option.setTextContent( 'Exit to Platform' );
 	option.onClick( function () {
 
-		window.open( 'http://zaak.io', '_blank' );
+		window.open( 'http://beta.zaak.io', '_blank' );
 
 	} );
 	options.add( option );

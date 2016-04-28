@@ -43,14 +43,17 @@ MainEditor.prototype = {
 		var sidebar = new Sidebar( scope.editor );
 		document.body.appendChild( sidebar.dom );
 
+		var sidebarLeft = new SidebarLeft( scope.editor );
+		document.body.appendChild( sidebarLeft.dom );
+
 		var modal = new UI.Modal();
 		document.body.appendChild( modal.dom );
 
 		var shortcuts = new EditorShortCuts(scope.editor);
 
 		//
-
-		scope.editor.setTheme( editor.config.getKey( 'theme' ) );
+		//document.getElementById( 'theme' ).href
+		scope.editor.setTheme( THEME );
 
 		scope.editor.storage.init( function () {
 
@@ -126,7 +129,7 @@ MainEditor.prototype = {
 			signals.objectRemoved.add( sceneChanged );
 			signals.materialChanged.add( sceneChanged );
 			signals.sceneGraphChanged.add( sceneChanged );
-			signals.scriptChanged.add( saveState );
+			//signals.scriptChanged.add( saveState );
 			signals.saveProject.add( manualSave );
 
 			signals.showModal.add( function ( content ) {
@@ -217,6 +220,12 @@ MainEditor.prototype = {
 
 			}
 
+		}
+
+		function takeScreenshot() {
+		    var dataUrl = renderer.domElement.toDataURL("image/png");
+		    if (CARDBOARD_DEBUG) console.debug("SCREENSHOT: " + dataUrl);
+		    return renderer.domElement.toDataURL("image/png");
 		}
 
 	}
@@ -20984,51 +20993,52 @@ var Player = function ( editor ) {
 		delete _scene.history;
 
 		// console.log(_scene);
+		App.Helper.Preview(_scene);
 
-        // preview box
-        var preview = "<div id='preview' class='modal-box' style='height:600px;width:900px;text-align:center;;'> \
-        <header style='background-color:#333;'> \
-            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
-        </header> \
-        <div style='height:100%; zIndex:100'> \
-            <iframe id='preview_iframe' width='100%' height='100%' allowfullscreen src='../../ZAAK.IO-Viewer/index.html'></iframe> \
-        </div></div>";
-        $("body").append($.parseHTML(preview));
+        // // preview box
+        // var preview = "<div id='preview' class='modal-box' style='height:600px;width:900px;text-align: center;'> \
+        // <header style='background-color:#333;'> \
+        //     <a class='js-modal-close close' style='top:1.5%;'>×</a> \
+        // </header> \
+        // <div style='height:100%;'> \
+        //     <iframe id='preview_iframe' width='100%' height='100%' allowfullscreen src='../../ZAAK.IO-Viewer/index.html'></iframe> \
+        // </div></div>";
+        // $("body").append($.parseHTML(preview));
 
-        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
-        $("body").append(modal);
+        // var modal =  ("<div class='modal-overlay js-modal-close'></div>");
+        // $("body").append(modal);
+
+        //  setTimeout(function() {
+
+	       //  // $('#preview_iframe').load(function(){
+	       //  // 	console.log($('#preview_iframe')[0]);
+	       //  var parentFrame = $('#preview_iframe').contents().find('#myIframe');
+	       //  // console.log(parentFrame[0].contentWindow.viewer);
+	       //  parentFrame[0].contentWindow.viewer.startScene(_scene); // load json data
+	       //      // $('#preview_iframe')[0].contentWindow.setManagerMode(); // load json data
+	       //  // });
+        // }, 1000);
 
 
-         setTimeout(function() {
+        // $(".modal-overlay").fadeTo(500, 0.9);
+        // $('#preview').fadeIn();
+        // // modal helper
+        // $(".js-modal-close, .modal-overlay").click(function() {
+        //     $(".modal-box, .modal-overlay").fadeOut(500, function() {
+        //     	// player.stop();
+        //     	scene = _scene;
+        //         $(".modal-overlay").remove();
+        //         $("#preview").remove();
+        //     });
+        // });
+        // $(window).resize(function() {
+        //     $(".modal-box").css({
+        //         top: ($(window).height() - $("#preview").outerHeight()) / 2,
+        //         left: ($(window).width() - $("#preview").outerWidth()) / 2
+        //     });
+        // });
 
-	        // $('#preview_iframe').load(function(){
-	        var parentFrame = $('#preview_iframe').contents().find('#myIframe');
-	        // console.log(parentFrame[0].contentWindow.viewer);
-	        parentFrame[0].contentWindow.viewer.startScene(_scene); // load json data
-	            // $('#preview_iframe')[0].contentWindow.setManagerMode(); // load json data
-	        // });
-        }, 1000);
-
-
-        $(".modal-overlay").fadeTo(500, 0.9);
-        $('#preview').fadeIn();
-        // modal helper
-        $(".js-modal-close, .modal-overlay").click(function() {
-            $(".modal-box, .modal-overlay").fadeOut(500, function() {
-            	// player.stop();
-            	scene = _scene;
-                $(".modal-overlay").remove();
-                $("#preview").remove();
-            });
-        });
-        $(window).resize(function() {
-            $(".modal-box").css({
-                top: ($(window).height() - $("#preview").outerHeight()) / 2,
-                left: ($(window).width() - $("#preview").outerWidth()) / 2
-            });
-        });
-
-        $(window).resize();
+        // $(window).resize();
         
 
 	} );
@@ -23300,6 +23310,8 @@ Menubar.File = function ( editor ) {
 
     option.onClick( function () {
         var output = editor.scene.toJSON();
+        output.metadata.type = 'App';
+		delete output.history;
         App.Helper.Save(output);
     } );
     options.add( option );
@@ -24215,7 +24227,7 @@ Menubar.Help = function ( editor ) {
 
 	var title = new UI.Panel();
 	title.setClass( 'title' );
-	title.setTextContent( 'Help' );
+	title.setTextContent( 'Exit' );
 	container.add( title );
 
 	var options = new UI.Panel();
@@ -24224,24 +24236,24 @@ Menubar.Help = function ( editor ) {
 
 	// Source code
 
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Source code' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Source code' );
+	// option.onClick( function () {
 
-		window.open( 'https://github.com/mrdoob/three.js/tree/master/editor', '_blank' )
+	// 	window.open( 'https://github.com/mrdoob/three.js/tree/master/editor', '_blank' )
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	// About
 
 	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'About' );
+	option.setTextContent( 'Exit to Platform' );
 	option.onClick( function () {
 
-		window.open( 'http://threejs.org', '_blank' );
+		window.open( 'http://beta.zaak.io', '_blank' );
 
 	} );
 	options.add( option );
@@ -24365,8 +24377,9 @@ Menubar.Status = function ( editor ) {
 
 var Sidebar = function ( editor ) {
 
+
 	var container = new UI.Panel();
-	container.setId( 'sidebar' );
+	container.setId( 'sidebar-right' );
 
 	//
 
@@ -24388,10 +24401,10 @@ var Sidebar = function ( editor ) {
 	//
 
 	var scene = new UI.Span().add(
-		new Sidebar.Scene( editor ),
-		new Sidebar.Script( editor ),
-		new Sidebar.Properties( editor ),
-		new Sidebar.Animation( editor )
+		new Sidebar.Scene( editor )
+		// new Sidebar.Script( editor ),
+		// new Sidebar.Properties( editor ),
+		// new Sidebar.Animation( editor )
 		
 	);
 	container.add( scene );
@@ -24437,6 +24450,103 @@ var Sidebar = function ( editor ) {
 	}
 
 	select( 'SCENE' );
+
+	//Events
+	// signals.sceneGraphChanged.add( refreshUI );
+
+	editor.sidebarProject = container;
+	return container;
+
+};
+
+// File:editor/js/SidebarLeft.js
+
+/**
+ * @author mrdoob / http://mrdoob.com/
+ */
+
+var SidebarLeft = function ( editor ) {
+
+
+
+	var container = new UI.Panel();
+	container.setId( 'sidebar-left' );
+	//
+
+	// var sceneTab = new UI.Text( 'SCENE' ).onClick( onClick );
+	// var projectTab = new UI.Text( 'PROJECT' ).onClick( onClick );
+	// var settingsTab = new UI.Text( 'SETTINGS' ).onClick( onClick );
+
+	// var tabs = new UI.Div();
+	// tabs.setId( 'tabs' );
+	// tabs.add( sceneTab, projectTab, settingsTab );
+	// container.add( tabs );
+
+	// function onClick( event ) {
+
+	// 	select( event.target.textContent );
+
+	// }
+
+	//
+	container.add( new Sidebar.Script( editor ) );
+	container.add( new Sidebar.Properties( editor ) );
+	container.add( new Sidebar.Animation( editor ) );
+
+	// var scene = new UI.Span().add(
+	// 	// new Sidebar.Scene( editor ),
+	// 	new Sidebar.Script( editor ),
+	// 	new Sidebar.Properties( editor ),
+	// 	new Sidebar.Animation( editor )
+		
+	// );
+	// container.add( scene );
+
+	// var project = new UI.Span().add(
+	// 	new Sidebar.Project( editor )
+	// );
+	// container.add( project );
+
+	// var settings = new UI.Span().add(
+	// 	new Sidebar.Settings( editor ),
+	// 	new Sidebar.History( editor )
+	// );
+	// container.add( settings );
+
+	//
+
+	// function select( section ) {
+
+	// 	sceneTab.setClass( '' );
+	// 	projectTab.setClass( '' );
+	// 	settingsTab.setClass( '' );
+
+		// scene.setDisplay( 'selected' );
+	// 	project.setDisplay( 'none' );
+	// 	settings.setDisplay( 'none' );
+
+	// 	switch ( section ) {
+	// 		case 'SCENE':
+	// 			sceneTab.setClass( 'selected' );
+	// 			scene.setDisplay( '' );
+	// 			break;
+	// 		case 'PROJECT':
+	// 			projectTab.setClass( 'selected' );
+	// 			project.setDisplay( '' );
+	// 			break;
+	// 		case 'SETTINGS':
+	// 			settingsTab.setClass( 'selected' );
+	// 			settings.setDisplay( '' );
+	// 			break;
+	// 	}
+
+	// }
+
+	// select( 'SCENE' );
+
+	//Events
+	// signals.sceneGraphChanged.add( refreshUI );
+	editor.sidebarObject = container;
 
 	return container;
 
@@ -24681,6 +24791,9 @@ Sidebar.Scene = function ( editor ) {
 	// events
 
 	signals.sceneGraphChanged.add( refreshUI );
+	signals.scriptAdded.add( refreshUI );
+	signals.scriptChanged.add( refreshUI );
+	signals.scriptRemoved.add( refreshUI );
 
 	signals.objectSelected.add( function ( object ) {
 
@@ -25020,7 +25133,7 @@ Sidebar.Settings = function ( editor ) {
 	themeRow.add( new UI.Text( 'Theme' ).setWidth( '90px' ) );
 	themeRow.add( theme );
 
-	container.add( themeRow );
+	// container.add( themeRow );
 
 	return container;
 
@@ -25169,7 +25282,8 @@ Sidebar.Object = function ( editor ) {
 	objectTypeRow.add( new UI.Text( 'Type' ).setWidth( '90px' ) );
 	objectTypeRow.add( objectType );
 
-	container.add( objectTypeRow );
+	//REMOVED
+	// container.add( objectTypeRow );
 
 	// uuid
 
@@ -25187,7 +25301,8 @@ Sidebar.Object = function ( editor ) {
 	objectUUIDRow.add( objectUUID );
 	objectUUIDRow.add( objectUUIDRenew );
 
-	container.add( objectUUIDRow );
+	//REMOVED
+	// container.add( objectUUIDRow );
 
 	// name
 
@@ -25404,7 +25519,8 @@ Sidebar.Object = function ( editor ) {
 	objectUserDataRow.add( new UI.Text( 'User data' ).setWidth( '90px' ) );
 	objectUserDataRow.add( objectUserData );
 
-	container.add( objectUserDataRow );
+	//REMOVED
+	// container.add( objectUserDataRow );
 
 
 	//
@@ -29762,18 +29878,21 @@ var Viewport = function ( editor ) {
 
 	signals.themeChanged.add( function ( value ) {
 
-		switch ( value ) {
+		grid.setColors( 0x444444, 0x888888 );
+		clearColor = 0xaaaaaa;
 
-			case 'css/light.css':
-				grid.setColors( 0x444444, 0x888888 );
-				clearColor = 0xaaaaaa;
-				break;
-			case 'css/dark.css':
-				grid.setColors( 0xbbbbbb, 0x888888 );
-				clearColor = 0x333333;
-				break;
+		// switch ( value ) {
 
-		}
+		// 	case 'css/light.css':
+		// 		grid.setColors( 0x444444, 0x888888 );
+		// 		clearColor = 0xaaaaaa;
+		// 		break;
+		// 	case 'css/dark.css':
+		// 		grid.setColors( 0xbbbbbb, 0x888888 );
+		// 		clearColor = 0x333333;
+		// 		break;
+
+		// }
 
 		renderer.setClearColor( clearColor );
 
@@ -30044,6 +30163,8 @@ var Viewport = function ( editor ) {
 
 	signals.fogTypeChanged.add( function ( fogType ) {
 
+		console.log("fog?");
+
 		if ( fogType !== oldFogType ) {
 
 			if ( fogType === "None" ) {
@@ -30072,6 +30193,9 @@ var Viewport = function ( editor ) {
 
 		oldFogColor = fogColor;
 
+		editor.config.setKey( 'fogColor', fogColor);
+
+
 		updateFog( scene );
 
 		render();
@@ -30079,6 +30203,9 @@ var Viewport = function ( editor ) {
 	} );
 
 	signals.fogParametersChanged.add( function ( near, far, density ) {
+
+		console.log("PARAMfog?");
+
 
 		oldFogNear = near;
 		oldFogFar = far;
@@ -31397,6 +31524,9 @@ AddScriptCommand.prototype = {
 
 	execute: function () {
 
+		console.log(this.script);
+		console.log(this.object);
+
 		if ( this.editor.scripts[ this.object.uuid ] === undefined ) {
 
 			this.editor.scripts[ this.object.uuid ] = [];
@@ -32196,13 +32326,18 @@ EditorShortCuts.prototype = {
 		if( this.pressed(this.shortcuts.getKey( 'edit/clone' ))) {
 			var _uuid = editor.selected.uuid;
 			var _object = editor.selected.clone();
+			var _scripts = editor.scripts[_uuid];
 
+			// console.log(_scipts)
+			
+			// console.log(_script[0]);
+			
 			editor.execute( new AddObjectCommand( _object ) );
-			var _script = editor.scripts[_uuid];
-			console.log(_object);
-			console.log(_script);
-
-			editor.execute( new AddScriptCommand( _object, _script  ) );
+			var length = _scripts.length-1;
+			for(var i = 0; i<_scripts.length; i++){
+				console.log(i);
+				editor.execute( new AddScriptCommand( _object, _scripts[i]  ) );
+			}
 		}
 
 		//Hide Current
@@ -32228,6 +32363,28 @@ EditorShortCuts.prototype = {
 		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/top' ))) this.editor.signals.cameraPositionSnap.dispatch( 'bottom' );
 		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/left' ))) this.editor.signals.cameraPositionSnap.dispatch( 'right' );
 		if( this.pressed("ctrl+"+this.shortcuts.getKey( 'camera/front' ))) this.editor.signals.cameraPositionSnap.dispatch( 'back' );
+
+
+		//Toggle ObjectView
+		if( this.pressed(this.shortcuts.getKey( 'view/objectView' ))) {
+
+			// console.log(this.editor.sidebarObject.dom);
+			if(this.editor.sidebarObject.dom.style.visibility == 'hidden')
+				this.editor.sidebarObject.dom.style.visibility = 'visible';
+			else  
+				this.editor.sidebarObject.dom.style.visibility = 'hidden';
+		};
+
+
+		//Toggle Project View
+		if( this.pressed(this.shortcuts.getKey( 'view/projectView' ))){
+			if(this.editor.sidebarProject.dom.style.visibility == 'hidden')
+				this.editor.sidebarProject.dom.style.visibility = 'visible';
+			else  
+				this.editor.sidebarProject.dom.style.visibility = 'hidden';
+
+		};
+
 
 	},
 
@@ -32316,9 +32473,9 @@ EditorShortCuts.prototype = {
 	 */
 	eventMatches: function( event, keyDesc ) {
 
-		var aliases	= THREEx.KeyboardState.ALIAS
-		var aliasKeys	= Object.keys(aliases)
-		var keys	= keyDesc.split("+")
+		var aliases	= EditorShortCuts.ALIAS;
+		var aliasKeys	= Object.keys(aliases);
+		var keys	= keyDesc.split("+");
 		// log to debug
 		// console.log("eventMatches", event, event.keyCode, event.shiftKey, event.ctrlKey, event.altKey, event.metaKey)
 		for(var i = 0; i < keys.length; i++){
@@ -32377,6 +32534,8 @@ var EditorShortCutsList = function () {
 		'view/isolate':'i',
 		'view/focus':'f',
 		'view/showgrid':'space',
+		'view/projectView':'n',
+		'view/objectView':'t',
 
 		'camera/front':'1',
 		'camera/left':'3',
@@ -32551,6 +32710,9 @@ var Editor = function () {
 	this.shortcuts = new EditorShortCutsList();
 	this.isolationMode = false;
 
+	this.sidebarObject = null;
+	this.sidebarProject = null;
+
 
 	var SCREEN_WIDTH = window.innerWidth;
 	var SCREEN_HEIGHT = window.innerHeight;
@@ -32568,7 +32730,7 @@ Editor.prototype = {
 
 	setTheme: function ( value ) {
 
-		document.getElementById( 'theme' ).href = value;
+		//document.getElementById( 'theme' ).href = value;
 
 		this.signals.themeChanged.dispatch( value );
 
@@ -32591,7 +32753,7 @@ Editor.prototype = {
 			this.addObject( scene.children[ 0 ] );
 
 		}
-		console.log("why");
+		// console.log("why");
 		this.signals.sceneGraphChanged.active = true;
 		this.signals.sceneGraphChanged.dispatch();
 

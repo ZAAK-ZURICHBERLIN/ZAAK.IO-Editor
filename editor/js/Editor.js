@@ -80,7 +80,8 @@ var Editor = function () {
 		saveProject: new SIGNALS.Signal(),
 		showManChanged: new SIGNALS.Signal(),
 
-		bgColorChanged: new SIGNALS.Signal()
+		bgColorChanged: new SIGNALS.Signal(),
+		presetChanged: new SIGNALS.Signal()
 
 	};
 
@@ -135,7 +136,7 @@ Editor.prototype = {
 
 	setTheme: function ( value ) {
 
-		document.getElementById( 'theme' ).href = value;
+		//document.getElementById( 'theme' ).href = value;
 
 		this.signals.themeChanged.dispatch( value );
 
@@ -158,7 +159,7 @@ Editor.prototype = {
 			this.addObject( scene.children[ 0 ] );
 
 		}
-		console.log("why");
+		// console.log("why");
 		this.signals.sceneGraphChanged.active = true;
 		this.signals.sceneGraphChanged.dispatch();
 

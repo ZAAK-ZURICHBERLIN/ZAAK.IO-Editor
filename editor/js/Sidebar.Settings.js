@@ -40,7 +40,38 @@ Sidebar.Settings = function ( editor ) {
 	themeRow.add( new UI.Text( 'Theme' ).setWidth( '90px' ) );
 	themeRow.add( theme );
 
-	container.add( themeRow );
+	// container.add( themeRow );
+
+	//Degree
+	var rotOptions = {
+		false : 'Radians',
+		true: 'Degrees'
+	};
+
+	var rotRow = new UI.Row();
+	var rotation = new UI.Select().setWidth( '150px' );
+	rotation.setOptions( rotOptions );
+
+	if ( config.getKey( 'degree' ) !== undefined ) {
+
+		rotation.setValue( config.getKey( 'degree' ) );
+
+	}
+
+	rotation.onChange( function () {
+
+		var value = this.getValue();
+
+		editor.config.setKey( 'degree', value );
+
+		signals.presetChanged.dispatch();
+
+	} );
+
+	rotRow.add( new UI.Text( 'Rotation' ).setWidth( '90px' ) );
+	rotRow.add( rotation );
+
+	container.add( rotRow );
 
 	return container;
 

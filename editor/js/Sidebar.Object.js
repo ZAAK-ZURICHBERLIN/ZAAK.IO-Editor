@@ -6,6 +6,8 @@ Sidebar.Object = function ( editor ) {
 
 	var signals = editor.signals;
 
+	var radConverter = 1.0;
+
 	var container = new UI.Panel();
 	container.setBorderTop( '0' );
 	container.setPaddingTop( '20px' );
@@ -381,7 +383,8 @@ Sidebar.Object = function ( editor ) {
 
 			}
 
-			var newRotation = new THREE.Euler( objectRotationX.getValue(), objectRotationY.getValue(), objectRotationZ.getValue() );
+			var newRotation = new THREE.Euler( objectRotationX.getValue() / radConverter, objectRotationY.getValue() / radConverter, objectRotationZ.getValue() / radConverter);
+			console.log(newRotation);
 			if ( object.rotation.toVector3().distanceTo( newRotation.toVector3() ) >= 0.01 ) {
 
 				editor.execute( new SetRotationCommand( object, newRotation ) );
@@ -593,6 +596,17 @@ Sidebar.Object = function ( editor ) {
 
 	} );
 
+	signals.presetChanged.add( function (){
+
+		var degrees = editor.config.getKey('degree');
+
+		radConverter = (degrees == 'true') ? (180/Math.PI) : 1.0;
+
+		if(editor.selected != null)
+			updateUI( editor.selected);
+
+	} );
+
 	function updateUI( object ) {
 
 		objectType.setValue( object.type );
@@ -612,9 +626,9 @@ Sidebar.Object = function ( editor ) {
 		objectPositionY.setValue( object.position.y );
 		objectPositionZ.setValue( object.position.z );
 
-		objectRotationX.setValue( object.rotation.x );
-		objectRotationY.setValue( object.rotation.y );
-		objectRotationZ.setValue( object.rotation.z );
+		objectRotationX.setValue( object.rotation.x * radConverter );
+		objectRotationY.setValue( object.rotation.y * radConverter );
+		objectRotationZ.setValue( object.rotation.z * radConverter );
 
 		objectScaleX.setValue( object.scale.x );
 		objectScaleY.setValue( object.scale.y );

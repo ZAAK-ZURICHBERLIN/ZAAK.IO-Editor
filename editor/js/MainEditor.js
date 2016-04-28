@@ -50,8 +50,8 @@ MainEditor.prototype = {
 		var shortcuts = new EditorShortCuts(scope.editor);
 
 		//
-
-		scope.editor.setTheme( editor.config.getKey( 'theme' ) );
+		//document.getElementById( 'theme' ).href
+		scope.editor.setTheme( THEME );
 
 		scope.editor.storage.init( function () {
 
@@ -127,7 +127,7 @@ MainEditor.prototype = {
 			signals.objectRemoved.add( sceneChanged );
 			signals.materialChanged.add( sceneChanged );
 			signals.sceneGraphChanged.add( sceneChanged );
-			signals.scriptChanged.add( saveState );
+			//signals.scriptChanged.add( saveState );
 			signals.saveProject.add( manualSave );
 
 			signals.showModal.add( function ( content ) {
@@ -218,6 +218,12 @@ MainEditor.prototype = {
 
 			}
 
+		}
+
+		function takeScreenshot() {
+		    var dataUrl = renderer.domElement.toDataURL("image/png");
+		    if (CARDBOARD_DEBUG) console.debug("SCREENSHOT: " + dataUrl);
+		    return renderer.domElement.toDataURL("image/png");
 		}
 
 	}

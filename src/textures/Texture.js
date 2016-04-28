@@ -123,8 +123,8 @@ THREE.Texture.prototype = {
 			// Loop over each pixel and invert the color.
 			for (var i = 0; i < imgd.length; i += 4) {
 
+				//console.log(i);
 			    if(imgd[i+3] < 255){
-
 			    	_isPNG = true;
 			    	break;
 			    }
@@ -135,8 +135,6 @@ THREE.Texture.prototype = {
 				return canvas.toDataURL(); 
 
 			} else {
-
-				// var url1 = canvas.toDataURL( 'image/jpeg', 0.6 );
 
 				return canvas.toDataURL( 'image/jpeg', 0.6 );
 

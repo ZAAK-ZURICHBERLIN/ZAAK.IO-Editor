@@ -310,18 +310,21 @@ var Viewport = function ( editor ) {
 
 	signals.themeChanged.add( function ( value ) {
 
-		switch ( value ) {
+		grid.setColors( 0x444444, 0x888888 );
+		clearColor = 0xaaaaaa;
 
-			case 'css/light.css':
-				grid.setColors( 0x444444, 0x888888 );
-				clearColor = 0xaaaaaa;
-				break;
-			case 'css/dark.css':
-				grid.setColors( 0xbbbbbb, 0x888888 );
-				clearColor = 0x333333;
-				break;
+		// switch ( value ) {
 
-		}
+		// 	case 'css/light.css':
+		// 		grid.setColors( 0x444444, 0x888888 );
+		// 		clearColor = 0xaaaaaa;
+		// 		break;
+		// 	case 'css/dark.css':
+		// 		grid.setColors( 0xbbbbbb, 0x888888 );
+		// 		clearColor = 0x333333;
+		// 		break;
+
+		// }
 
 		renderer.setClearColor( clearColor );
 
@@ -592,6 +595,8 @@ var Viewport = function ( editor ) {
 
 	signals.fogTypeChanged.add( function ( fogType ) {
 
+		console.log("fog?");
+
 		if ( fogType !== oldFogType ) {
 
 			if ( fogType === "None" ) {
@@ -620,6 +625,9 @@ var Viewport = function ( editor ) {
 
 		oldFogColor = fogColor;
 
+		editor.config.setKey( 'fogColor', fogColor);
+
+
 		updateFog( scene );
 
 		render();
@@ -627,6 +635,9 @@ var Viewport = function ( editor ) {
 	} );
 
 	signals.fogParametersChanged.add( function ( near, far, density ) {
+
+		console.log("PARAMfog?");
+
 
 		oldFogNear = near;
 		oldFogFar = far;

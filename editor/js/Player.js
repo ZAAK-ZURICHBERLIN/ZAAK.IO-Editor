@@ -31,51 +31,52 @@ var Player = function ( editor ) {
 		delete _scene.history;
 
 		// console.log(_scene);
+		App.Helper.Preview(_scene);
 
-        // preview box
-        var preview = "<div id='preview' class='modal-box' style='height:600px;width:900px;text-align: center;'> \
-        <header style='background-color:#333;'> \
-            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
-        </header> \
-        <div style='height:100%;'> \
-            <iframe id='preview_iframe' width='100%' height='100%' allowfullscreen src='../../ZAAK.IO-Viewer/index.html'></iframe> \
-        </div></div>";
-        $("body").append($.parseHTML(preview));
+        // // preview box
+        // var preview = "<div id='preview' class='modal-box' style='height:600px;width:900px;text-align: center;'> \
+        // <header style='background-color:#333;'> \
+        //     <a class='js-modal-close close' style='top:1.5%;'>×</a> \
+        // </header> \
+        // <div style='height:100%;'> \
+        //     <iframe id='preview_iframe' width='100%' height='100%' allowfullscreen src='../../ZAAK.IO-Viewer/index.html'></iframe> \
+        // </div></div>";
+        // $("body").append($.parseHTML(preview));
 
-        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
-        $("body").append(modal);
+        // var modal =  ("<div class='modal-overlay js-modal-close'></div>");
+        // $("body").append(modal);
 
-         setTimeout(function() {
+        //  setTimeout(function() {
 
-	        // $('#preview_iframe').load(function(){
-	        // 	console.log($('#preview_iframe')[0]);
-	        var parentFrame = $('#preview_iframe').contents().find('#myIframe');
-	        // console.log(parentFrame[0].contentWindow.viewer);
-	        parentFrame[0].contentWindow.viewer.startScene(_scene); // load json data
-	            // $('#preview_iframe')[0].contentWindow.setManagerMode(); // load json data
-	        // });
-        }, 1000);
+	       //  // $('#preview_iframe').load(function(){
+	       //  // 	console.log($('#preview_iframe')[0]);
+	       //  var parentFrame = $('#preview_iframe').contents().find('#myIframe');
+	       //  // console.log(parentFrame[0].contentWindow.viewer);
+	       //  parentFrame[0].contentWindow.viewer.startScene(_scene); // load json data
+	       //      // $('#preview_iframe')[0].contentWindow.setManagerMode(); // load json data
+	       //  // });
+        // }, 1000);
 
 
-        $(".modal-overlay").fadeTo(500, 0.9);
-        $('#preview').fadeIn();
-        // modal helper
-        $(".js-modal-close, .modal-overlay").click(function() {
-            $(".modal-box, .modal-overlay").fadeOut(500, function() {
-            	// player.stop();
-            	scene = _scene;
-                $(".modal-overlay").remove();
-                $("#preview").remove();
-            });
-        });
-        $(window).resize(function() {
-            $(".modal-box").css({
-                top: ($(window).height() - $("#preview").outerHeight()) / 2,
-                left: ($(window).width() - $("#preview").outerWidth()) / 2
-            });
-        });
+        // $(".modal-overlay").fadeTo(500, 0.9);
+        // $('#preview').fadeIn();
+        // // modal helper
+        // $(".js-modal-close, .modal-overlay").click(function() {
+        //     $(".modal-box, .modal-overlay").fadeOut(500, function() {
+        //     	// player.stop();
+        //     	scene = _scene;
+        //         $(".modal-overlay").remove();
+        //         $("#preview").remove();
+        //     });
+        // });
+        // $(window).resize(function() {
+        //     $(".modal-box").css({
+        //         top: ($(window).height() - $("#preview").outerHeight()) / 2,
+        //         left: ($(window).width() - $("#preview").outerWidth()) / 2
+        //     });
+        // });
 
-        $(window).resize();
+        // $(window).resize();
         
 
 	} );

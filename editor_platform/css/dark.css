@@ -184,46 +184,79 @@ img.ri:empty {
 			margin: 0 !important;
 		}
 
-#sidebar {
+#sidebar-right {
 	position: absolute;
 	right: 0;
 	top: 32px;
-	bottom: 0;
+	bottom: 32px;
 	width: 300px;
-	background-color: #111;
+	background: #111;
 	overflow: auto;
 }
 
-	#sidebar * {
+	#sidebar-right * {
 		vertical-align: middle;
 	}
 
-	#sidebar input,
-	#sidebar textarea,
-	#sidebar select {
+	#sidebar-right input,
+	#sidebar-right textarea,
+	#sidebar-right select {
 		background: #222;
 		border: 1px solid transparent;
 		color: #888;
 	}
 
-	#sidebar .Panel {
+	#sidebar-right .Panel {
 		color: #888;
 		padding: 10px;
 		border-top: 1px solid #222;
 	}
 
-	#sidebar .Panel.collapsed {
+	#sidebar-right .Panel.collapsed {
 		margin-bottom: 0;
 	}
 
-	#sidebar .Panel.Material canvas {
-		border: solid 1px #5A5A5A;
-	}
-
-	#sidebar .Row {
+	#sidebar-right .Row {
 		min-height: 20px;
 		margin-bottom: 10px;
 	}
+
+#sidebar-left {
+	position: absolute;
+	left: 0;
+	top: 32px;
+	bottom: 32px;
+	width: 300px;
+	background: #111;
+	overflow: auto;
+}
+
+	#sidebar-left * {
+		vertical-align: middle;
+	}
+
+	#sidebar-left input,
+	#sidebar-left textarea,
+	#sidebar-left select {
+		background: #222;
+		border: 1px solid transparent;
+		color: #888;
+	}
+
+	#sidebar-left .Panel {
+		color: #888;
+		padding: 10px;
+		border-top: 1px solid #222;
+	}
+
+	#sidebar-left .Panel.collapsed {
+		margin-bottom: 0;
+	}
+
+	#sidebar-left .Row {
+		min-height: 20px;
+		margin-bottom: 10px;
+	}	
 
 #tabs {
 	background-color: #1b1b1b;
