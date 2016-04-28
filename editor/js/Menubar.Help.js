@@ -35,7 +35,8 @@ Menubar.Help = function ( editor ) {
 	option.setTextContent( 'Exit to Platform' );
 	option.onClick( function () {
 
-		window.open( 'http://beta.zaak.io', '_blank' );
+		window.location.href=BASE_URL;
+		//window.open( 'http://beta.zaak.io', '_blank' );
 
 	} );
 	options.add( option );

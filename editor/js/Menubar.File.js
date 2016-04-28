@@ -319,7 +319,7 @@ Menubar.File = function ( editor ) {
     option.setTextContent( 'Publish' );
 
     option.onClick( function () {
-        var output = editor.scene.toJSON();
+        var output = editor.toJSON();
         output.metadata.type = 'App';
 		delete output.history;
         App.Helper.Save(output);

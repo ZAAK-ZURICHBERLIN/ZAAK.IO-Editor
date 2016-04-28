@@ -138,7 +138,7 @@ Menubar.Add = function ( editor ) {
             <a class='js-modal-close close' style='top:1.5%;'>×</a> \
         </header> \
         <div style='height:100%;'> \
-            <iframe id='library_iframe' width='100%' height='100%' allowfullscreen src='library.html'></iframe> \
+            <iframe id='library_iframe' width='100%' height='100%' allowfullscreen src='editor/library'></iframe> \
         </div></div>";
         $("body").append($.parseHTML(preview));
 
