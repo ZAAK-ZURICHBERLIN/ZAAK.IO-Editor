@@ -10,6 +10,8 @@ var Config = function () {
 		'autosave': true,
 		'theme': 'css/light.css',
 
+		'degree': false,
+
 		'backgroundColor': 0xcccccc,
 
 		'project/history/stored': true,

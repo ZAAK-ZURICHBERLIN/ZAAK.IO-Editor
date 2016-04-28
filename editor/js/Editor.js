@@ -80,7 +80,8 @@ var Editor = function () {
 		saveProject: new SIGNALS.Signal(),
 		showManChanged: new SIGNALS.Signal(),
 
-		bgColorChanged: new SIGNALS.Signal()
+		bgColorChanged: new SIGNALS.Signal(),
+		presetChanged: new SIGNALS.Signal()
 
 	};
 
