@@ -63,6 +63,8 @@
 			function closeIFrame(){
 				$(".modal-overlay").remove();
                 $("#preview").remove();
+                main.editor.signals.stopPlayer.dispatch();
+
 			}
 
 		</script>

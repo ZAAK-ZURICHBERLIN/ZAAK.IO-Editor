@@ -71,7 +71,7 @@ img.ri:empty {
 #script {
 	position: absolute;
 	top: 32px;
-	left: 0;
+	left: 300px;
 	right: 300px;
 	bottom: 32px;
 	opacity: 0.9;
@@ -270,7 +270,7 @@ img.ri:empty {
 #toolbar {
 	position: absolute;
 	left: 0;
-	right: 300px;
+	right: 0;
 	bottom: 0;
 	height: 32px;
 	background: #eee;

@@ -70,7 +70,7 @@ textarea, input { outline: none; } /* osx */
 /* CodeMirror */
 
 .CodeMirror {
-	left:300px;
+	left:0px;
 	right:300px;
 	position: absolute !important;
 	top: 37px;

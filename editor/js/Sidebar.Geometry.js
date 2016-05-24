@@ -121,7 +121,8 @@ Sidebar.Geometry = function ( editor ) {
 	geometryNameRow.add( new UI.Text( 'Name' ).setWidth( '90px' ) );
 	geometryNameRow.add( geometryName );
 
-	container.add( geometryNameRow );
+	// REMOVED
+	// container.add( geometryNameRow );
 
 	// geometry
 

@@ -48,7 +48,8 @@ var Script = function ( editor ) {
 		svg.setAttribute( 'height', 2000 );
 		var path = document.createElementNS( 'http://www.w3.org/2000/svg', 'path' );
 		path.setAttribute( 'd', 'M 0,0 L 12,10000' );
-		path.setAttribute( 'stroke', '#fff' );
+		path.setAttribute( 'stroke', '#000' );
+		path.setAttribute( 'stroke-dasharray', '4,4');
 		svg.appendChild( path );
 		return svg;
 	} )();
@@ -57,7 +58,7 @@ var Script = function ( editor ) {
 	lineo.setPosition( 'absolute' );
 	lineo.setTop( '0px' );
 	lineo.setBottom( '0px' );
-	lineo.setLeft( '290px' );
+	lineo.setLeft( '-4px' );
 	header.add( lineo );
 
 

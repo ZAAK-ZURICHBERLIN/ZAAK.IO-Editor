@@ -21109,7 +21109,8 @@ var Script = function ( editor ) {
 		svg.setAttribute( 'height', 2000 );
 		var path = document.createElementNS( 'http://www.w3.org/2000/svg', 'path' );
 		path.setAttribute( 'd', 'M 0,0 L 12,10000' );
-		path.setAttribute( 'stroke', '#fff' );
+		path.setAttribute( 'stroke', '#000' );
+		path.setAttribute( 'stroke-dasharray', '4,4');
 		svg.appendChild( path );
 		return svg;
 	} )();
@@ -21118,7 +21119,7 @@ var Script = function ( editor ) {
 	lineo.setPosition( 'absolute' );
 	lineo.setTop( '0px' );
 	lineo.setBottom( '0px' );
-	lineo.setLeft( '290px' );
+	lineo.setLeft( '-4px' );
 	header.add( lineo );
 
 
@@ -26128,7 +26129,8 @@ Sidebar.Geometry = function ( editor ) {
 	geometryNameRow.add( new UI.Text( 'Name' ).setWidth( '90px' ) );
 	geometryNameRow.add( geometryName );
 
-	container.add( geometryNameRow );
+	// REMOVED
+	// container.add( geometryNameRow );
 
 	// geometry
 
@@ -27956,7 +27958,8 @@ Sidebar.Material = function ( editor ) {
 	materialNameRow.add( new UI.Text( 'Name' ).setWidth( '90px' ) );
 	materialNameRow.add( materialName );
 
-	container.add( materialNameRow );
+	//REMOVED
+	// container.add( materialNameRow );
 
 	// program
 
@@ -29307,7 +29310,7 @@ Sidebar.Script = function ( editor ) {
 
 					console.log(script);
 
-					var name = new UI.Text( script.name ).setWidth( '130px' ).setFontSize( '12px' );
+					var name = new UI.Input( script.name ).setWidth( '130px' ).setFontSize( '12px' );
 					name.onChange( function () {
 
 						editor.execute( new SetScriptValueCommand( editor.selected, script, 'name', this.getValue() ) );
@@ -31115,7 +31118,7 @@ SetValueCommand.prototype = {
 
 		this.object[ this.attributeName ] = this.newValue;
 		this.editor.signals.objectChanged.dispatch( this.object );
-		// this.editor.signals.sceneGraphChanged.dispatch();
+		this.editor.signals.sceneGraphChanged.dispatch();
 
 	},
 
@@ -31123,7 +31126,7 @@ SetValueCommand.prototype = {
 
 		this.object[ this.attributeName ] = this.oldValue;
 		this.editor.signals.objectChanged.dispatch( this.object );
-		// this.editor.signals.sceneGraphChanged.dispatch();
+		this.editor.signals.sceneGraphChanged.dispatch();
 
 	},
 

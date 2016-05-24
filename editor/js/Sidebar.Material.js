@@ -63,7 +63,8 @@ Sidebar.Material = function ( editor ) {
 	materialNameRow.add( new UI.Text( 'Name' ).setWidth( '90px' ) );
 	materialNameRow.add( materialName );
 
-	container.add( materialNameRow );
+	//REMOVED
+	// container.add( materialNameRow );
 
 	// program
 
