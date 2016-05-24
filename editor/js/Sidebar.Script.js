@@ -26,7 +26,7 @@ Sidebar.Script = function ( editor ) {
 	var newScript = new UI.Button( 'New' );
 	newScript.onClick( function () {
 
-		var script = { name: '', source: 'function update( event ) {}' };
+		var script = { name: 'newScript', source: 'function update( event ) {}' };
 		editor.execute( new AddScriptCommand( editor.selected, script ) );
 
 	} );

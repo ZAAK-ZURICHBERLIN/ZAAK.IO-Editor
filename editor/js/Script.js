@@ -32,7 +32,7 @@ var Script = function ( editor ) {
 
 	var close = new UI.Element( buttonSVG );
 	close.setPosition( 'absolute' );
-	close.setTop( '3px' );
+	close.setTop( '0px' );
 	close.setRight( '1px' );
 	close.setCursor( 'pointer' );
 	close.onClick( function () {
@@ -41,6 +41,24 @@ var Script = function ( editor ) {
 
 	} );
 	header.add( close );
+
+		var lineSVG = ( function () {
+		var svg = document.createElementNS( 'http://www.w3.org/2000/svg', 'svg' );
+		svg.setAttribute( 'width', 32 );
+		svg.setAttribute( 'height', 2000 );
+		var path = document.createElementNS( 'http://www.w3.org/2000/svg', 'path' );
+		path.setAttribute( 'd', 'M 0,0 L 12,10000' );
+		path.setAttribute( 'stroke', '#fff' );
+		svg.appendChild( path );
+		return svg;
+	} )();
+
+	var lineo = new UI.Element(lineSVG);
+	lineo.setPosition( 'absolute' );
+	lineo.setTop( '0px' );
+	lineo.setBottom( '0px' );
+	lineo.setLeft( '290px' );
+	header.add( lineo );
 
 
 	var renderer;
