@@ -85,18 +85,11 @@ MainEditor.prototype = {
 
 				if ( scope.editor.config.getKey( 'autosave' ) === false ) return;
 
-				// else {
-
-				// 	saveState(1000);
-
-				// }
-
 			};
 
 			var manualSave = function () {
 
 				saveState(1000);
-				// console.log("manualSave");
 			};
 
 			// var saveState = function ( scene ) {
@@ -189,7 +182,7 @@ MainEditor.prototype = {
 		function onWindowResize( event ) {
 
 			scope.editor.signals.windowResize.dispatch();
-
+			console.log("RESIZE");
 		}
 		
 
@@ -25155,6 +25148,7 @@ Sidebar.Settings = function ( editor ) {
 	themeRow.add( new UI.Text( 'Theme' ).setWidth( '90px' ) );
 	themeRow.add( theme );
 
+	//Removed
 	// container.add( themeRow );
 
 	//Degree
@@ -29439,6 +29433,8 @@ Sidebar.History = function ( editor ) {
 
 	var history = editor.history;
 
+	
+
 	var container = new UI.CollapsiblePanel();
 	container.setCollapsed( editor.config.getKey( 'ui/sidebar/history/collapsed' ) );
 	container.onCollapsedChange( function ( boolean ) {
@@ -29448,6 +29444,7 @@ Sidebar.History = function ( editor ) {
 	} );
 
 	container.addStatic( new UI.Text( 'HISTORY' ) );
+
 
 	// Checkbox 'Save History'
 
@@ -30100,6 +30097,7 @@ var Viewport = function ( editor ) {
 
 		render();
 
+
 	} );
 
 	signals.sceneGraphChanged.add( function () {
@@ -30232,7 +30230,6 @@ var Viewport = function ( editor ) {
 
 	signals.fogTypeChanged.add( function ( fogType ) {
 
-		console.log("fog?");
 
 		if ( fogType !== oldFogType ) {
 
@@ -30273,9 +30270,6 @@ var Viewport = function ( editor ) {
 
 	signals.fogParametersChanged.add( function ( near, far, density ) {
 
-		console.log("PARAMfog?");
-
-
 		oldFogNear = near;
 		oldFogFar = far;
 		oldFogDensity = density;
@@ -30310,6 +30304,8 @@ var Viewport = function ( editor ) {
 		render();
 
 	} );
+
+
 
 	//
 
@@ -33238,7 +33234,7 @@ Editor.prototype = {
 
 			this.signals.bgColorChanged.dispatch( json.project.backgroundColor );
 
-			console.log("project");
+			// console.log("project");
 		}
 		// console.log(this.config.getKey('backgroundColor'));
 
@@ -33251,13 +33247,14 @@ Editor.prototype = {
 		this.history.fromJSON( json.history );
 		this.scripts = json.scripts;
 
-		console.log(json.scene);
+		// console.log(json.scene);
 
 		this.setScene( loader.parse( json.scene ) );
 
 		this.signals.saveProject.dispatch();
 
-		console.log("hw");
+		this.signals.windowResize.dispatch();
+
 
 	},
 

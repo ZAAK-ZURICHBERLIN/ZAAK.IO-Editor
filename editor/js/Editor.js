@@ -574,7 +574,7 @@ Editor.prototype = {
 
 			this.signals.bgColorChanged.dispatch( json.project.backgroundColor );
 
-			console.log("project");
+			// console.log("project");
 		}
 		// console.log(this.config.getKey('backgroundColor'));
 
@@ -587,13 +587,14 @@ Editor.prototype = {
 		this.history.fromJSON( json.history );
 		this.scripts = json.scripts;
 
-		console.log(json.scene);
+		// console.log(json.scene);
 
 		this.setScene( loader.parse( json.scene ) );
 
 		this.signals.saveProject.dispatch();
 
-		console.log("hw");
+		this.signals.windowResize.dispatch();
+
 
 	},
 

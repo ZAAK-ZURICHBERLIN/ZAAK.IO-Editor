@@ -11,6 +11,8 @@ Sidebar.History = function ( editor ) {
 
 	var history = editor.history;
 
+	
+
 	var container = new UI.CollapsiblePanel();
 	container.setCollapsed( editor.config.getKey( 'ui/sidebar/history/collapsed' ) );
 	container.onCollapsedChange( function ( boolean ) {
@@ -20,6 +22,7 @@ Sidebar.History = function ( editor ) {
 	} );
 
 	container.addStatic( new UI.Text( 'HISTORY' ) );
+
 
 	// Checkbox 'Save History'
 

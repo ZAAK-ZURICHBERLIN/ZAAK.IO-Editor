@@ -463,6 +463,7 @@ var Viewport = function ( editor ) {
 
 		render();
 
+
 	} );
 
 	signals.sceneGraphChanged.add( function () {
@@ -595,7 +596,6 @@ var Viewport = function ( editor ) {
 
 	signals.fogTypeChanged.add( function ( fogType ) {
 
-		console.log("fog?");
 
 		if ( fogType !== oldFogType ) {
 
@@ -636,9 +636,6 @@ var Viewport = function ( editor ) {
 
 	signals.fogParametersChanged.add( function ( near, far, density ) {
 
-		console.log("PARAMfog?");
-
-
 		oldFogNear = near;
 		oldFogFar = far;
 		oldFogDensity = density;
@@ -673,6 +670,8 @@ var Viewport = function ( editor ) {
 		render();
 
 	} );
+
+
 
 	//
 
