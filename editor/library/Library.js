@@ -31,12 +31,14 @@ var Library = function(_src) {
 		
 		renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true } );
 		renderer.setClearColor( 0xFFFFFF );
+
+
 	}
 
 
 	this.loadLibrary = function(_filter){
 
-		_filter = typeof _filter !== 'undefined' ? _filter : "_model";
+		_filter = typeof _filter !== 'undefined' ? _filter : "3d";
 
 		//Clean selection
 		while (content.firstChild) {
@@ -45,12 +47,14 @@ var Library = function(_src) {
 
 		// console.log(¥beta.zaak.io/api/v1/asset?format=json&limit=1);
 		// var libraryURL = librarySource+ "/lib"+_filter+".json";
-		var libraryURL = 'http://beta.zaak.io/api/v1/asset?format=json&category__slug=' + _filter;
+		var libraryURL = BASE_URL + API_URL +'/asset?format=json&category__slug=' + _filter;
 
 		var loader = new THREE.XHRLoader();
 		loader.crossOrigin = '';
 
 		loader.load( libraryURL, function ( text ) {
+
+			console.log(text);
 
 			library = JSON.parse( text );
 
@@ -71,14 +75,13 @@ var Library = function(_src) {
 		// console.log(_library)
 		// var name = library.entries[i].name + library.entries[i].format;
 		console.log(library.objects[_id]);
-		switch(library.objects[_id].categories[0]){
-			case "model":
+		switch(library.objects[_id].category.slug){
+			case "3d":
 
 				var myFile, myBlob; 
 
 				var url, script;
 				
-
 				var loader = new THREE.XHRLoader();
 				loader.crossOrigin = '';
 
@@ -106,11 +109,28 @@ var Library = function(_src) {
 
 			case "video":
 				url = library.objects[_id].media;
-				script = { name: library.objects[_id].name,  source: "var url = 'video/"+url+"';\n\n//\nvar video;\nvar texture;\n\nfunction init ( event ){\n\n\tvideo = document.createElement('video');\n\tvideo.setAttribute(\"webkit-playsinline\",\"\");\n\tvideo.setAttribute(\"playsinline\",\"\");\n\tvideo.autoplay = true;\n\tvideo.loop = true;\n\tvideo.width\t= 1920;\n\tvideo.height = 1080;\n\tvideo.src = url;\n\tvideo.load();\n\n\t// create the texture\n\ttexture\t= new THREE.VideoTexture( video );\n\t// expose texture as this.texture\n\t\n\tvideo.play();\n\n}\n\nfunction update( event ) {\n\n\tif( video.readyState !== video.HAVE_ENOUGH_DATA )\treturn;\n\t\ttexture.needsUpdate\t= true;\t\n\n\tthis.material\t= new THREE.MeshBasicMaterial({\n\t\tmap\t: texture\n\t});\n}\n\nfunction stop ( event ) {\n\n\tvideo.pause();\n}"};
+				script = { name: library.objects[_id].name,  source: "var url = '"+url+"';\n\n//\nvar video;\nvar texture;\n\nfunction init ( event ){\n\n\tvideo = document.createElement('video');\n\tvideo.setAttribute(\"webkit-playsinline\",\"\");\n\tvideo.setAttribute(\"playsinline\",\"\");\n\tvideo.autoplay = true;\n\tvideo.loop = true;\n\tvideo.width\t= 1920;\n\tvideo.height = 1080;\n\tvideo.src = url;\n\tvideo.load();\n\n\t// create the texture\n\ttexture\t= new THREE.VideoTexture( video );\n\t// expose texture as this.texture\n\t\n\tvideo.play();\n\n}\n\nfunction update( event ) {\n\n\tif( video.readyState !== video.HAVE_ENOUGH_DATA )\treturn;\n\t\ttexture.needsUpdate\t= true;\t\n\n\tthis.material\t= new THREE.MeshBasicMaterial({\n\t\tmap\t: texture\n\t});\n}\n\nfunction stop ( event ) {\n\n\tvideo.pause();\n}"};
 
 				createScripts( script, library.objects[_id]);
 		
 			break;
+
+			case "code":
+
+				var dloader = new THREE.XHRLoader();
+				dloader.crossOrigin = '';
+
+				var lurl = library.objects[_id].media;
+
+				dloader.load(lurl, function ( text ) {
+
+					
+					url = text;
+					script = { name: library.objects[_id].name,  source: url};
+
+					createScripts( script, library.objects[_id]);
+
+				} );
 
 			default:
 			break;

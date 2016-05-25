@@ -14,7 +14,7 @@
 <script src="./js/LibraryLoader.js"></script>
 <script src="./js/OrbitControls.js"></script> -->
 
-<div class="filteritems"><button onclick="filter('_model');">Models</button> | <button onclick="filter('_audio');">Audio</button> | <button onclick="filter('_video');">Video</button> | <button onclick="filter('_code');">Code</button></div>
+<div class="filteritems"><button onclick="filter('3d');">Models</button> | <button onclick="filter('audio');">Audio</button> | <button onclick="filter('video');">Video</button> | <button onclick="filter('code');">Code</button></div>
 
 <canvas id="c"></canvas>
 
@@ -31,8 +31,11 @@
 
 <script>
 
+	var BASE_URL = '';
+	var API_URL = '';
+
 	var library = new Library("./library");
-	library.loadLibrary("_model")
+	library.loadLibrary("3d");
 
 	function filter(_name){
 		library.loadLibrary(_name);
