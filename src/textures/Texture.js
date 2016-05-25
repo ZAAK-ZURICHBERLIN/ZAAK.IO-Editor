@@ -165,73 +165,6 @@ THREE.Texture.prototype = {
 		};
 
 		//Duplicate Check Image, remove lodash and put in again
-		// if ( this.image !== undefined ) {
-
-		// 	// TODO: Move to THREE.Image
-
-		// 	var image = this.image;
-
-		// 	if ( image.uuid === undefined ) {
-
-		// 		image.uuid = THREE.Math.generateUUID(); // UGH
-
-		// 	}
-
-		// 	var _duplicate = false;
-
-		// 	if ( meta.images[ image.uuid ] === undefined ) {
-
-		// 		var _newImage = getDataURL( image );
-
-		// 		for (var key in meta.images) {
-		// 		  if (meta.images.hasOwnProperty(key)) {
-
-		// 		  	if(_.isEqual(_newImage, meta.images[key].url)) { // bad LODASH
-
-		// 		  		console.log(meta.images[key].uuid);
-		// 		  		output.image = meta.images[key].uuid; // get the old uuid
-		// 				_duplicate = true;
-		// 		  	}	
-		// 		  }
-		// 		}
-
-		// 		if(!_duplicate)
-		// 			meta.images[ image.uuid ] = { uuid: image.uuid, url: _newImage};
-		// 	}
-
-		// 	if(!_duplicate )
-		// 		output.image = image.uuid;
-		// }
-
-		// var _duplicate = false;
-
-		// if ( meta.textures[ output.uuid ] === undefined ) {
-
-		// 	for (var key in meta.textures) {
-		// 		if ( meta.textures.hasOwnProperty(key)) {
-					
-		// 		  	var _tempOld = _.clone(meta.textures[key]);
-		// 		  	delete _tempOld.uuid;
-
-		// 			var _tempNew = _.clone(output);
-		// 			delete _tempNew.uuid;
-
-		// 		  	if(_.isEqual(_tempOld, _tempNew)) { // bad LODASH
-
-		// 		  		output = _.clone(meta.textures[key]);
-		// 				_duplicate = true;
-		// 		  	}	
-		// 		}
-		// 	}
-		// }		
-
-		// if(!_duplicate )	
-		// 	meta.textures[ this.uuid ] = output;
-
-		// console.log(output);
-
-		// return output;
-
 		if ( this.image !== undefined ) {
 
 			// TODO: Move to THREE.Image
@@ -244,23 +177,91 @@ THREE.Texture.prototype = {
 
 			}
 
+			var _duplicate = false;
+
 			if ( meta.images[ image.uuid ] === undefined ) {
 
-				meta.images[ image.uuid ] = {
-					uuid: image.uuid,
-					url: getDataURL( image )
-				};
+				var _newImage = getDataURL( image );
 
+				for (var key in meta.images) {
+				  if (meta.images.hasOwnProperty(key)) {
+
+				  	if(_.isEqual(_newImage, meta.images[key].url)) { // bad LODASH
+
+				  		console.log(meta.images[key].uuid);
+				  		output.image = meta.images[key].uuid; // get the old uuid
+						_duplicate = true;
+				  	}	
+				  }
+				}
+
+				if(!_duplicate)
+					meta.images[ image.uuid ] = { uuid: image.uuid, url: _newImage};
 			}
 
-			output.image = image.uuid;
-
+			if(!_duplicate )
+				output.image = image.uuid;
 		}
 
-		meta.textures[ this.uuid ] = output;
+		var _duplicate = false;
+
+		if ( meta.textures[ output.uuid ] === undefined ) {
+
+			for (var key in meta.textures) {
+				if ( meta.textures.hasOwnProperty(key)) {
+					
+				  	var _tempOld = _.clone(meta.textures[key]);
+				  	delete _tempOld.uuid;
+
+					var _tempNew = _.clone(output);
+					delete _tempNew.uuid;
+
+				  	if(_.isEqual(_tempOld, _tempNew)) { // bad LODASH
+
+				  		output = _.clone(meta.textures[key]);
+						_duplicate = true;
+				  	}	
+				}
+			}
+		}		
+
+		if(!_duplicate )	
+			meta.textures[ this.uuid ] = output;
+
+		console.log(output);
 
 		return output;
 
+		// ///
+		// if ( this.image !== undefined ) {
+
+		// 	// TODO: Move to THREE.Image
+
+		// 	var image = this.image;
+
+		// 	if ( image.uuid === undefined ) {
+
+		// 		image.uuid = THREE.Math.generateUUID(); // UGH
+
+		// 	}
+
+		// 	if ( meta.images[ image.uuid ] === undefined ) {
+
+		// 		meta.images[ image.uuid ] = {
+		// 			uuid: image.uuid,
+		// 			url: getDataURL( image )
+		// 		};
+
+		// 	}
+
+		// 	output.image = image.uuid;
+
+		// }
+
+		// meta.textures[ this.uuid ] = output;
+
+		// return output;
+		// ///
 	},
 
 

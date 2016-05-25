@@ -184,79 +184,46 @@ img.ri:empty {
 			margin: 0 !important;
 		}
 
-#sidebar-right {
+#sidebar {
 	position: absolute;
 	right: 0;
 	top: 32px;
-	bottom: 32px;
+	bottom: 0;
 	width: 300px;
-	background: #111;
+	background-color: #111;
 	overflow: auto;
 }
 
-	#sidebar-right * {
+	#sidebar * {
 		vertical-align: middle;
 	}
 
-	#sidebar-right input,
-	#sidebar-right textarea,
-	#sidebar-right select {
+	#sidebar input,
+	#sidebar textarea,
+	#sidebar select {
 		background: #222;
 		border: 1px solid transparent;
 		color: #888;
 	}
 
-	#sidebar-right .Panel {
+	#sidebar .Panel {
 		color: #888;
 		padding: 10px;
 		border-top: 1px solid #222;
 	}
 
-	#sidebar-right .Panel.collapsed {
+	#sidebar .Panel.collapsed {
 		margin-bottom: 0;
 	}
 
-	#sidebar-right .Row {
+	#sidebar .Panel.Material canvas {
+		border: solid 1px #5A5A5A;
+	}
+
+	#sidebar .Row {
 		min-height: 20px;
 		margin-bottom: 10px;
 	}
-
-#sidebar-left {
-	position: absolute;
-	left: 0;
-	top: 32px;
-	bottom: 32px;
-	width: 300px;
-	background: #111;
-	overflow: auto;
-}
-
-	#sidebar-left * {
-		vertical-align: middle;
-	}
-
-	#sidebar-left input,
-	#sidebar-left textarea,
-	#sidebar-left select {
-		background: #222;
-		border: 1px solid transparent;
-		color: #888;
-	}
-
-	#sidebar-left .Panel {
-		color: #888;
-		padding: 10px;
-		border-top: 1px solid #222;
-	}
-
-	#sidebar-left .Panel.collapsed {
-		margin-bottom: 0;
-	}
-
-	#sidebar-left .Row {
-		min-height: 20px;
-		margin-bottom: 10px;
-	}	
 
 #tabs {
 	background-color: #1b1b1b;

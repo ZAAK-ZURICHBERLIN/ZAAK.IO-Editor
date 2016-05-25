@@ -83,18 +83,11 @@ MainEditor.prototype = {
 
 				if ( scope.editor.config.getKey( 'autosave' ) === false ) return;
 
-				// else {
-
-				// 	saveState(1000);
-
-				// }
-
 			};
 
 			var manualSave = function () {
 
 				saveState(1000);
-				// console.log("manualSave");
 			};
 
 			// var saveState = function ( scene ) {
@@ -187,7 +180,7 @@ MainEditor.prototype = {
 		function onWindowResize( event ) {
 
 			scope.editor.signals.windowResize.dispatch();
-
+			console.log("RESIZE");
 		}
 		
 

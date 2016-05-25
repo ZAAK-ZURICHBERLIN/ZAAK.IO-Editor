@@ -28,8 +28,6 @@ var Library = function(_src) {
 	function init() {
 
 		canvas = document.getElementById( "c" );
-
-		// camera = new THREE.PerspectiveCamera( 50, 1, 0.1, 100 );
 		
 		renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true } );
 		renderer.setClearColor( 0xFFFFFF );
@@ -45,7 +43,9 @@ var Library = function(_src) {
 		    content.removeChild(content.firstChild);
 		}
 
-		var libraryURL = librarySource+ "/lib"+_filter+".json";
+		// console.log(¥beta.zaak.io/api/v1/asset?format=json&limit=1);
+		// var libraryURL = librarySource+ "/lib"+_filter+".json";
+		var libraryURL = 'http://beta.zaak.io/api/v1/asset?format=json&category__slug=' + _filter;
 
 		var loader = new THREE.XHRLoader();
 		loader.crossOrigin = '';
@@ -134,14 +134,11 @@ var Library = function(_src) {
 		content.appendChild( element );
 
 		var _butt = element.querySelector("#addButton");
-		// console.log(_butt);
+
 		_butt.addEventListener('click', function(){
 			 window.parent.main.editor.addScriptNew(_script);
 			 window.parent.closeIFrame();
-			 // $(".modal-box, .modal-overlay").fadeOut(500, function() {
-    //             $(".modal-overlay").remove();
 
-    //         });
 		});
 	}
 

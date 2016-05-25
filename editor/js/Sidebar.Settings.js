@@ -40,6 +40,7 @@ Sidebar.Settings = function ( editor ) {
 	themeRow.add( new UI.Text( 'Theme' ).setWidth( '90px' ) );
 	themeRow.add( theme );
 
+	//Removed
 	// container.add( themeRow );
 
 	//Degree

@@ -97,7 +97,7 @@ EditorShortCuts.prototype = {
 		if( this.pressed(this.shortcuts.getKey('transform/scale' ))) this.editor.signals.transformModeChanged.dispatch( 'scale' );
 
 		//Delete Shortcut -HACK IT ATM, pressing x doesnt work
-		if( event.keyCode == 88 ) {
+		if( keyCode == 88 ) {
 			if(editor.selected != null && editor.selected.parent != null)
 				editor.execute( new RemoveObjectCommand( editor.selected ) );
 		}

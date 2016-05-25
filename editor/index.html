@@ -167,9 +167,7 @@
 		<!-- Viewer -->
 
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.18.2/TweenMax.min.js"></script>
-		
 
-<!-- 		<div id="preview3d"><img src="http://zaak.ch/plus/preloader/loader_white.gif" height="512px" width="auto" class="ri"></div> -->
 		<script>
 
 			var STATIC_URL = '';//'{{ STATIC_URL|escapejs }}';
@@ -183,12 +181,11 @@
 			function closeIFrame(){
 				$(".modal-overlay").remove();
                 $("#preview").remove();
+                this.editor.signals.stopPlayer.dispatch();
+
 			}
 
 		</script>
-
-<!-- 
-		<div id="library" style="position:absolute; left:30%; bottom:0; right:30%; height:20%"><iframe src="library.html"></div> -->
 
 	</body>
 </html>
