@@ -17,6 +17,18 @@ Sidebar.Project = function ( editor ) {
 
 	};
 
+	var qualityTypes = {
+		0.3:'low',
+		0.5:'medium',
+		1.0:'high'
+	};
+
+	var basicShortCutTypes = {
+
+		'Blender':'Blender',
+		'Unity':'Unity'
+	};
+
 	var container = new UI.Panel();
 	container.setBorderTop( '0' );
 	container.setPaddingTop( '20px' );
@@ -66,19 +78,22 @@ Sidebar.Project = function ( editor ) {
 		updateRenderer();
 
 	} );
-	rendererPropertiesRow.add( rendererAntialias );
+	// rendererPropertiesRow.add( rendererAntialias );
 
 	// shadow
+	var shadowsRow = new UI.Row();
 
-	var rendererShadows = new UI.THREE.Boolean( config.getKey( 'project/renderer/shadows' ), 'shadows' ).onChange( function () {
+	var rendererShadows = new UI.THREE.Boolean( config.getKey( 'project/renderer/shadows' ) ).onChange( function () {
 
 		config.setKey( 'project/renderer/shadows', this.getValue() );
 		updateRenderer();
 
 	} );
-	rendererPropertiesRow.add( rendererShadows );
+	shadowsRow.add( new UI.Text( 'Shadows' ).setWidth( '90px' ) );
 
-	container.add( rendererPropertiesRow );
+	shadowsRow.add( rendererShadows );
+
+	container.add( shadowsRow );
 
 	// VR
 
@@ -93,7 +108,59 @@ Sidebar.Project = function ( editor ) {
 	vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
 	vrRow.add( vr );
 
-	container.add( vrRow );
+	// container.add( vrRow );
+
+	// crosshair
+	var crosshairRow = new UI.Row();
+	var crosshair = new UI.Checkbox( config.getKey( 'project/crosshair' ) ).setLeft( '100px' ).onChange( function () {
+
+		config.setKey( 'project/crosshair', this.getValue() );
+		// updateRenderer();
+
+	} );
+		crosshairRow.add( new UI.Text( 'Crosshair' ).setWidth( '90px' ) );
+
+	crosshairRow.add( crosshair );
+
+	container.add( crosshairRow );
+
+	// Gazetime
+	var gazetimeRow = new UI.Row();
+	var gazetime = new UI.Number( config.getKey( 'project/gazetime' ) ).setLeft( '100px' ).onChange( function () {
+
+		config.setKey( 'project/gazetime', this.getValue() );
+		// updateRenderer();
+
+	} );
+
+	gazetime.min = 0.0;
+
+	gazetimeRow.add( new UI.Text( 'Gaze Time' ).setWidth( '90px' ) );
+
+	gazetimeRow.add( gazetime );
+
+	container.add( gazetimeRow );
+
+	// Quality
+	var qualityRow = new UI.Row();
+	var quality = new UI.Select().setOptions( qualityTypes ).setWidth( '150px' ).onChange( function () {
+
+		var value = this.getValue();
+
+		config.setKey( 'project/quality', value );
+
+	} );
+
+	qualityRow.add( new UI.Text( 'Quality' ).setWidth( '90px' ) );
+	qualityRow.add( quality );
+
+	container.add( qualityRow );
+
+	if ( config.getKey( 'project/quality' ) !== undefined ) {
+
+		quality.setValue( config.getKey( 'project/quality' ) );
+
+	}
 	container.add( new UI.Break() );
 
 	//bg
@@ -109,6 +176,8 @@ Sidebar.Project = function ( editor ) {
 	bgColorRow.add( bgColor );
 
 	container.add( bgColorRow );
+
+
 
 	// fog
 
@@ -203,6 +272,9 @@ Sidebar.Project = function ( editor ) {
 
 		var scene = editor.scene;
 
+		bgColor.setHexValue( editor.config.getKey('backgroundColor'));
+
+
 		if ( scene.fog ) {
 
 			fogColor.setHexValue( scene.fog.color.getHex() );
@@ -246,6 +318,8 @@ Sidebar.Project = function ( editor ) {
 	// events
 
 	signals.sceneGraphChanged.add( refreshUI );
+	signals.bgColorChanged.add( refreshUI );
+
 
 
 	//

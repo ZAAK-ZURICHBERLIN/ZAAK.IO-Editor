@@ -32,7 +32,6 @@ var Library = function(_src) {
 		renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true } );
 		renderer.setClearColor( 0xFFFFFF );
 
-
 	}
 
 
@@ -47,7 +46,7 @@ var Library = function(_src) {
 
 		// console.log(¥beta.zaak.io/api/v1/asset?format=json&limit=1);
 		// var libraryURL = librarySource+ "/lib"+_filter+".json";
-		var libraryURL = BASE_URL + API_URL +'/asset?format=json&category__slug=' + _filter;
+		var libraryURL = BASE_URL + API_URL +'asset?format=json&category__slug=' + _filter;
 
 		var loader = new THREE.XHRLoader();
 		loader.crossOrigin = '';
@@ -66,8 +65,6 @@ var Library = function(_src) {
 
 			} 
 		} );
-
-		console.log("preloadDone");
 	};
 
 	function loadObject ( _name, _id ){
@@ -85,7 +82,11 @@ var Library = function(_src) {
 				var loader = new THREE.XHRLoader();
 				loader.crossOrigin = '';
 
-				loader.load( library.objects[_id].media, function ( text ) {
+				console.log(library.objects[_id].media);
+
+				url = BASE_URL + library.objects[_id].media;
+
+				loader.load( url, function ( text ) {
 
 					var fileParts = [text];
 
@@ -103,7 +104,7 @@ var Library = function(_src) {
 				url = library.objects[_id].media;
 				script = { name: library.objects[_id].name,  source: "//The url of the audioFile\nvar url = '"+url+"';\nvar autoplay = true;\nvar distance = 20;\n\n//Don't change these\nvar audioSource;\n\nfunction init ( event ){\n\n\taudioSource = new THREE.PositionalAudio(camera.getObjectByName('Listener'));\n\taudioSource.load( url );\n\taudioSource.setRefDistance( distance );\n\taudioSource.autoplay = autoplay;\n\tthis.add( audioSource );\n\n}\n\nfunction rayStart( event ){\n\t\t \n\tif(audioSource.isPlaying)\n\t \taudioSource.pause();\n\telse\n\t \taudioSource.play();\n\t\t\n\t\n}\n\nfunction stop ( event ) {\n\t\n\taudioSource.stop();\n}"};
 
-				createScripts( script, library.objects[_id]);
+				createAudio( script, library.objects[_id], url);
 		
 			break;
 
@@ -111,7 +112,7 @@ var Library = function(_src) {
 				url = library.objects[_id].media;
 				script = { name: library.objects[_id].name,  source: "var url = '"+url+"';\n\n//\nvar video;\nvar texture;\n\nfunction init ( event ){\n\n\tvideo = document.createElement('video');\n\tvideo.setAttribute(\"webkit-playsinline\",\"\");\n\tvideo.setAttribute(\"playsinline\",\"\");\n\tvideo.autoplay = true;\n\tvideo.loop = true;\n\tvideo.width\t= 1920;\n\tvideo.height = 1080;\n\tvideo.src = url;\n\tvideo.load();\n\n\t// create the texture\n\ttexture\t= new THREE.VideoTexture( video );\n\t// expose texture as this.texture\n\t\n\tvideo.play();\n\n}\n\nfunction update( event ) {\n\n\tif( video.readyState !== video.HAVE_ENOUGH_DATA )\treturn;\n\t\ttexture.needsUpdate\t= true;\t\n\n\tthis.material\t= new THREE.MeshBasicMaterial({\n\t\tmap\t: texture\n\t});\n}\n\nfunction stop ( event ) {\n\n\tvideo.pause();\n}"};
 
-				createScripts( script, library.objects[_id]);
+				createVideo( script, library.objects[_id], url);
 		
 			break;
 
@@ -120,9 +121,9 @@ var Library = function(_src) {
 				var dloader = new THREE.XHRLoader();
 				dloader.crossOrigin = '';
 
-				var lurl = library.objects[_id].media;
+				var url = BASE_URL + library.objects[_id].media;
 
-				dloader.load(lurl, function ( text ) {
+				dloader.load(url, function ( text ) {
 
 					
 					url = text;
@@ -137,7 +138,7 @@ var Library = function(_src) {
 		}
 	}
 
-	function createScripts( _script, _object ){
+	function createVideo( _script, _object, _url ){
 
 		var element = document.createElement( "div" );
 
@@ -149,8 +150,85 @@ var Library = function(_src) {
 
 		// element.children(".nameHere")[0].innerHTML
 
-		// scene.element = element.querySelector(".scene");
+		var video = document.createElement('video');
+
+		video.setAttribute("controls","controls");
+
+		var s = video.style;
+		s.width = '100%';
+
+		var source = document.createElement('source');
+
+		source.src = BASE_URL + _url;
+		// source.type = "video/mp4";
+	
+
+		video.appendChild(source);
+
+		element.querySelector(".scene").appendChild(video);
 		// console.log(element.querySelector("#addButton"));	
+		content.appendChild( element );
+
+		var _butt = element.querySelector("#addButton");
+
+		_butt.addEventListener('click', function(){
+			 window.parent.main.editor.addScriptNew(_script);
+			 window.parent.closeIFrame();
+
+		});
+	}
+
+	function createAudio( _script, _object, _url ){
+
+		var element = document.createElement( "div" );
+
+		element.className = "list-item";
+
+		var tags = _object.tags[0];
+		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags );
+		// element.innerHTML = template;
+
+		// element.children(".nameHere")[0].innerHTML
+
+		var audio = document.createElement('audio');
+
+		audio.setAttribute("controls","controls");
+
+		var s = audio.style;
+		s.width = '100%';
+		// s.top = '0';
+		// s.bottom = '0';
+
+		var source = document.createElement('source');
+
+		source.src = BASE_URL + _url;
+		// source.type = "video/mp4";
+	
+
+		audio.appendChild(source);
+
+		element.querySelector(".scene").appendChild(audio);
+		// console.log(element.querySelector("#addButton"));	
+		content.appendChild( element );
+
+		var _butt = element.querySelector("#addButton");
+
+		_butt.addEventListener('click', function(){
+			 window.parent.main.editor.addScriptNew(_script);
+			 window.parent.closeIFrame();
+
+		});
+	}
+
+	function createScripts( _script, _object, _url ){
+
+		var element = document.createElement( "div" );
+
+		element.className = "list-item";
+
+		var tags = _object.tags[0];
+		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags );
+
 		content.appendChild( element );
 
 		var _butt = element.querySelector("#addButton");
@@ -192,6 +270,9 @@ var Library = function(_src) {
 		});
 
 		scene.userData.element = element.querySelector( ".scene" );
+
+		scene.userData.element.style.height = '200px';
+
 		content.appendChild( element );
 		var camera = new THREE.PerspectiveCamera( 50, 1, 0.1, 1000 );
 		// camera.position.z = 2;

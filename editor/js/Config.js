@@ -19,6 +19,9 @@ var Config = function () {
 		'project/renderer/antialias': true,
 		'project/renderer/shadows': true,
 		'project/vr': false,
+		'project/gazetime':2.4,
+		'project/crosshair':true,
+		'project/quality':1.0,
 
 		'ui/sidebar/animation/collapsed': true,
 		'ui/sidebar/geometry/collapsed': true,

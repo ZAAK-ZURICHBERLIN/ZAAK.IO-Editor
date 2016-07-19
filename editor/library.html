@@ -5,16 +5,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <link rel="stylesheet" href="css/library.css" type="text/css" media="screen" title="zulu" charset="utf-8" />
+
 </head>
 <body>
 <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
 <script src="../build/three.min.js"></script>
-<script src="../build/lib.js"></script>
-<!-- <script src="./js/Library.js"></script>
-<script src="./js/LibraryLoader.js"></script>
-<script src="./js/OrbitControls.js"></script> -->
+<!-- <script src="../build/lib.js"></script> -->
+<script src="./library/Library.js"></script>
+<script src="./library/LibraryLoader.js"></script>
+<script src="./js/OrbitControls.js"></script>
 
-<div class="filteritems"><button onclick="filter('3d');">Models</button> | <button onclick="filter('audio');">Audio</button> | <button onclick="filter('video');">Video</button> | <button onclick="filter('code');">Code</button></div>
+<div class="filteritems"><button onclick="filter('scene');">Scenes</button> | <button onclick="filter('3d');">Models</button> | <button onclick="filter('audio');">Audio</button> | <button onclick="filter('video');">Video</button> | <button onclick="filter('code');">Code</button></div>
 
 <canvas id="c"></canvas>
 
@@ -31,8 +32,8 @@
 
 <script>
 
-	var BASE_URL = '';
-	var API_URL = '';
+	var BASE_URL = 'http://www.zaak.io/';
+	var API_URL = 'api/v1/';
 
 	var library = new Library("./library");
 	library.loadLibrary("3d");

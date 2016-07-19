@@ -352,6 +352,8 @@ var Viewport = function ( editor ) {
         controls.controler = camera; // update
         transformControls.controler = camera; // update
 
+        // controls.zoom(0);
+
         editor.focus(editor.selected);
 		// render();
 

@@ -6,6 +6,8 @@ var Editor = function () {
 
 	var SIGNALS = signals;
 
+	 // ( width, height, fov, near, far, orthoNear, orthoFar )
+	// this.DEFAULT_CAMERA = new THREE.CombinedCamera(100,100, 50, 0.1, 10000, 0.1, 10000);
 	this.DEFAULT_CAMERA = new THREE.PerspectiveCamera( 50, 1, 0.1, 10000 );
 	this.DEFAULT_CAMERA.name = 'Camera';
 	this.DEFAULT_CAMERA.position.set( 20, 10, 20 );
@@ -22,7 +24,7 @@ var Editor = function () {
 		startPlayer: new SIGNALS.Signal(),
 		stopPlayer: new SIGNALS.Signal(),
 
-		// actions
+		// actions 
 
 		showModal: new SIGNALS.Signal(),
 
@@ -544,6 +546,9 @@ Editor.prototype = {
 		this.deselect();
 
 		this.signals.editorCleared.dispatch();
+		this.signals.windowResize.dispatch();
+
+
 
 	},
 
@@ -647,7 +652,10 @@ Editor.prototype = {
 				vr: this.config.getKey( 'project/vr' ),
 				backgroundColor: this.config.getKey('backgroundColor'),
 				fog: this.scene.fog,
-				fogColor: this.config.getKey('fogColor')
+				fogColor: this.config.getKey('fogColor'),
+				gazetime: this.config.getKey( 'project/gazetime' ),
+				quality: parseFloat(this.config.getKey( 'project/quality' )),
+				crosshair: this.config.getKey( 'project/crosshair' ),
 			},
 			camera: this.camera.toJSON(),
 			scene: this.scene.toJSON(),

@@ -180,7 +180,7 @@ MainEditor.prototype = {
 		function onWindowResize( event ) {
 
 			scope.editor.signals.windowResize.dispatch();
-			console.log("RESIZE");
+			// console.log("RESIZE");
 		}
 		
 

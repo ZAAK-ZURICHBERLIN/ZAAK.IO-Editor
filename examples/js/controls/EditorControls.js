@@ -72,6 +72,8 @@ THREE.EditorControls = function ( object, domElement ) {
 
 		if(scope.controler instanceof THREE.PerspectiveCamera !== true){
 
+			console.log("distance?");
+
 			scope.controler.zoom = Math.max(scope.controler.zoom - delta.z * 0.001, 0.1);	
 
 			// scope.controler.left = scope.controler.left + delta.z*0.01;

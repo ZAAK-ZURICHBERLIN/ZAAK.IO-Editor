@@ -74,10 +74,6 @@ EditorShortCuts.prototype = {
 
 		}
 		
-		//Create Raymond the raycast blocker.
-		if( this.pressed(this.shortcuts.getKey('history/undo' ))) this.editor.history.undo();
-
-
 		//History
 		//Undo
 		if( this.pressed(this.shortcuts.getKey('history/undo' ))) this.editor.history.undo();
@@ -107,10 +103,6 @@ EditorShortCuts.prototype = {
 			var _uuid = editor.selected.uuid;
 			var _object = editor.selected.clone();
 			var _scripts = editor.scripts[_uuid];
-
-			// console.log(_scipts)
-			
-			// console.log(_script[0]);
 			
 			editor.execute( new AddObjectCommand( _object ) );
 			var length = _scripts.length-1;

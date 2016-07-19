@@ -18,7 +18,7 @@ Menubar.Play = function ( editor ) {
 
 		// if ( isPlaying === false ) {
 
-			isPlaying = true;
+			// isPlaying = true;
 			// title.setTextContent( 'Stop' );
 			signals.startPlayer.dispatch();
 

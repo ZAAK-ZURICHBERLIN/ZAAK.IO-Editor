@@ -49,7 +49,7 @@ var Library = function(_src) {
 
 		// console.log(¥beta.zaak.io/api/v1/asset?format=json&limit=1);
 		// var libraryURL = librarySource+ "/lib"+_filter+".json";
-		var libraryURL = BASE_URL + API_URL +'/asset?format=json&category__slug=' + _filter;
+		var libraryURL = BASE_URL + API_URL +'asset?format=json&category__slug=' + _filter;
 
 		var loader = new THREE.XHRLoader();
 		loader.crossOrigin = '';
