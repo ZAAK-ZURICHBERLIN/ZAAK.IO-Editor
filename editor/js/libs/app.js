@@ -9,26 +9,36 @@ var APP = {
 		var scope = this;
 
 		var loader = new THREE.ObjectLoader();
-		var camera, scene, renderer, listener;
+		var camera, scene, renderer;
 
-		var vr, controls, effect;
+		var controls, effect, cameraVR, isVR;
 
 		var events = {};
 
-		this.dom = undefined;
+		this.dom = document.createElement( 'div' );
 
 		this.width = 500;
 		this.height = 500;
 
 		this.load = function ( json ) {
 
-			vr = json.project.vr;
+			isVR = json.project.vr;
 
 			renderer = new THREE.WebGLRenderer( { antialias: true } );
 			renderer.setClearColor( 0x000000 );
 			renderer.setPixelRatio( window.devicePixelRatio );
-			if ( json.project.shadows ) renderer.shadowMap.enabled = true;
-			this.dom = renderer.domElement;
+
+			if ( json.project.gammaInput ) renderer.gammaInput = true;
+			if ( json.project.gammaOutput ) renderer.gammaOutput = true;
+
+			if ( json.project.shadows ) {
+
+				renderer.shadowMap.enabled = true;
+				// renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+			}
+
+			this.dom.appendChild( renderer.domElement );
 
 			this.setScene( loader.parse( json.scene ) );
 			this.setCamera( loader.parse( json.camera ) );
@@ -104,49 +114,30 @@ var APP = {
 
 		this.setCamera = function ( value ) {
 
-
-
 			camera = value;
 			camera.aspect = this.width / this.height;
 			camera.updateProjectionMatrix();
 
-			listener = new THREE.AudioListener();
-			listener.name = "Listener";
-        	camera.add( listener );
+			if ( isVR === true ) {
 
-			if ( vr === true ) {
+				cameraVR = new THREE.PerspectiveCamera();
+				cameraVR.projectionMatrix = camera.projectionMatrix;
+				camera.add( cameraVR );
 
-				if ( camera.parent === null ) {
+				controls = new THREE.VRControls( cameraVR );
+				effect = new THREE.VREffect( renderer );
 
-					// camera needs to be in the scene so camera2 matrix updates
+				if ( WEBVR.isAvailable() === true ) {
 
-					scene.add( camera );
+					this.dom.appendChild( WEBVR.getButton( effect ) );
 
 				}
 
-				var camera2 = camera.clone();
-				camera.add( camera2 );
+				if ( WEBVR.isLatestAvailable() === false ) {
 
-				camera = camera2;
+					this.dom.appendChild( WEBVR.getMessage() );
 
-				controls = new THREE.VRControls( camera );
-				effect = new THREE.VREffect( renderer );
-
-				document.addEventListener( 'keyup', function ( event ) {
-
-					switch ( event.keyCode ) {
-						case 90:
-							controls.zeroSensor();
-							break;
-					}
-
-				} );
-
-				this.dom.addEventListener( 'dblclick', function () {
-
-					effect.setFullScreen( true );
-
-				} );
+				}
 
 			}
 
@@ -160,15 +151,21 @@ var APP = {
 
 		this.setSize = function ( width, height ) {
 
-			if ( renderer._fullScreen ) return;
-
 			this.width = width;
 			this.height = height;
 
-			camera.aspect = this.width / this.height;
-			camera.updateProjectionMatrix();
+			if ( camera ) {
 
-			renderer.setSize( width, height );
+				camera.aspect = this.width / this.height;
+				camera.updateProjectionMatrix();
+
+			}
+
+			if ( renderer ) {
+
+				renderer.setSize( width, height );
+
+			}
 
 		};
 
@@ -176,15 +173,7 @@ var APP = {
 
 			for ( var i = 0, l = array.length; i < l; i ++ ) {
 
-				try {
-
-					array[ i ]( event );
-
-				} catch ( e ) {
-
-					console.error( ( e.message || e ), ( e.stack || "" ) );
-
-				}
+				array[ i ]( event );
 
 			}
 
@@ -196,12 +185,22 @@ var APP = {
 
 			request = requestAnimationFrame( animate );
 
-			dispatch( events.update, { time: time, delta: time - prevTime } );
+			try {
 
-			if ( vr === true ) {
+				dispatch( events.update, { time: time, delta: time - prevTime } );
+
+			} catch ( e ) {
+
+				console.error( ( e.message || e ), ( e.stack || "" ) );
+
+			}
+
+			if ( isVR === true ) {
+
+				camera.updateMatrixWorld();
 
 				controls.update();
-				effect.render( scene, camera );
+				effect.render( scene, cameraVR );
 
 			} else {
 
@@ -245,6 +244,22 @@ var APP = {
 			dispatch( events.stop, arguments );
 
 			cancelAnimationFrame( request );
+
+		};
+
+		this.dispose = function () {
+
+			while ( this.dom.children.length ) {
+
+				this.dom.removeChild( this.dom.firstChild );
+
+			}
+
+			renderer.dispose();
+
+			camera = undefined;
+			scene = undefined;
+			renderer = undefined;
 
 		};
 

@@ -13,81 +13,90 @@ var Editor = function () {
 	this.DEFAULT_CAMERA.position.set( 20, 10, 20 );
 	this.DEFAULT_CAMERA.lookAt( new THREE.Vector3() );
 
+	var Signal = signals.Signal;
+
 	this.signals = {
 
 		// script
 
-		editScript: new SIGNALS.Signal(),
+		editScript: new Signal(),
 
 		// player
 
-		startPlayer: new SIGNALS.Signal(),
-		stopPlayer: new SIGNALS.Signal(),
+		startPlayer: new Signal(),
+		stopPlayer: new Signal(),
+
+		// vr
+
+		enterVR: new Signal(),
+
+		enteredVR: new Signal(),
+		exitedVR: new Signal(),
 
 		// actions 
 
-		showModal: new SIGNALS.Signal(),
+		showModal: new Signal(),
 
 		// notifications
 
-		editorCleared: new SIGNALS.Signal(),
+		editorCleared: new Signal(),
 
-		savingStarted: new SIGNALS.Signal(),
-		savingFinished: new SIGNALS.Signal(),
+		savingStarted: new Signal(),
+		savingFinished: new Signal(),
 
-		themeChanged: new SIGNALS.Signal(),
+		themeChanged: new Signal(),
 
-		transformModeChanged: new SIGNALS.Signal(),
-		snapChanged: new SIGNALS.Signal(),
-		spaceChanged: new SIGNALS.Signal(),
-		rendererChanged: new SIGNALS.Signal(),
+		transformModeChanged: new Signal(),
+		snapChanged: new Signal(),
+		spaceChanged: new Signal(),
+		rendererChanged: new Signal(),
 
-		sceneGraphChanged: new SIGNALS.Signal(),
+		sceneGraphChanged: new Signal(),
 
-		cameraChanged: new SIGNALS.Signal(),
+		cameraChanged: new Signal(),
 
-		geometryChanged: new SIGNALS.Signal(),
+		geometryChanged: new Signal(),
 
-		objectSelected: new SIGNALS.Signal(),
-		objectFocused: new SIGNALS.Signal(),
+		objectSelected: new Signal(),
+		objectFocused: new Signal(),
 
-		objectAdded: new SIGNALS.Signal(),
-		objectChanged: new SIGNALS.Signal(),
-		objectRemoved: new SIGNALS.Signal(),
+		objectAdded: new Signal(),
+		objectChanged: new Signal(),
+		objectRemoved: new Signal(),
 
-		helperAdded: new SIGNALS.Signal(),
-		helperRemoved: new SIGNALS.Signal(),
+		helperAdded: new Signal(),
+		helperRemoved: new Signal(),
 
-		materialChanged: new SIGNALS.Signal(),
+		materialChanged: new Signal(),
 
-		scriptAdded: new SIGNALS.Signal(),
-		scriptChanged: new SIGNALS.Signal(),
-		scriptRemoved: new SIGNALS.Signal(),
+		scriptAdded: new Signal(),
+		scriptChanged: new Signal(),
+		scriptRemoved: new Signal(),
 
-		fogTypeChanged: new SIGNALS.Signal(),
-		fogColorChanged: new SIGNALS.Signal(),
-		fogParametersChanged: new SIGNALS.Signal(),
-		windowResize: new SIGNALS.Signal(),
+		fogTypeChanged: new Signal(),
+		fogColorChanged: new Signal(),
+		fogParametersChanged: new Signal(),
+		windowResize: new Signal(),
 
-		showGridChanged: new SIGNALS.Signal(),
-		refreshSidebarObject3D: new SIGNALS.Signal(),
-		historyChanged: new SIGNALS.Signal(),
-		refreshScriptEditor: new SIGNALS.Signal(),
+		showGridChanged: new Signal(),
+		refreshSidebarObject3D: new Signal(),
+		historyChanged: new Signal(),
+		refreshScriptEditor: new Signal(),
 
-		cameraPositionSnap: new SIGNALS.Signal(),
-		undo: new SIGNALS.Signal(),
-		redo: new SIGNALS.Signal(),
-		switchCameraMode: new SIGNALS.Signal(),
-		unsaveProject: new SIGNALS.Signal(),
-		saveProject: new SIGNALS.Signal(),
-		showManChanged: new SIGNALS.Signal(),
+		cameraPositionSnap: new Signal(),
+		undo: new Signal(),
+		redo: new Signal(),
+		switchCameraMode: new Signal(),
+		unsaveProject: new Signal(),
+		saveProject: new Signal(),
+		showManChanged: new Signal(),
 
-		bgColorChanged: new SIGNALS.Signal(),
-		presetChanged: new SIGNALS.Signal()
+		bgColorChanged: new Signal(),
+		presetChanged: new Signal(),
 
 	};
 
-	this.config = new Config();
+	this.config = new Config( 'threejs-editor' );
 	this.history = new History( this );
 	this.storage = new Storage();
 	this.loader = new Loader( this );
@@ -569,6 +578,7 @@ Editor.prototype = {
 
 		}
 
+<<<<<<< HEAD
 		// TODO: Clean this up somehow
 
 		if ( json.project !== undefined ) {
@@ -586,6 +596,8 @@ Editor.prototype = {
 		// this.signals.bgColorChanged.dispatch( this.config.getKey('backgroundColor'));
 
 
+=======
+>>>>>>> 3510fdd91725f7681db845efd889c5e29e6e7446
 		var camera = loader.parse( json.camera );
 
 		this.camera.copy( camera );
@@ -648,7 +660,10 @@ Editor.prototype = {
 
 			metadata: {},
 			project: {
+				gammaInput: this.config.getKey( 'project/renderer/gammaInput' ),
+				gammaOutput: this.config.getKey( 'project/renderer/gammaOutput' ),
 				shadows: this.config.getKey( 'project/renderer/shadows' ),
+
 				vr: this.config.getKey( 'project/vr' ),
 				backgroundColor: this.config.getKey('backgroundColor'),
 				fog: this.scene.fog,
@@ -656,6 +671,7 @@ Editor.prototype = {
 				gazetime: this.config.getKey( 'project/gazetime' ),
 				quality: parseFloat(this.config.getKey( 'project/quality' )),
 				crosshair: this.config.getKey( 'project/crosshair' ),
+
 			},
 			camera: this.camera.toJSON(),
 			scene: this.scene.toJSON(),

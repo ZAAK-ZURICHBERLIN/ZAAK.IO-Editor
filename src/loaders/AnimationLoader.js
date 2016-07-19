@@ -8,9 +8,7 @@ THREE.AnimationLoader = function ( manager ) {
 
 };
 
-THREE.AnimationLoader.prototype = {
-
-	constructor: THREE.AnimationLoader,
+Object.assign( THREE.AnimationLoader.prototype, {
 
 	load: function ( url, onLoad, onProgress, onError ) {
 
@@ -31,7 +29,7 @@ THREE.AnimationLoader.prototype = {
 
 		for ( var i = 0; i < json.length; i ++ ) {
 
-			var clip = THREE.AnimationClip.parse( json[i] );
+			var clip = THREE.AnimationClip.parse( json[ i ] );
 
 			animations.push( clip );
 
@@ -41,4 +39,4 @@ THREE.AnimationLoader.prototype = {
 
 	}
 
-};
+} );

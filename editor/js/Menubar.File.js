@@ -326,51 +326,81 @@ Menubar.File = function ( editor ) {
     } );
     options.add( option );
 
-	// var option = new UI.Row();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Publish' );
-	// option.onClick( function () {
+	/*var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Publish' );
+	option.onClick( function () {
 
-	// 	var zip = new JSZip();
+		var zip = new JSZip();
 
-	// 	//
+		//
 
-	// 	var output = editor.toJSON();
-	// 	output.metadata.type = 'App';
-	// 	delete output.history;
 
-	// 	output = JSON.stringify( output, null, '\t' );
-	// 	output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+		var vr = output.project.vr;
 
-	// 	zip.file( 'app.json', output );
+		output = JSON.stringify( output, null, '\t' );
+		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-	// 	//
+			var includes = [];
 
-	// 	var manager = new THREE.LoadingManager( function () {
+			if ( vr ) {
 
-	// 		save( zip.generate( { type: 'blob' } ), 'download.zip' );
+				includes.push( '<script src="js/VRControls.js"></script>' );
+				includes.push( '<script src="js/VREffect.js"></script>' );
+				includes.push( '<script src="js/WebVR.js"></script>' );
 
-	// 	} );
+			}
 
-	// 	var loader = new THREE.XHRLoader( manager );
-	// 	loader.load( 'js/libs/app/index.html', function ( content ) {
+			content = content.replace( '<!-- includes -->', includes.join( '\n\t\t' ) );
 
-	// 		zip.file( 'index.html', content );
+			zip.file( 'index.html', content );
 
-	// 	} );
-	// 	loader.load( 'js/libs/app.js', function ( content ) {
 
-	// 		zip.file( 'js/app.js', content );
+		if ( vr ) {
 
-	// 	} );
-	// 	loader.load( '../build/three.min.js', function ( content ) {
+			loader.load( '../examples/js/controls/VRControls.js', function ( content ) {
 
-	// 		zip.file( 'js/three.min.js', content );
+				zip.file( 'js/VRControls.js', content );
 
-	// 	} );
+			} );
 
-	// } );
-	// options.add( option );
+			loader.load( '../examples/js/effects/VREffect.js', function ( content ) {
+
+				zip.file( 'js/VREffect.js', content );
+
+			} );
+
+			loader.load( '../examples/js/WebVR.js', function ( content ) {
+
+				zip.file( 'js/WebVR.js', content );
+
+			} );
+
+		}
+
+	} );
+	options.add( option );
+	*/
+
+	/*
+	// Publish (Dropbox)
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Publish (Dropbox)' );
+	option.onClick( function () {
+
+		var parameters = {
+			files: [
+				{ 'url': 'data:text/plain;base64,' + window.btoa( "Hello, World" ), 'filename': 'app/test.txt' }
+			]
+		};
+
+		Dropbox.save( parameters );
+
+	} );
+	options.add( option );
+	*/
 
 
 	//

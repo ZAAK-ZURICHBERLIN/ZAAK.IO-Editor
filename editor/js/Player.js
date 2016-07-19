@@ -11,18 +11,7 @@ var Player = function ( editor ) {
 	container.setPosition( 'absolute' );
 	container.setDisplay( 'none' );
 
-	//
-
-	// var player = new APP.Player();
 	var _scene;
-
-	// window.addEventListener( 'resize', function () {
-
-	// 	if ( player.dom === undefined ) return;
-
-	// 	player.setSize( container.dom.clientWidth, container.dom.clientHeight );
-
-	// } );
 
 	signals.startPlayer.add( function () {
 
@@ -81,16 +70,6 @@ var Player = function ( editor ) {
         
 
 	} );
-
-	// signals.stopPlayer.add( function () {
-
-	// 	// container.setDisplay( 'none' );
-
-	// 	// player.stop();
-
-	// 	// container.dom.removeChild( player.dom );
-
-	// } );
 
 	return container;
 

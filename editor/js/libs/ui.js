@@ -116,7 +116,8 @@ UI.Element.prototype = {
 
 var properties = [ 'position', 'left', 'top', 'right', 'bottom', 'width', 'height', 'border', 'borderLeft',
 'borderTop', 'borderRight', 'borderBottom', 'borderColor', 'display', 'overflow', 'margin', 'marginLeft', 'marginTop', 'marginRight', 'marginBottom', 'padding', 'paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'color',
-'backgroundColor', 'opacity', 'fontSize', 'fontWeight', 'textAlign', 'textDecoration', 'textTransform', 'cursor', 'zIndex','backgroundImage' ];
+'background', 'backgroundColor', 'opacity', 'fontSize', 'fontWeight', 'textAlign', 'textDecoration', 'textTransform', 'cursor', 'zIndex','backgroundImage' ];
+
 
 properties.forEach( function ( property ) {
 
@@ -684,6 +685,7 @@ UI.Number = function ( number ) {
 
 	this.precision = 2;
 	this.step = 1;
+	this.unit = '';
 
 	this.dom = dom;
 
@@ -751,19 +753,7 @@ UI.Number = function ( number ) {
 
 	function onChange( event ) {
 
-		var value = 0;
-
-		try {
-
-			value = eval( dom.value );
-
-		} catch ( error ) {
-
-			console.error( error.message );
-
-		}
-
-		scope.setValue( parseFloat( value ) );
+		scope.setValue( dom.value );
 
 	}
 
@@ -805,10 +795,31 @@ UI.Number.prototype.setValue = function ( value ) {
 
 	if ( value !== undefined ) {
 
+		value = parseFloat( value );
+
+		if ( value < this.min ) value = this.min;
+		if ( value > this.max ) value = this.max;
+
 		this.value = value;
-		this.dom.value = value.toFixed( this.precision );
+		this.dom.value = value.toFixed( this.precision ) + ' ' + this.unit;
 
 	}
+
+	return this;
+
+};
+
+UI.Number.prototype.setPrecision = function ( precision ) {
+
+	this.precision = precision;
+
+	return this;
+
+};
+
+UI.Number.prototype.setStep = function ( step ) {
+
+	this.step = step;
 
 	return this;
 
@@ -823,14 +834,13 @@ UI.Number.prototype.setRange = function ( min, max ) {
 
 };
 
-UI.Number.prototype.setPrecision = function ( precision ) {
+UI.Number.prototype.setUnit = function ( unit ) {
 
-	this.precision = precision;
+	this.unit = unit;
 
 	return this;
 
 };
-
 
 // Integer
 
@@ -923,19 +933,7 @@ UI.Integer = function ( number ) {
 
 	function onChange( event ) {
 
-		var value = 0;
-
-		try {
-
-			value = eval( dom.value );
-
-		} catch ( error ) {
-
-			console.error( error.message );
-
-		}
-
-		scope.setValue( value );
+		scope.setValue( dom.value );
 
 	}
 
@@ -977,10 +975,20 @@ UI.Integer.prototype.setValue = function ( value ) {
 
 	if ( value !== undefined ) {
 
-		this.value = value | 0;
-		this.dom.value = value | 0;
+		value = parseInt( value );
+
+		this.value = value;
+		this.dom.value = value;
 
 	}
+
+	return this;
+
+};
+
+UI.Number.prototype.setStep = function ( step ) {
+
+	this.step = step;
 
 	return this;
 
@@ -1039,8 +1047,6 @@ UI.HorizontalRule.prototype.constructor = UI.HorizontalRule;
 UI.Button = function ( value ) {
 
 	UI.Element.call( this );
-
-	var scope = this;
 
 	var dom = document.createElement( 'button' );
 	dom.className = 'Button';

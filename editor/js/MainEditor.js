@@ -213,6 +213,61 @@ MainEditor.prototype = {
 
 		}
 
+		//VR STUFF of doob
+	// /*
+	// 	window.addEventListener( 'message', function ( event ) {
+
+	// 		editor.clear();
+	// 		editor.fromJSON( event.data );
+
+	// 	}, false );
+	// 	*/
+
+	// 	// VR
+
+	// 	var groupVR;
+
+	// 	// TODO: Use editor.signals.enteredVR (WebVR 1.0)
+
+	// 	editor.signals.enterVR.add( function () {
+
+	// 		if ( groupVR === undefined ) {
+
+	// 			groupVR = new THREE.HTMLGroup( viewport.dom );
+	// 			editor.sceneHelpers.add( groupVR );
+
+	// 			var mesh = new THREE.HTMLMesh( sidebar.dom );
+	// 			mesh.position.set( 15, 0, 15 );
+	// 			mesh.rotation.y = - 0.5;
+	// 			groupVR.add( mesh );
+
+	// 			var signals = editor.signals;
+
+	// 			function updateTexture() {
+
+	// 				mesh.material.map.update();
+
+	// 			}
+
+	// 			signals.objectSelected.add( updateTexture );
+	// 			signals.objectAdded.add( updateTexture );
+	// 			signals.objectChanged.add( updateTexture );
+	// 			signals.objectRemoved.add( updateTexture );
+	// 			signals.sceneGraphChanged.add( updateTexture );
+	// 			signals.historyChanged.add( updateTexture );
+
+	// 		}
+
+	// 		groupVR.visible = true;
+
+	// 	} );
+
+	// 	editor.signals.exitedVR.add( function () {
+
+	// 		if ( groupVR !== undefined ) groupVR.visible = false;
+
+	// 	} );
+
 		function takeScreenshot() {
 		    var dataUrl = renderer.domElement.toDataURL("image/png");
 		    if (CARDBOARD_DEBUG) console.debug("SCREENSHOT: " + dataUrl);

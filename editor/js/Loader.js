@@ -16,6 +16,16 @@ var Loader = function ( editor ) {
 		var filename = file.name;
 		var extension = filename.split( '.' ).pop().toLowerCase();
 
+		//Debug download stuff
+		// var reader = new FileReader();
+		// reader.addEventListener( 'progress', function ( event ) {
+
+		// 	var size = '(' + Math.floor( event.total / 1000 ).format() + ' KB)';
+		// 	var progress = Math.floor( ( event.loaded / event.total ) * 100 ) + '%';
+		// 	console.log( 'Loading', filename, size, progress );
+
+		// } );
+
 		switch ( extension ) {
 
 			case 'amf':
@@ -137,6 +147,41 @@ var Loader = function ( editor ) {
 				reader.readAsText( file );
 
 				break;
+
+			case 'fbx':
+
+				reader.addEventListener( 'load', function ( event ) {
+
+					var contents = event.target.result;
+
+					var loader = new THREE.FBXLoader();
+					var object = loader.parse( contents );
+
+					editor.execute( new AddObjectCommand( object ) );
+
+				}, false );
+				reader.readAsText( file );
+
+				break;
+
+				case 'gltf':
+
+					reader.addEventListener( 'load', function ( event ) {
+
+						var contents = event.target.result;
+						var json = JSON.parse( contents );
+
+						var loader = new THREE.GLTFLoader();
+						var collada = loader.parse( json );
+
+						collada.scene.name = filename;
+
+						editor.execute( new AddObjectCommand( collada.scene ) );
+
+					}, false );
+					reader.readAsText( file );
+
+					break;
 
 			case 'js':
 			case 'json':
@@ -448,7 +493,7 @@ var Loader = function ( editor ) {
 
 					if ( result.materials.length > 1 ) {
 
-						material = new THREE.MeshFaceMaterial( result.materials );
+						material = new THREE.MultiMaterial( result.materials );
 
 					} else {
 

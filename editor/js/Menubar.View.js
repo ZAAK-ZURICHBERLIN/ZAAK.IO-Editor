@@ -71,6 +71,21 @@ Menubar.View = function ( editor ) {
 
 			element.msRequestFullscreen();
 
+	// VR mode
+
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'VR mode' );
+	option.onClick( function () {
+
+		if ( WEBVR.isAvailable() === true ) {
+
+			editor.signals.enterVR.dispatch();
+
+		} else {
+
+			alert( 'WebVR nor available' );
+
 		}
 
 	} );

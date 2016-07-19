@@ -7,8 +7,11 @@ var Storage = function () {
 	var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
 
 	if ( indexedDB === undefined  ) {
+
 		console.warn( 'Storage: IndexedDB not available.' );
+
 		return { init: function () {}, get: function () {}, set: function () {}, clear: function () {}, size: function () {} };
+
 	}
 
 	var name = 'threejs-editor';
@@ -85,6 +88,8 @@ var Storage = function () {
 
 		clear: function () {
 
+			if ( database === undefined ) return;
+
 			var transaction = database.transaction( [ 'states' ], 'readwrite' );
 			var objectStore = transaction.objectStore( 'states' );
 			var request = objectStore.clear();
@@ -131,6 +136,6 @@ var Storage = function () {
 		    }
 		}
 
-	}
+	};
 
 };
