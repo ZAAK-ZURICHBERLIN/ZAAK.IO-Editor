@@ -32004,8 +32004,10 @@ var Viewport = function ( editor ) {
 		function ( geometry, materials ) {
 			vrHuman = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: humanMap, side : THREE.DoubleSide}));
 			sceneHelpers.add( vrHuman );
+
 			vrHuman.scale.set(1,1,1);
 			vrHuman.rotation.set(0,3.14,0);
+			vrHuman.position.set(0,-2,0);
 		}
 
 	);
