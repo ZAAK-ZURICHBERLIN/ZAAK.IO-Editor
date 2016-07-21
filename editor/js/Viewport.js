@@ -36,8 +36,7 @@ var Viewport = function ( editor ) {
 
 	// helpers
 
-	var grid = new THREE.GridHelper( 30, 60 , 0x000000,0x000000);
-	sceneHelpers.add( grid );
+
 
 	//
 
@@ -63,7 +62,7 @@ var Viewport = function ( editor ) {
 		// '3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
-			vrHuman = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: humanMap }));
+			vrHuman = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: humanMap, side : THREE.DoubleSide}));
 			sceneHelpers.add( vrHuman );
 			vrHuman.scale.set(1,1,1);
 			// vrHuman.rotation.set(0,3.14,0);
@@ -78,6 +77,9 @@ var Viewport = function ( editor ) {
 	selectionBox.material.transparent = true;
 	selectionBox.visible = false;
 	sceneHelpers.add( selectionBox );
+
+	var grid = new THREE.GridHelper( 30, 60 );
+	sceneHelpers.add( grid );
 
 	var objectPositionOnDown = null;
 	var objectRotationOnDown = null;
@@ -336,7 +338,8 @@ var Viewport = function ( editor ) {
 
 		// grid.setColors( 0x444444, 0x888888 );
 		sceneHelpers.remove( grid );
-		grid = new THREE.GridHelper( 30, 60);// 0xbbbbbb, 0x888888 );
+		grid = new THREE.GridHelper( 30, 60, 0x444444, 0x888888 );
+		sceneHelpers.add( grid );
 		clearColor = 0xaaaaaa;
 
 		/*
@@ -710,6 +713,7 @@ var Viewport = function ( editor ) {
 	signals.showGridChanged.add( function ( showGrid ) {
 
 		grid.visible = showGrid;
+		console.log(grid);
 		render();
 
 	} );

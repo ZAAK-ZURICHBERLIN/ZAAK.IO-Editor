@@ -363,14 +363,12 @@ THREE.EditorControls = function ( object, domElement ) {
 
 		if(scope.controler instanceof THREE.PerspectiveCamera !== true){
 
-			console.log("distance?");
-
 			scope.controler.zoom = Math.max(scope.controler.zoom - delta.z * 0.001, 0.1);	
 
-			// scope.controler.left = scope.controler.left + delta.z*0.01;
-			// // scope.controler.right = scope.controler.right + delta.z*0.01;
-			// scope.controler.top == scope.controler.top + delta.z*0.001;
-			// scope.controler.bottom == scope.controler.bottom + delta.z*0.001;
+			/*scope.controler.left = scope.controler.left + delta.z*0.01;
+			scope.controler.right = scope.controler.right + delta.z*0.01;
+			scope.controler.top = scope.controler.top + delta.z*0.001;
+			scope.controler.bottom = scope.controler.bottom + delta.z*0.001;*/
 
 			scope.controler.updateProjectionMatrix();
 		}
@@ -22625,53 +22623,53 @@ var Player = function ( editor ) {
 		delete _scene.history;
 
 		// console.log(_scene);
-		// App.Helper.Preview(_scene);
+		App.Helper.Preview(_scene);
 
         // preview box
-        var preview = "<div id='preview' class='modal-box' style='height:600px;width:900px;text-align: center;'> \
-        <header style='background-color:#333;'> \
-            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
-        </header> \
-        <div style='height:100%;'> \
-            <iframe id='preview_iframe' width='100%' height='100%' allowfullscreen src='../../ZAAK.IO-Viewer/index.html'></iframe> \
-        </div></div>";
-        $("body").append($.parseHTML(preview));
+        // var preview = "<div id='preview' class='modal-box' style='height:600px;width:900px;text-align: center;'> \
+        // <header style='background-color:#333;'> \
+        //     <a class='js-modal-close close' style='top:1.5%;'>×</a> \
+        // </header> \
+        // <div style='height:100%;'> \
+        //     <iframe id='preview_iframe' width='100%' height='100%' allowfullscreen src='../../ZAAK.IO-Viewer/index.html'></iframe> \
+        // </div></div>";
+        // $("body").append($.parseHTML(preview));
 
-        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
-        $("body").append(modal);
+        // var modal =  ("<div class='modal-overlay js-modal-close'></div>");
+        // $("body").append(modal);
 
-         setTimeout(function() {
+        //  setTimeout(function() {
 
-	        // $('#preview_iframe').load(function(){
-	        // 	console.log($('#preview_iframe')[0]);
-	        var parentFrame = $('#preview_iframe');//.find('#myIframe');
-	        parentFrame[0].contentWindow.viewer.startScene(_scene); // load json data
-	            // $('#preview_iframe')[0].contentWindow.setManagerMode(); // load json data
-	        // });
-        }, 1000);
+	       //  // $('#preview_iframe').load(function(){
+	       //  // 	console.log($('#preview_iframe')[0]);
+	       //  var parentFrame = $('#preview_iframe');//.find('#myIframe');
+	       //  parentFrame[0].contentWindow.viewer.startScene(_scene); // load json data
+	       //      // $('#preview_iframe')[0].contentWindow.setManagerMode(); // load json data
+	       //  // });
+        // }, 1000);
 
 
-        $(".modal-overlay").fadeTo(500, 0.9);
-        $('#preview').fadeIn();
-        // modal helper
-        $(".js-modal-close, .modal-overlay").click(function() {
-            $(".modal-box, .modal-overlay").fadeOut(500, function() {
-            	// player.stop();
-            	scene = _scene;
-                $(".modal-overlay").remove();
-                $("#preview").remove();
-                signals.stopPlayer.dispatch();
+        // $(".modal-overlay").fadeTo(500, 0.9);
+        // $('#preview').fadeIn();
+        // // modal helper
+        // $(".js-modal-close, .modal-overlay").click(function() {
+        //     $(".modal-box, .modal-overlay").fadeOut(500, function() {
+        //     	// player.stop();
+        //     	scene = _scene;
+        //         $(".modal-overlay").remove();
+        //         $("#preview").remove();
+        //         signals.stopPlayer.dispatch();
 
-            });
-        });
-        $(window).resize(function() {
-            $(".modal-box").css({
-                top: ($(window).height() - $("#preview").outerHeight()) / 2,
-                left: ($(window).width() - $("#preview").outerWidth()) / 2
-            });
-        });
+        //     });
+        // });
+        // $(window).resize(function() {
+        //     $(".modal-box").css({
+        //         top: ($(window).height() - $("#preview").outerHeight()) / 2,
+        //         left: ($(window).width() - $("#preview").outerWidth()) / 2
+        //     });
+        // });
 
-        $(window).resize();
+        // $(window).resize();
         
 
 	} );
@@ -25173,46 +25171,46 @@ Menubar.File = function ( editor ) {
 
 	// Export Geometry
 
-	// var option = new UI.Row();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Export Geometry' );
-	// option.onClick( function () {
+	/*var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export Geometry' );
+	option.onClick( function () {
 
-	// 	var object = editor.selected;
+		var object = editor.selected;
 
-	// 	if ( object === null ) {
+		if ( object === null ) {
 
-	// 		alert( 'No object selected.' );
-	// 		return;
+			alert( 'No object selected.' );
+			return;
 
-	// 	}
+		}
 
-	// 	var geometry = object.geometry;
+		var geometry = object.geometry;
 
-	// 	if ( geometry === undefined ) {
+		if ( geometry === undefined ) {
 
-	// 		alert( 'The selected object doesn\'t have geometry.' );
-	// 		return;
+			alert( 'The selected object doesn\'t have geometry.' );
+			return;
 
-	// 	}
+		}
 
-	// 	var output = geometry.toJSON();
+		var output = geometry.toJSON();
 
-	// 	try {
+		try {
 
-	// 		output = JSON.stringify( output, null, '\t' );
-	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+			output = JSON.stringify( output, null, '\t' );
+			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-	// 	} catch ( e ) {
+		} catch ( e ) {
 
-	// 		output = JSON.stringify( output );
+			output = JSON.stringify( output );
 
-	// 	}
+		}
 
-	// 	saveString( output, 'geometry.json' );
+		saveString( output, 'geometry.json' );
 
-	// } );
-	// options.add( option );
+	} );
+	options.add( option );*/
 
 	// Export Geometry
 
@@ -25259,37 +25257,37 @@ Menubar.File = function ( editor ) {
 
 	// Export Object
 
-	// var option = new UI.Row();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Export Object' );
-	// option.onClick( function () {
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export Object' );
+	option.onClick( function () {
 
-	// 	var object = editor.selected;
+		var object = editor.selected;
 
-	// 	if ( object === null ) {
+		if ( object === null ) {
 
-	// 		alert( 'No object selected' );
-	// 		return;
+			alert( 'No object selected' );
+			return;
 
-	// 	}
+		}
 
-	// 	var output = object.toJSON();
+		var output = object.toJSON();
 
-	// 	try {
+		try {
 
-	// 		output = JSON.stringify( output, null, '\t' );
-	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+			output = JSON.stringify( output, null, '\t' );
+			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-	// 	} catch ( e ) {
+		} catch ( e ) {
 
-	// 		output = JSON.stringify( output );
+			output = JSON.stringify( output );
 
-	// 	}
+		}
 
-	// 	saveString( output, 'model.json' );
+		saveString( output, 'model.json' );
 
-	// } );
-	// options.add( option );
+	} );
+	options.add( option );
 
 	// // Export Scene
 
@@ -25907,7 +25905,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
-	options.add( option );
+	// options.add( option );
 
 	// Cylinder
 
@@ -25930,7 +25928,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
-	options.add( option );
+	// options.add( option );
 
 	// Sphere
 	var option = new UI.Row();
@@ -25994,7 +25992,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
-	options.add( option );
+	// options.add( option );
 
 	// TorusKnot
 
@@ -26017,7 +26015,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
-	options.add( option );
+	// options.add( option );
 
 	/*
 	// Teapot
@@ -26496,9 +26494,7 @@ Menubar.Status = function ( editor ) {
 	editor.storage.size( function (size){
 
 				var _size = (size !== null) ? size : "0";
-				console.log(size);
 				title.setTextContent( "Size : " + _size/10 + "/50Mb");
-				// title.setWidth(size);
 
 		});
 
@@ -31980,13 +31976,12 @@ var Viewport = function ( editor ) {
 
 	// helpers
 
-	var grid = new THREE.GridHelper( 30, 60 , 0x000000,0x000000);
-	sceneHelpers.add( grid );
+
 
 	//
 
 	var camera = editor.camera;
-	var perspCam = true;	
+	// var perspCam = true;	
 
 	//
 
@@ -32007,7 +32002,7 @@ var Viewport = function ( editor ) {
 		// '3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
-			vrHuman = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: humanMap }));
+			vrHuman = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: humanMap, side : THREE.DoubleSide}));
 			sceneHelpers.add( vrHuman );
 			vrHuman.scale.set(1,1,1);
 			// vrHuman.rotation.set(0,3.14,0);
@@ -32022,6 +32017,9 @@ var Viewport = function ( editor ) {
 	selectionBox.material.transparent = true;
 	selectionBox.visible = false;
 	sceneHelpers.add( selectionBox );
+
+	var grid = new THREE.GridHelper( 30, 60 );
+	sceneHelpers.add( grid );
 
 	var objectPositionOnDown = null;
 	var objectRotationOnDown = null;
@@ -32280,7 +32278,8 @@ var Viewport = function ( editor ) {
 
 		// grid.setColors( 0x444444, 0x888888 );
 		sceneHelpers.remove( grid );
-		grid = new THREE.GridHelper( 30, 60);// 0xbbbbbb, 0x888888 );
+		grid = new THREE.GridHelper( 30, 60, 0x444444, 0x888888 );
+		sceneHelpers.add( grid );
 		clearColor = 0xaaaaaa;
 
 		/*
@@ -32312,6 +32311,9 @@ var Viewport = function ( editor ) {
 
 		var position = camera.position;
 
+		var distance = THREE.Vector3();
+
+
 		if (camera instanceof THREE.PerspectiveCamera) {
             camera = new THREE.OrthographicCamera(window.innerWidth / -16, window.innerWidth / 16, window.innerHeight / 16, window.innerHeight / -16, -200, 10000);
 
@@ -32329,8 +32331,8 @@ var Viewport = function ( editor ) {
         transformControls.controler = camera; // update
 
         // controls.zoom(0);
-
-        editor.focus(editor.selected);
+        if(editor.selected != undefined)
+        	editor.focus(editor.selected);
 		// render();
 
 	} );
@@ -32338,7 +32340,6 @@ var Viewport = function ( editor ) {
 	signals.cameraPositionSnap.add( function ( mode ) {
 
 		//Needs Update to work without selected object
-
 		var distance = camera.position.length();
 		var newPos;
 
@@ -32652,6 +32653,7 @@ var Viewport = function ( editor ) {
 	signals.showGridChanged.add( function ( showGrid ) {
 
 		grid.visible = showGrid;
+		console.log(grid);
 		render();
 
 	} );
@@ -32747,6 +32749,8 @@ var Viewport = function ( editor ) {
 
 			renderer.clear();
 			renderer.render( scene, camera );
+
+			// console.log(camera);
 
 			if ( renderer instanceof THREE.RaytracingRenderer === false ) {
 
@@ -35132,11 +35136,6 @@ var Editor = function () {
 	this.camera.aspect = this.DEFAULT_CAMERA.aspect;
  	this.camera.updateProjectionMatrix();
 
-	// this.camera = new THREE.CombinedCamera( window.innerWidth / 2, window.innerHeight / 2, 70, 1, 1000, - 500, 1000 );
-	// this.camera.name = 'ComboCamera';//'Camera';
-	// this.camera.position.set( 20, 10, 20 );
-	// this.camera.lookAt( new THREE.Vector3() );
-
 	this.scene = new THREE.Scene();
 	this.scene.name = 'Scene';
 
@@ -35586,7 +35585,7 @@ Editor.prototype = {
 		this.signals.editorCleared.dispatch();
 		this.signals.windowResize.dispatch();
 
-
+		this.signals.bgColorChanged.dispatch(0xC8C8C8);
 
 	},
 
