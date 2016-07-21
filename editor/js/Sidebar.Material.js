@@ -16,8 +16,8 @@ Sidebar.Material = function ( editor ) {
 	var copiedMaterial;
 	var managerRow = new UI.Row();
 
-	managerRow.add( new UI.Text( '' ).setWidth( '90px' ) );
-	managerRow.add( new UI.Button( 'New' ).onClick( function () {
+	managerRow.add( new UI.Text( 'Actions' ).setWidth( '90px' ) );
+	managerRow.add( new UI.Button( 'Reset' ).onClick( function () {
 
 		var material = new THREE[ materialClass.getValue() ]();
 		editor.execute( new SetMaterialCommand( currentObject, material ), 'New Material: ' + materialClass.getValue() );
@@ -40,6 +40,20 @@ Sidebar.Material = function ( editor ) {
 		update();
 
 	} ) );
+
+	var materialUUIDRenew = new UI.Button( 'Solo' ).onClick( function () {
+
+		materialUUID.setValue( THREE.Math.generateUUID() );
+		editor.execute( new SetMaterialValueCommand( editor.selected, 'name', materialName.getValue() + '_copy' ) );
+
+		update();
+
+	} );
+
+	// materialUUIDRow.add( new UI.Text( 'UUID' ).setWidth( '90px' ) );
+	//REMOVED
+	// materialUUIDRow.add( materialUUID );
+	managerRow.add( materialUUIDRenew );
 
 	container.add( managerRow );
 
@@ -69,19 +83,20 @@ Sidebar.Material = function ( editor ) {
 
 	// uuid
 
-	// var materialUUIDRow = new UI.Row();
-	// var materialUUID = new UI.Input().setWidth( '115px' ).setFontSize( '12px' ).setDisabled( true );
-	// var materialUUIDRenew = new UI.Button( '⟳' ).setMarginLeft( '7px' ).onClick( function () {
+	var materialUUIDRow = new UI.Row();
+	var materialUUID = new UI.Input().setWidth( '115px' ).setFontSize( '12px' ).setDisabled( true );
+	var materialUUIDRenew = new UI.Button( '+' ).setMarginLeft( '7px' ).onClick( function () {
 
-	// 	materialUUID.setValue( THREE.Math.generateUUID() );
-	// 	update();
+		materialUUID.setValue( THREE.Math.generateUUID() );
+		update();
 
-	// } );
+	} );
 
-	// materialUUIDRow.add( new UI.Text( 'UUID' ).setWidth( '90px' ) );
-	// materialUUIDRow.add( materialUUID );
-	// materialUUIDRow.add( materialUUIDRenew );
+	materialUUIDRow.add( new UI.Text( 'UUID' ).setWidth( '90px' ) );
+	materialUUIDRow.add( materialUUID );
+	materialUUIDRow.add( materialUUIDRenew );
 
+	//REMOVED
 	// container.add( materialUUIDRow );
 
 	// name
@@ -96,8 +111,7 @@ Sidebar.Material = function ( editor ) {
 	materialNameRow.add( new UI.Text( 'Name' ).setWidth( '90px' ) );
 	materialNameRow.add( materialName );
 
-	//REMOVED
-	// container.add( materialNameRow );
+	container.add( materialNameRow );
 
 	// program
 

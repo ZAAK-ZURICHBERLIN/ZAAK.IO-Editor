@@ -26,17 +26,17 @@ var Viewport = function ( editor ) {
 
 	var vrEffect, vrControls;
 
-	if ( WEBVR.isAvailable() === true ) {
+	// if ( WEBVR.isAvailable() === true ) {
 
-		var vrCamera = new THREE.PerspectiveCamera();
-		vrCamera.projectionMatrix = camera.projectionMatrix;
-		camera.add( vrCamera );
+	// 	var vrCamera = new THREE.PerspectiveCamera();
+	// 	vrCamera.projectionMatrix = camera.projectionMatrix;
+	// 	camera.add( vrCamera );
 
-	}
+	// }
 
 	// helpers
 
-	var grid = new THREE.GridHelper( 30, 60 );
+	var grid = new THREE.GridHelper( 30, 60 , 0x000000,0x000000);
 	sceneHelpers.add( grid );
 
 	//
@@ -52,6 +52,8 @@ var Viewport = function ( editor ) {
 
 	// instantiate a loader
 	var loader = new THREE.JSONLoader();
+	var tex_loader = new THREE.TextureLoader();
+	var humanMap = tex_loader.load(DUMMY_TEX);
 	var vrHuman;
 
 	// load a resource
@@ -61,15 +63,15 @@ var Viewport = function ( editor ) {
 		// '3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
-			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
+			vrHuman = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: humanMap }));
 			sceneHelpers.add( vrHuman );
-			vrHuman.scale.set(0.008,0.008,0.008);
-			vrHuman.rotation.set(0,3.14,0);
+			vrHuman.scale.set(1,1,1);
+			// vrHuman.rotation.set(0,3.14,0);
 		}
 
 	);
 
-	// var box = new THREE.Box3();
+	var box = new THREE.Box3();
 
 	var selectionBox = new THREE.BoxHelper();
 	selectionBox.material.depthTest = false;
@@ -332,7 +334,9 @@ var Viewport = function ( editor ) {
 
 	signals.themeChanged.add( function ( value ) {
 
-		grid.setColors( 0x444444, 0x888888 );
+		// grid.setColors( 0x444444, 0x888888 );
+		sceneHelpers.remove( grid );
+		grid = new THREE.GridHelper( 30, 60);// 0xbbbbbb, 0x888888 );
 		clearColor = 0xaaaaaa;
 
 		/*
@@ -491,18 +495,18 @@ var Viewport = function ( editor ) {
 
 		container.dom.appendChild( renderer.domElement );
 
-		if ( WEBVR.isAvailable() === true ) {
+		// if ( WEBVR.isAvailable() === true ) {
 
-			vrControls = new THREE.VRControls( vrCamera );
-			vrEffect = new THREE.VREffect( renderer );
+		// 	vrControls = new THREE.VRControls( vrCamera );
+		// 	vrEffect = new THREE.VREffect( renderer );
 
-			window.addEventListener( 'vrdisplaypresentchange', function ( event ) {
+		// 	window.addEventListener( 'vrdisplaypresentchange', function ( event ) {
 
-				effect.isPresenting ? signals.enteredVR.dispatch() : signals.exitedVR.dispatch();
+		// 		effect.isPresenting ? signals.enteredVR.dispatch() : signals.exitedVR.dispatch();
 
-			}, false );
+		// 	}, false );
 
-		}
+		// }
 
 		render();
 
@@ -630,7 +634,7 @@ var Viewport = function ( editor ) {
 
 	//@elephantatwork, changeable bgColor
 	signals.bgColorChanged.add(function ( bgColor ) {
-		console.log("ha");
+
 		renderer.setClearColor( bgColor, 1 );
 		editor.config.setKey( 'backgroundColor', bgColor);
 

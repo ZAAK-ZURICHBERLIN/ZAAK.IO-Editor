@@ -6,7 +6,7 @@ Sidebar.Object = function ( editor ) {
 
 	var signals = editor.signals;
 
-	var radConverter = 1.0;
+	var	radConverter = (editor.config.getKey('degree') == 'true') ? (180/Math.PI) : 1.0;
 
 	var container = new UI.Panel();
 	container.setBorderTop( '0' );
@@ -570,20 +570,20 @@ Sidebar.Object = function ( editor ) {
 	} );
 	
 	//TODO: test if working
-	// signals.sceneGraphChanged.add( function () {
+	signals.sceneGraphChanged.add( function () {
 
-	// 	var scene = editor.scene;
-	// 	var options = {};
+		var scene = editor.scene;
+		var options = {};
 
-	// 	scene.traverse( function ( object ) {
+		scene.traverse( function ( object ) {
 
-	// 		options[ object.id ] = object.name;
+			options[ object.id ] = object.name;
 
-	// 	} );
+		} );
 
-	// 	objectParent.setOptions( options );
+		objectParent.setOptions( options );
 
-	// } );
+	} );
 	
 	signals.objectChanged.add( function ( object ) {
 
@@ -603,9 +603,7 @@ Sidebar.Object = function ( editor ) {
 
 	signals.presetChanged.add( function (){
 
-		var degrees = editor.config.getKey('degree');
-
-		radConverter = (degrees == 'true') ? (180/Math.PI) : 1.0;
+		radConverter = (editor.config.getKey('degree') == 'true') ? (180/Math.PI) : 1.0;
 
 		if(editor.selected != null)
 			updateUI( editor.selected);

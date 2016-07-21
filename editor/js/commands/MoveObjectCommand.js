@@ -48,6 +48,7 @@ MoveObjectCommand.prototype = {
 
 		this.oldParent.remove( this.object );
 
+		// console.log(this.)
 		var children = this.newParent.children;
 		children.splice( this.newIndex, 0, this.object );
 		this.object.parent = this.newParent;

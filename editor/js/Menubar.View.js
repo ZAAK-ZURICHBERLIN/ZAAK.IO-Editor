@@ -70,6 +70,10 @@ Menubar.View = function ( editor ) {
 		} else if ( element.msRequestFullscreen ) {
 
 			element.msRequestFullscreen();
+		}
+	});
+
+	otpions.add(option);
 
 	// VR mode
 

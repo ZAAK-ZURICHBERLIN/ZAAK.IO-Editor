@@ -193,6 +193,8 @@ Editor.prototype = {
 
 		this.scene.add( object );
 
+		console.log("asdf");
+
 		this.signals.objectAdded.dispatch( object );
 		this.signals.sceneGraphChanged.dispatch();
 
@@ -578,7 +580,6 @@ Editor.prototype = {
 
 		}
 
-<<<<<<< HEAD
 		// TODO: Clean this up somehow
 
 		if ( json.project !== undefined ) {
@@ -595,9 +596,6 @@ Editor.prototype = {
 
 		// this.signals.bgColorChanged.dispatch( this.config.getKey('backgroundColor'));
 
-
-=======
->>>>>>> 3510fdd91725f7681db845efd889c5e29e6e7446
 		var camera = loader.parse( json.camera );
 
 		this.camera.copy( camera );

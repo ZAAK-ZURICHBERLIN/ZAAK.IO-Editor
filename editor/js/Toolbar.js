@@ -14,21 +14,21 @@ var Toolbar = function ( editor ) {
 
 	// translate / rotate / scale
 
-	var translate = new UI.Button( 'translate ( w )' ).onClick( function () {
+	var translate = new UI.Button( 'translate' ).onClick( function () {
 
 		signals.transformModeChanged.dispatch( 'translate' );
 
 	} );
 	buttons.add( translate );
 
-	var rotate = new UI.Button( 'rotate ( e )' ).onClick( function () {
+	var rotate = new UI.Button( 'rotate' ).onClick( function () {
 
 		signals.transformModeChanged.dispatch( 'rotate' );
 
 	} );
 	buttons.add( rotate );
 
-	var scale = new UI.Button( 'scale ( r )' ).onClick( function () {
+	var scale = new UI.Button( 'scale' ).onClick( function () {
 
 		signals.transformModeChanged.dispatch( 'scale' );
 

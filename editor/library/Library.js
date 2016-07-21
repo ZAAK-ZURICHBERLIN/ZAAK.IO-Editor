@@ -11,8 +11,6 @@ var Library = function(_src) {
 	var template = document.getElementById("template").text;
 	var content = document.getElementById("content");
 
-	// var emptyScene = new THREE.Scene();
-
 	var libLoader = new LibraryLoader(this);
 
 	var id = 0;
@@ -29,8 +27,9 @@ var Library = function(_src) {
 
 		canvas = document.getElementById( "c" );
 		
-		renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true } );
+		renderer = new THREE.WebGLRenderer( { canvas: canvas } );
 		renderer.setClearColor( 0xFFFFFF );
+		// renderer.setPixelRatio( window.devicePixelRatio );	
 
 	}
 
@@ -82,8 +81,6 @@ var Library = function(_src) {
 				var loader = new THREE.XHRLoader();
 				loader.crossOrigin = '';
 
-				console.log(library.objects[_id].media);
-
 				url = BASE_URL + library.objects[_id].media;
 
 				loader.load( url, function ( text ) {
@@ -92,8 +89,6 @@ var Library = function(_src) {
 
 					myBlob = new Blob(fileParts, {type : 'text/javascript'});
 					myFile = blobToFile(myBlob, _name);
-
-					console.log(myFile);
 
 					libLoader.loadFile( myFile );
 
@@ -231,6 +226,13 @@ var Library = function(_src) {
 
 		content.appendChild( element );
 
+		var img = document.createElement('img')
+
+		img.style.height = '200px';
+		img.src = "library/images/code.png";
+
+		element.querySelector(".scene").appendChild(img);
+
 		var _butt = element.querySelector("#addButton");
 
 		_butt.addEventListener('click', function(){
@@ -241,94 +243,90 @@ var Library = function(_src) {
 	}
 
 	//For 3D objects
-	this.createScenes = function(_object, file){
+	this.createScenes = function(_object, file, _name){
 
-		var scene = new THREE.Scene();
+		var _scene = new THREE.Scene();
 
-		// console.log(_object);
-		var _name = getDisplayName(_object.name);
+		if(_object.scene !== undefined){
 
-		console.log(_object);
+			_scene.uuid = _object.scene.uuid;
+			_scene.name = _object.scene.name;
+
+			while ( _object.scene.children.length > 0 ) {
+
+				_scene.add( _object.scene.children[ 0 ] );
+
+			}
+
+		}else{
+
+			_scene.add(_object);
+
+		}
+
 
 		// make a list item
 		var element = document.createElement( "div" );
 
 		element.className = "list-item";
-		var _libraryEntry = getDisplayName(_object);
-		var tags = _libraryEntry.tags[0];
+		var _libraryEntry = getDisplayName(_name);
+		var tags = ' ';
+		tags = _libraryEntry.tags[0];
 		element.innerHTML = template.replace('$', _libraryEntry.name ).replace('£', _libraryEntry.user.name ).replace('?', _libraryEntry.description ).replace('!', tags );
 
 		var _butt = element.querySelector("#addButton");
-		// console.log(_butt);
 		_butt.addEventListener('click', function(){
 			 window.parent.editor.loader.loadFile(file);
 			 window.parent.closeIFrame();
-			 // $(".modal-box, .modal-overlay").fadeOut(500, function() {
-    //             $(".modal-overlay").remove();
 
-    //         });
 		});
 
-		scene.userData.element = element.querySelector( ".scene" );
 
-		scene.userData.element.style.height = '200px';
+		_scene.userData.element = element.querySelector( ".scene" );
+		_scene.userData.element.style.height = "200px";
 
 		content.appendChild( element );
+
 		var camera = new THREE.PerspectiveCamera( 50, 1, 0.1, 1000 );
 		// camera.position.z = 2;
 		// Convert camera fov degrees to radians
 		var fov = camera.fov * ( Math.PI / 180 ); 
-				// _object.scale.set(_size,_size,_size);
-		_object.geometry.computeBoundingBox();
 
+		var distance = 10;
 
-
-
-		var width = _object.geometry.boundingBox.max.x - _object.geometry.boundingBox.min.x;
-		var height = _object.geometry.boundingBox.max.y - _object.geometry.boundingBox.min.y;
-		var depth = _object.geometry.boundingBox.max.z - _object.geometry.boundingBox.min.z;
-
-		// Calculate the camera distance
-		var _size = Math.max(depth, Math.max(width,height));
-
-		var distance = Math.abs( _size / Math.sin( fov / 2 ) );
 		camera.position.z = distance;
-		scene.userData.camera = camera;
+		_scene.userData.camera = camera;
 
-		controls = new THREE.OrbitControls( scene.userData.camera, scene.userData.element );
+		controls = new THREE.OrbitControls( _scene.userData.camera, _scene.userData.element );
 		
 		controls.minDistance = distance*0.2;
 		controls.maxDistance = distance*2;
 		controls.enablePan = true;
 		controls.enableZoom = true;
-		scene.userData.controls = controls;
+		_scene.userData.controls = controls;
 
-		// _object.geometry.computeBoundingBox();
-
-		// var _size = uniformDimension / Math.max(depth, Math.max(width,height));
-				scene.add(_object);
-
-		scene.add( new THREE.HemisphereLight( 0xaaaaaa, 0x444444 ) );
+		_scene.add( new THREE.HemisphereLight( 0xaaaaaa, 0x444444 ) );
 		var light = new THREE.DirectionalLight( 0xffffff, 0.5 );
 		light.position.set( 1, 1, 1 );
-		scene.add( light );
-		scenes.push( scene );
+		_scene.add( light );
+
+		scenes.push( _scene );
 
 
 	};
 
-	function getDisplayName( _object ){
+	function getDisplayName( _name ){
 
 		for(var i = 0; i < library.objects.length; i++){
 
 			var name = library.objects[i].media;
 
-			if(name == _object.name)
+			if(name == _name)
 				return library.objects[i];
 
 		} 
 
-		return null;
+		return "null";
 		// } );
 
 	}
@@ -364,12 +362,15 @@ var Library = function(_src) {
 
 		updateSize();
 		renderer.setClearColor( 0xffffff );
-		// renderer.setScissorTest( false );
+		renderer.setScissorTest( false );
 		renderer.clear();
-		renderer.setClearColor( 0xe0e0e0 );
-		// renderer.setScissorTest( true );
+		renderer.setClearColor( 0xf3f3f3 );
+		renderer.setScissorTest( true );
+		var id = 0;
 
 		scenes.forEach( function( scene ) {
+
+			id ++;
 			// so something moves
 			scene.children[0].rotation.y = Date.now() * 0.0001;
 			// get the element that is a place holder for where we want to
@@ -377,22 +378,31 @@ var Library = function(_src) {
 			var element = scene.userData.element;
 			// get its position relative to the page's viewport
 			var rect = element.getBoundingClientRect();
+
 			// check if it's offscreen. If so skip it
 			if ( rect.bottom < 0 || rect.top  > renderer.domElement.clientHeight ||
 				 rect.right  < 0 || rect.left > renderer.domElement.clientWidth ) {
 				return;  // it's off screen
 			}
+
+			// console.log("render");
 			// set the viewport
 			var width  = rect.right - rect.left;
 			var height = rect.bottom - rect.top;
 			var left   = rect.left;
 			var bottom = renderer.domElement.clientHeight - rect.bottom;
+			
 			renderer.setViewport( left, bottom, width, height );
 			renderer.setScissor( left, bottom, width, height );
+
+			// console.log(id);
+
+			// console.log(renderer.getScissor);
+
 			var camera = scene.userData.camera;
 			//camera.aspect = width / height; // not changing in this example
-			//camera.updateProjectionMatrix();
-			//scene.userData.controls.update();
+			// camera.updateProjectionMatrix();
+			// scene.userData.controls.update();
 			renderer.render( scene, camera );
 		} );
 

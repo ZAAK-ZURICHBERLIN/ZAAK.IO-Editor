@@ -105,10 +105,13 @@ EditorShortCuts.prototype = {
 			var _scripts = editor.scripts[_uuid];
 			
 			editor.execute( new AddObjectCommand( _object ) );
-			var length = _scripts.length-1;
-			for(var i = 0; i<_scripts.length; i++){
-				console.log(i);
-				editor.execute( new AddScriptCommand( _object, _scripts[i]  ) );
+
+			if(_scripts !== undefined){
+				var length = _scripts.length-1;
+				for(var i = 0; i<_scripts.length; i++){
+					console.log(i);
+					editor.execute( new AddScriptCommand( _object, _scripts[i]  ) );
+				}
 			}
 		}
 

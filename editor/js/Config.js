@@ -8,7 +8,7 @@ var Config = function ( name ) {
 		'autosave': true,
 		'theme': 'css/light.css',
 
-		'degree': false,
+		'degree': true,
 
 		'backgroundColor': 0xcccccc,
 

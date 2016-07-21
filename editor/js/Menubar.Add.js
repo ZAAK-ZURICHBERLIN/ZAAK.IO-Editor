@@ -127,50 +127,50 @@ Menubar.Add = function ( editor ) {
 	// options.add( option );
 
 	// //
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Library' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Library' );
+	// option.onClick( function () {
 
-        // preview box
-        var preview = "<div id='preview' class='modal-box' style='height:100%;width:100%;text-align: center;'> \
-        <header style='background-color:#333;'> \
-            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
-        </header> \
-        <div style='height:100%;'> \
-            <iframe id='library_iframe' width='100%' height='100%' allowfullscreen src=" + LIBRARY_URL + "></iframe> \
-        </div></div>";
-        $("body").append($.parseHTML(preview));
+ //        // preview box
+ //        var preview = "<div id='preview' class='modal-box' style='height:100%;width:100%;text-align: center;'> \
+ //        <header style='background-color:#333;'> \
+ //            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
+ //        </header> \
+ //        <div style='height:100%;'> \
+ //            <iframe id='library_iframe' width='100%' height='100%' allowfullscreen src=" + LIBRARY_URL + "></iframe> \
+ //        </div></div>";
+ //        $("body").append($.parseHTML(preview));
 
-        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
-        $("body").append(modal);
+ //        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
+ //        $("body").append(modal);
 
-        $(".modal-overlay").fadeTo(500, 0.9);
-        $('#preview').fadeIn();
-        // modal helper
-        $(".js-modal-close, .modal-overlay").click(function() {
-            $(".modal-box, .modal-overlay").fadeOut(500, function() {
-            	// player.stop();
-                $(".modal-overlay").remove();
-                $("#preview").remove();
-            });
-        });
-        $(window).resize(function() {
-            $(".modal-box").css({
-                top: ($(window).height() - $("#preview").outerHeight()) / 2,
-                left: ($(window).width() - $("#preview").outerWidth()) / 2
-            });
-        });
+ //        $(".modal-overlay").fadeTo(500, 0.9);
+ //        $('#preview').fadeIn();
+ //        // modal helper
+ //        $(".js-modal-close, .modal-overlay").click(function() {
+ //            $(".modal-box, .modal-overlay").fadeOut(500, function() {
+ //            	// player.stop();
+ //                $(".modal-overlay").remove();
+ //                $("#preview").remove();
+ //            });
+ //        });
+ //        $(window).resize(function() {
+ //            $(".modal-box").css({
+ //                top: ($(window).height() - $("#preview").outerHeight()) / 2,
+ //                left: ($(window).width() - $("#preview").outerWidth()) / 2
+ //            });
+ //        });
 
-        $(window).resize();
+ //        $(window).resize();
 
 
-	} );
-	options.add( option );
+	// } );
+	// options.add( option );
 
 	
 
-	options.add( new UI.HorizontalRule() );
+	// options.add( new UI.HorizontalRule() );
 
 	// Plane
 
@@ -394,7 +394,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
-	options.add( option );
+	// options.add( option );
 
 	// Sprite
 
@@ -534,7 +534,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( camera ) );
 
 	} );
-	options.add( option );
+	// options.add( option );
 
 	return container;
 

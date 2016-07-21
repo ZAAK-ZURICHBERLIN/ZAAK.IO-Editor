@@ -465,7 +465,7 @@ var Loader = function ( editor ) {
 		switch ( data.metadata.type.toLowerCase() ) {
 
 			case 'buffergeometry':
-				console.log("buffergeometry");
+				// console.log("buffergeometry");
 
 				var loader = new THREE.BufferGeometryLoader();
 				var result = loader.parse( data );
@@ -477,7 +477,7 @@ var Loader = function ( editor ) {
 				break;
 
 			case 'geometry':
-				console.log("geometry");
+				// console.log("geometry");
 
 				var loader = new THREE.JSONLoader();
 				loader.setTexturePath( scope.texturePath );

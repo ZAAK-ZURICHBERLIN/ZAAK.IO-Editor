@@ -77,7 +77,7 @@ Sidebar.Project = function ( editor ) {
 		updateRenderer();
 
 	} );
-	// rendererPropertiesRow.add( rendererAntialias );
+	rendererPropertiesRow.add( rendererAntialias );
 
 	// shadow
 	var shadowsRow = new UI.Row();
@@ -95,9 +95,9 @@ Sidebar.Project = function ( editor ) {
 
 	container.add( shadowsRow );
 
-	rendererPropertiesRow.add( new UI.Break() );
+	// rendererPropertiesRow.add( new UI.Break() );
 
-	/*// gamma input
+	// gamma input
 
 	var rendererGammaInput = new UI.THREE.Boolean( config.getKey( 'project/renderer/gammaInput' ), 'γ input' ).onChange( function () {
 
@@ -117,7 +117,7 @@ Sidebar.Project = function ( editor ) {
 	} );
 	rendererPropertiesRow.add( rendererGammaOutput );
 
-	container.add( rendererPropertiesRow );
+	// container.add( rendererPropertiesRow );
 
 	// Editable
 
@@ -131,7 +131,7 @@ Sidebar.Project = function ( editor ) {
 	editableRow.add( new UI.Text( 'Editable' ).setWidth( '90px' ) );
 	editableRow.add( editable );
 
-	container.add( editableRow );
+	// container.add( editableRow );
 
 	// VR
 
@@ -146,7 +146,7 @@ Sidebar.Project = function ( editor ) {
 	vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
 	vrRow.add( vr );
 
-	container.add( vrRow );*/
+	// container.add( vrRow );
 
 	// crosshair
 	var crosshairRow = new UI.Row();
@@ -385,11 +385,11 @@ Sidebar.Project = function ( editor ) {
 
 			renderer.shadowMap.enabled = true;
 			// renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
 		}
 
 		signals.rendererChanged.dispatch( renderer );
 
+		signals.bgColorChanged.dispatch( bgColor.getHexValue() );
 	}
 
 	createRenderer( config.getKey( 'project/renderer' ), config.getKey( 'project/renderer/antialias' ), config.getKey( 'project/renderer/shadows' ), config.getKey( 'project/renderer/gammaInput' ), config.getKey( 'project/renderer/gammaOutput' ) );

@@ -45,8 +45,6 @@ THREE.WebGLShadowMap = function ( _renderer, _lights, _objects, capabilities ) {
 		new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()
 	];
 
-	var _vector4 = new THREE.Vector4();
-
 	// init
 
 	var depthMaterialTemplate = new THREE.MeshDepthMaterial();
@@ -103,9 +101,6 @@ THREE.WebGLShadowMap = function ( _renderer, _lights, _objects, capabilities ) {
 		if ( scope.autoUpdate === false && scope.needsUpdate === false ) return;
 
 		if ( _lightShadows.length === 0 ) return;
-
-		// save the existing viewport so it can be restored later
-		_renderer.getViewport( _vector4 );
 
 		// Set GL state for depth map.
 		_state.clearColor( 1, 1, 1, 1 );
@@ -291,8 +286,6 @@ THREE.WebGLShadowMap = function ( _renderer, _lights, _objects, capabilities ) {
 			}
 
 		}
-
-		_renderer.setViewport( _vector4.x, _vector4.y, _vector4.z, _vector4.w );
 
 		// Restore GL state.
 		var clearColor = _renderer.getClearColor(),

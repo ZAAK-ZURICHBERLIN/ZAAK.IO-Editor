@@ -12,7 +12,7 @@ var LibraryLoader = function ( library ) {
 	this.loadFile = function ( file ) {
 
 		// library.createScenes(file, _id);
-		console.log(file);
+		// console.log(file);
 
 		var filename = file.name;
 		var extension = filename.split( '.' ).pop().toLowerCase();
@@ -476,10 +476,12 @@ var LibraryLoader = function ( library ) {
 
 				}
 
-				mesh.name = filename;
+				// mesh.name = filename;
 
 				// editor.execute( new AddObjectCommand( mesh ) );
-				Library.createScenes(mesh, file);
+				// console.log("mesh");
+
+				Library.createScenes(mesh, file, filename);
 
 
 				break;
@@ -500,6 +502,7 @@ var LibraryLoader = function ( library ) {
 					// editor.execute( new AddObjectCommand( result ) );
 					console.log(result);
 					// sobjects.add(result);
+					console.log("object");
 					library.createScenes(result);
 				}
 
@@ -520,7 +523,18 @@ var LibraryLoader = function ( library ) {
 
 			case 'app':
 
+				var loader = new THREE.ObjectLoader();
+				loader.setTexturePath( scope.texturePath );
+
+				var result = loader.parse( data.scene );
+
 				// editor.fromJSON( data );
+					console.log(data);
+					// sobjects.add(result);
+										console.log("app");
+
+					library.createScenes(result, file, filename);
+					// this.setScene( loader.parse(  ) );
 
 				break;
 

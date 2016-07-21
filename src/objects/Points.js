@@ -17,31 +17,12 @@ THREE.Points.prototype = Object.assign( Object.create( THREE.Object3D.prototype 
 
 	constructor: THREE.Points,
 
-<<<<<<< HEAD
-	var inverseMatrix = new THREE.Matrix4();
-	var ray = new THREE.Ray();
-=======
 	raycast: ( function () {
->>>>>>> 3510fdd91725f7681db845efd889c5e29e6e7446
 
 		var inverseMatrix = new THREE.Matrix4();
 		var ray = new THREE.Ray();
 		var sphere = new THREE.Sphere();
 
-<<<<<<< HEAD
-		var object = this;
-		var geometry = object.geometry;
-		var threshold = raycaster.params.Points.threshold;
-
-		inverseMatrix.getInverse( this.matrixWorld );
-		ray.copy( raycaster.ray ).applyMatrix4( inverseMatrix );
-
-		if ( geometry.boundingBox !== null ) {
-
-			if ( ray.intersectsBox( geometry.boundingBox ) === false ) return;
-
-		}
-=======
 		return function raycast( raycaster, intersects ) {
 
 			var object = this;
@@ -58,9 +39,6 @@ THREE.Points.prototype = Object.assign( Object.create( THREE.Object3D.prototype 
 
 			if ( raycaster.ray.intersectsSphere( sphere ) === false ) return;
 
-			//
->>>>>>> 3510fdd91725f7681db845efd889c5e29e6e7446
-
 			inverseMatrix.getInverse( matrixWorld );
 			ray.copy( raycaster.ray ).applyMatrix4( inverseMatrix );
 
@@ -72,12 +50,7 @@ THREE.Points.prototype = Object.assign( Object.create( THREE.Object3D.prototype 
 
 				var rayPointDistanceSq = ray.distanceSqToPoint( point );
 
-<<<<<<< HEAD
-				var intersectPoint = ray.closestPointToPoint( point );
-				intersectPoint.applyMatrix4( object.matrixWorld );
-=======
 				if ( rayPointDistanceSq < localThresholdSq ) {
->>>>>>> 3510fdd91725f7681db845efd889c5e29e6e7446
 
 					var intersectPoint = ray.closestPointToPoint( point );
 					intersectPoint.applyMatrix4( matrixWorld );

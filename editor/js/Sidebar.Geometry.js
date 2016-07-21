@@ -131,8 +131,8 @@ Sidebar.Geometry = function ( editor ) {
 	container.add( new Sidebar.Geometry.Geometry( editor ) );
 
 	// buffergeometry
-
-	container.add( new Sidebar.Geometry.BufferGeometry( editor ) );
+	// REMOVED
+	// container.add( new Sidebar.Geometry.BufferGeometry( editor ) );
 
 	// parameters
 

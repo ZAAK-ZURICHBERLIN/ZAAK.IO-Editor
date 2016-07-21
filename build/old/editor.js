@@ -182,7 +182,7 @@ MainEditor.prototype = {
 		function onWindowResize( event ) {
 
 			scope.editor.signals.windowResize.dispatch();
-			// console.log("RESIZE");
+			console.log("RESIZE");
 		}
 		
 
@@ -214,61 +214,6 @@ MainEditor.prototype = {
 			}
 
 		}
-
-		//VR STUFF of doob
-	// /*
-	// 	window.addEventListener( 'message', function ( event ) {
-
-	// 		editor.clear();
-	// 		editor.fromJSON( event.data );
-
-	// 	}, false );
-	// 	*/
-
-	// 	// VR
-
-	// 	var groupVR;
-
-	// 	// TODO: Use editor.signals.enteredVR (WebVR 1.0)
-
-	// 	editor.signals.enterVR.add( function () {
-
-	// 		if ( groupVR === undefined ) {
-
-	// 			groupVR = new THREE.HTMLGroup( viewport.dom );
-	// 			editor.sceneHelpers.add( groupVR );
-
-	// 			var mesh = new THREE.HTMLMesh( sidebar.dom );
-	// 			mesh.position.set( 15, 0, 15 );
-	// 			mesh.rotation.y = - 0.5;
-	// 			groupVR.add( mesh );
-
-	// 			var signals = editor.signals;
-
-	// 			function updateTexture() {
-
-	// 				mesh.material.map.update();
-
-	// 			}
-
-	// 			signals.objectSelected.add( updateTexture );
-	// 			signals.objectAdded.add( updateTexture );
-	// 			signals.objectChanged.add( updateTexture );
-	// 			signals.objectRemoved.add( updateTexture );
-	// 			signals.sceneGraphChanged.add( updateTexture );
-	// 			signals.historyChanged.add( updateTexture );
-
-	// 		}
-
-	// 		groupVR.visible = true;
-
-	// 	} );
-
-	// 	editor.signals.exitedVR.add( function () {
-
-	// 		if ( groupVR !== undefined ) groupVR.visible = false;
-
-	// 	} );
 
 		function takeScreenshot() {
 		    var dataUrl = renderer.domElement.toDataURL("image/png");
@@ -317,7 +262,6 @@ THREE.EditorControls = function ( object, domElement ) {
 	var normalMatrix = new THREE.Matrix3();
 	var pointer = new THREE.Vector2();
 	var pointerOld = new THREE.Vector2();
-	var spherical = new THREE.Spherical();
 
 	// events
 
@@ -363,8 +307,6 @@ THREE.EditorControls = function ( object, domElement ) {
 
 		if(scope.controler instanceof THREE.PerspectiveCamera !== true){
 
-			console.log("distance?");
-
 			scope.controler.zoom = Math.max(scope.controler.zoom - delta.z * 0.001, 0.1);	
 
 			// scope.controler.left = scope.controler.left + delta.z*0.01;
@@ -397,14 +339,21 @@ THREE.EditorControls = function ( object, domElement ) {
 
 		vector.copy( scope.controler.position ).sub( center );
 
-		spherical.setFromVector3( vector );
+		var theta = Math.atan2( vector.x, vector.z );
+		var phi = Math.atan2( Math.sqrt( vector.x * vector.x + vector.z * vector.z ), vector.y );
 
-		spherical.theta += delta.x;
-		spherical.phi += delta.y;
+		theta += delta.x;
+		phi += delta.y;
 
-		spherical.makeSafe();
+		var EPS = 0.000001;
 
-		vector.setFromSpherical( spherical );
+		phi = Math.max( EPS, Math.min( Math.PI - EPS, phi ) );
+
+		var radius = vector.length();
+
+		vector.x = radius * Math.sin( phi ) * Math.sin( theta );
+		vector.y = radius * Math.cos( phi );
+		vector.z = radius * Math.sin( phi ) * Math.cos( theta );
 
 		scope.controler.position.copy( center ).add( vector );
 
@@ -635,10 +584,12 @@ THREE.EditorControls.prototype.constructor = THREE.EditorControls;
 /**
  * @author arodic / https://github.com/arodic
  */
+ /*jshint sub:true*/
 
 ( function () {
 
 	'use strict';
+
 
 	var GizmoMaterial = function ( parameters ) {
 
@@ -913,15 +864,15 @@ THREE.EditorControls.prototype.constructor = THREE.EditorControls;
 		this.pickerGizmos = {
 
 			X: [
-				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0.6, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ]
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0.6, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ]
 			],
 
 			Y: [
-				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0.6, 0 ] ]
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0.6, 0 ] ]
 			],
 
 			Z: [
-				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0, 0.6 ], [ Math.PI / 2, 0, 0 ] ]
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0, 0.6 ], [ Math.PI / 2, 0, 0 ] ]
 			],
 
 			XYZ: [
@@ -1038,19 +989,19 @@ THREE.EditorControls.prototype.constructor = THREE.EditorControls;
 		this.pickerGizmos = {
 
 			X: [
-				[ new THREE.Mesh( new THREE.TorusBufferGeometry( 1, 0.12, 4, 12, Math.PI ), pickerMaterial ), [ 0, 0, 0 ], [ 0, - Math.PI / 2, - Math.PI / 2 ] ]
+				[ new THREE.Mesh( new THREE.TorusGeometry( 1, 0.12, 4, 12, Math.PI ), pickerMaterial ), [ 0, 0, 0 ], [ 0, - Math.PI / 2, - Math.PI / 2 ] ]
 			],
 
 			Y: [
-				[ new THREE.Mesh( new THREE.TorusBufferGeometry( 1, 0.12, 4, 12, Math.PI ), pickerMaterial ), [ 0, 0, 0 ], [ Math.PI / 2, 0, 0 ] ]
+				[ new THREE.Mesh( new THREE.TorusGeometry( 1, 0.12, 4, 12, Math.PI ), pickerMaterial ), [ 0, 0, 0 ], [ Math.PI / 2, 0, 0 ] ]
 			],
 
 			Z: [
-				[ new THREE.Mesh( new THREE.TorusBufferGeometry( 1, 0.12, 4, 12, Math.PI ), pickerMaterial ), [ 0, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ]
+				[ new THREE.Mesh( new THREE.TorusGeometry( 1, 0.12, 4, 12, Math.PI ), pickerMaterial ), [ 0, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ]
 			],
 
 			E: [
-				[ new THREE.Mesh( new THREE.TorusBufferGeometry( 1.25, 0.12, 2, 24 ), pickerMaterial ) ]
+				[ new THREE.Mesh( new THREE.TorusGeometry( 1.25, 0.12, 2, 24 ), pickerMaterial ) ]
 			],
 
 			XYZE: [
@@ -1176,7 +1127,7 @@ THREE.EditorControls.prototype.constructor = THREE.EditorControls;
 			],
 
 			XYZ: [
-				[ new THREE.Mesh( new THREE.BoxBufferGeometry( 0.125, 0.125, 0.125 ), new GizmoMaterial( { color: 0xffffff, opacity: 0.25 } ) ) ]
+				[ new THREE.Mesh( new THREE.BoxGeometry( 0.125, 0.125, 0.125 ), new GizmoMaterial( { color: 0xffffff, opacity: 0.25 } ) ) ]
 			]
 
 		};
@@ -1184,19 +1135,19 @@ THREE.EditorControls.prototype.constructor = THREE.EditorControls;
 		this.pickerGizmos = {
 
 			X: [
-				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0.6, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ]
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0.6, 0, 0 ], [ 0, 0, - Math.PI / 2 ] ]
 			],
 
 			Y: [
-				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0.6, 0 ] ]
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0.6, 0 ] ]
 			],
 
 			Z: [
-				[ new THREE.Mesh( new THREE.CylinderBufferGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0, 0.6 ], [ Math.PI / 2, 0, 0 ] ]
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), pickerMaterial ), [ 0, 0, 0.6 ], [ Math.PI / 2, 0, 0 ] ]
 			],
 
 			XYZ: [
-				[ new THREE.Mesh( new THREE.BoxBufferGeometry( 0.4, 0.4, 0.4 ), pickerMaterial ) ]
+				[ new THREE.Mesh( new THREE.BoxGeometry( 0.4, 0.4, 0.4 ), pickerMaterial ) ]
 			]
 
 		};
@@ -1615,7 +1566,7 @@ THREE.EditorControls.prototype.constructor = THREE.EditorControls;
 
 					if ( scope.axis === "XYZ" ) {
 
-						scale = 1 + ( ( point.y ) / Math.max( oldScale.x, oldScale.y, oldScale.z ) );
+						scale = 1 + ( ( point.y ) / 50 );
 
 						scope.object.scale.x = oldScale.x * scale;
 						scope.object.scale.y = oldScale.y * scale;
@@ -1625,9 +1576,9 @@ THREE.EditorControls.prototype.constructor = THREE.EditorControls;
 
 						point.applyMatrix4( tempMatrix.getInverse( worldRotationMatrix ) );
 
-						if ( scope.axis === "X" ) scope.object.scale.x = oldScale.x * ( 1 + point.x / oldScale.x );
-						if ( scope.axis === "Y" ) scope.object.scale.y = oldScale.y * ( 1 + point.y / oldScale.y );
-						if ( scope.axis === "Z" ) scope.object.scale.z = oldScale.z * ( 1 + point.z / oldScale.z );
+						if ( scope.axis === "X" ) scope.object.scale.x = oldScale.x * ( 1 + point.x / 50 );
+						if ( scope.axis === "Y" ) scope.object.scale.y = oldScale.y * ( 1 + point.y / 50 );
+						if ( scope.axis === "Z" ) scope.object.scale.z = oldScale.z * ( 1 + point.z / 50 );
 
 					}
 
@@ -1745,32 +1696,17 @@ THREE.EditorControls.prototype.constructor = THREE.EditorControls;
 
 		function onPointerUp( event ) {
 
-			event.preventDefault(); // Prevent MouseEvent on mobile
-
 			if ( event.button !== undefined && event.button !== 0 ) return;
 
 			if ( _dragging && ( scope.axis !== null ) ) {
 
 				mouseUpEvent.mode = _mode;
-				scope.dispatchEvent( mouseUpEvent );
+				scope.dispatchEvent( mouseUpEvent )
 
 			}
 
 			_dragging = false;
-
-			if ( event instanceof TouchEvent ) {
-
-				// Force "rollover"
-
-				scope.axis = null;
-				scope.update();
-				scope.dispatchEvent( changeEvent );
-
-			} else {
-
-				onPointerHover( event );
-
-			}
+			onPointerHover( event );
 
 		}
 
@@ -2240,10 +2176,8 @@ THREE.AMFLoader.prototype = {
 
 		for ( var id in amfObjects ) {
 
-			var part = amfObjects[ id ];
-			var meshes = part.meshes;
+			var meshes = amfObjects[ id ].meshes;
 			var newObject = new THREE.Group();
-			newObject.name = part.name || '';
 
 			for ( var i = 0; i < meshes.length; i ++ ) {
 
@@ -2652,25 +2586,13 @@ THREE.ColladaLoader = function () {
 
 							if ( failCallback ) {
 
-								failCallback( { type: 'error', url: url } );
+								failCallback();
 
 							} else {
 
 								console.error( "ColladaLoader: Empty or non-existing file (" + url + ")" );
 
 							}
-
-						}
-
-					}else{
-
-						if( failCallback ){
-
-							failCallback( { type: 'error', url: url } );
-
-						}else{
-
-							console.error( 'ColladaLoader: Couldn\'t load "' + url + '" (' + request.status + ')' );
 
 						}
 
@@ -3754,14 +3676,7 @@ THREE.ColladaLoader = function () {
 
 				if ( num_materials > 1 ) {
 
-					material = new THREE.MultiMaterial( used_materials_array );
-					
-					for ( j = 0; j < geom.faces.length; j ++ ) {
-
-						var face = geom.faces[ j ];
-						face.materialIndex = used_materials[ face.daeMaterial ]
-
-					}
+					material = new THREE.MeshFaceMaterial( used_materials_array );
 
 				}
 
@@ -3850,6 +3765,7 @@ THREE.ColladaLoader = function () {
 				var intensity = lparams.intensity;
 				var distance = lparams.distance;
 				var angle = lparams.falloff_angle;
+				var exponent; // Intentionally undefined, don't know what this is yet
 
 				switch ( lparams.technique ) {
 
@@ -3866,7 +3782,7 @@ THREE.ColladaLoader = function () {
 
 					case 'spot':
 
-						light = new THREE.SpotLight( color, intensity, distance, angle );
+						light = new THREE.SpotLight( color, intensity, distance, angle, exponent );
 						light.position.set(0, 0, 1);
 						break;
 
@@ -5611,9 +5527,9 @@ THREE.ColladaLoader = function () {
 
 				} else if ( vcount === 4 ) {
 
-					faces.push( new THREE.Face3( vs[0], vs[1], vs[3], ns.length ? [ ns[0].clone(), ns[1].clone(), ns[3].clone() ] : [], cs.length ? [ cs[0], cs[1], cs[3] ] : new THREE.Color() ) );
+					faces.push( new THREE.Face3( vs[0], vs[1], vs[3], [ ns[0].clone(), ns[1].clone(), ns[3].clone() ], cs.length ? [ cs[0], cs[1], cs[3] ] : new THREE.Color() ) );
 
-					faces.push( new THREE.Face3( vs[1], vs[2], vs[3], ns.length ? [ ns[1].clone(), ns[2].clone(), ns[3].clone() ] : [], cs.length ? [ cs[1], cs[2], cs[3] ] : new THREE.Color() ) );
+					faces.push( new THREE.Face3( vs[1], vs[2], vs[3], [ ns[1].clone(), ns[2].clone(), ns[3].clone() ], cs.length ? [ cs[1], cs[2], cs[3] ] : new THREE.Color() ) );
 
 				} else if ( vcount > 4 && options.subdivideFaces ) {
 
@@ -5624,7 +5540,7 @@ THREE.ColladaLoader = function () {
 
 					for ( k = 1; k < vcount - 1; ) {
 
-						faces.push( new THREE.Face3( vs[0], vs[k], vs[k + 1], ns.length ? [ ns[0].clone(), ns[k ++].clone(), ns[k].clone() ] : [], clr ) );
+						faces.push( new THREE.Face3( vs[0], vs[k], vs[k + 1], [ ns[0].clone(), ns[k ++].clone(), ns[k].clone() ], clr ) );
 
 					}
 
@@ -8473,31 +8389,6 @@ THREE.OBJLoader = function ( manager ) {
 
 	this.materials = null;
 
-	this.regexp = {
-		// v float float float
-		vertex_pattern           : /^v\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)/,
-		// vn float float float
-		normal_pattern           : /^vn\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)/,
-		// vt float float
-		uv_pattern               : /^vt\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)/,
-		// f vertex vertex vertex
-		face_vertex              : /^f\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)(?:\s+(-?\d+))?/,
-		// f vertex/uv vertex/uv vertex/uv
-		face_vertex_uv           : /^f\s+(-?\d+)\/(-?\d+)\s+(-?\d+)\/(-?\d+)\s+(-?\d+)\/(-?\d+)(?:\s+(-?\d+)\/(-?\d+))?/,
-		// f vertex/uv/normal vertex/uv/normal vertex/uv/normal
-		face_vertex_uv_normal    : /^f\s+(-?\d+)\/(-?\d+)\/(-?\d+)\s+(-?\d+)\/(-?\d+)\/(-?\d+)\s+(-?\d+)\/(-?\d+)\/(-?\d+)(?:\s+(-?\d+)\/(-?\d+)\/(-?\d+))?/,
-		// f vertex//normal vertex//normal vertex//normal
-		face_vertex_normal       : /^f\s+(-?\d+)\/\/(-?\d+)\s+(-?\d+)\/\/(-?\d+)\s+(-?\d+)\/\/(-?\d+)(?:\s+(-?\d+)\/\/(-?\d+))?/,
-		// o object_name | g group_name
-		object_pattern           : /^[og]\s*(.+)?/,
-		// s boolean
-		smoothing_pattern        : /^s\s+(\d+|on|off)/,
-		// mtllib file_reference
-		material_library_pattern : /^mtllib /,
-		// usemtl material_name
-		material_use_pattern     : /^usemtl /
-	};
-
 };
 
 THREE.OBJLoader.prototype = {
@@ -8530,565 +8421,315 @@ THREE.OBJLoader.prototype = {
 
 	},
 
-	_createParserState : function () {
+	parse: function ( text ) {
 
-		var state = {
-			objects  : [],
-			object   : {},
+		console.time( 'OBJLoader' );
 
-			vertices : [],
-			normals  : [],
-			uvs      : [],
+		var objects = [];
+		var object;
+		var foundObjects = false;
+		var vertices = [];
+		var normals = [];
+		var uvs = [];
 
-			materialLibraries : [],
+		function addObject(name) {
 
-			startObject: function ( name, fromDeclaration ) {
+			var geometry = {
+				vertices: [],
+				normals: [],
+				uvs: []
+			};
 
-				// If the current object (initial from reset) is not from a g/o declaration in the parsed
-				// file. We need to use it for the first parsed g/o to keep things in sync.
-				if ( this.object && this.object.fromDeclaration === false ) {
+			var material = {
+				name: '',
+				smooth: true
+			};
 
-					this.object.name = name;
-					this.object.fromDeclaration = ( fromDeclaration !== false );
-					return;
+			object = {
+				name: name,
+				geometry: geometry,
+				material: material
+			};
 
-				}
+			objects.push( object );
 
-				if ( this.object && typeof this.object._finalize === 'function' ) {
+		}
 
-					this.object._finalize();
+		function parseVertexIndex( value ) {
 
-				}
+			var index = parseInt( value );
 
-				var previousMaterial = ( this.object && typeof this.object.currentMaterial === 'function' ? this.object.currentMaterial() : undefined );
+			return ( index >= 0 ? index - 1 : index + vertices.length / 3 ) * 3;
 
-				this.object = {
-					name : name || '',
-					fromDeclaration : ( fromDeclaration !== false ),
+		}
 
-					geometry : {
-						vertices : [],
-						normals  : [],
-						uvs      : []
-					},
-					materials : [],
-					smooth : true,
+		function parseNormalIndex( value ) {
 
-					startMaterial : function( name, libraries ) {
+			var index = parseInt( value );
 
-						var previous = this._finalize( false );
+			return ( index >= 0 ? index - 1 : index + normals.length / 3 ) * 3;
 
-						// New usemtl declaration overwrites an inherited material, except if faces were declared
-						// after the material, then it must be preserved for proper MultiMaterial continuation.
-						if ( previous && ( previous.inherited || previous.groupCount <= 0 ) ) {
+		}
 
-							this.materials.splice( previous.index, 1 );
+		function parseUVIndex( value ) {
 
-						}
+			var index = parseInt( value );
 
-						var material = {
-							index      : this.materials.length,
-							name       : name || '',
-							mtllib     : ( Array.isArray( libraries ) && libraries.length > 0 ? libraries[ libraries.length - 1 ] : '' ),
-							smooth     : ( previous !== undefined ? previous.smooth : this.smooth ),
-							groupStart : ( previous !== undefined ? previous.groupEnd : 0 ),
-							groupEnd   : -1,
-							groupCount : -1,
-							inherited  : false,
+			return ( index >= 0 ? index - 1 : index + uvs.length / 2 ) * 2;
 
-							clone : function( index ) {
-								return {
-									index      : ( typeof index === 'number' ? index : this.index ),
-									name       : this.name,
-									mtllib     : this.mtllib,
-									smooth     : this.smooth,
-									groupStart : this.groupEnd,
-									groupEnd   : -1,
-									groupCount : -1,
-									inherited  : false
-								};
-							}
-						};
+		}
 
-						this.materials.push( material );
+		function addVertex( a, b, c ) {
 
-						return material;
+			object.geometry.vertices.push(
+				vertices[ a ], vertices[ a + 1 ], vertices[ a + 2 ],
+				vertices[ b ], vertices[ b + 1 ], vertices[ b + 2 ],
+				vertices[ c ], vertices[ c + 1 ], vertices[ c + 2 ]
+			);
 
-					},
+		}
 
-					currentMaterial : function() {
+		function addNormal( a, b, c ) {
 
-						if ( this.materials.length > 0 ) {
-							return this.materials[ this.materials.length - 1 ];
-						}
+			object.geometry.normals.push(
+				normals[ a ], normals[ a + 1 ], normals[ a + 2 ],
+				normals[ b ], normals[ b + 1 ], normals[ b + 2 ],
+				normals[ c ], normals[ c + 1 ], normals[ c + 2 ]
+			);
 
-						return undefined;
+		}
 
-					},
+		function addUV( a, b, c ) {
 
-					_finalize : function( end ) {
+			object.geometry.uvs.push(
+				uvs[ a ], uvs[ a + 1 ],
+				uvs[ b ], uvs[ b + 1 ],
+				uvs[ c ], uvs[ c + 1 ]
+			);
 
-						var lastMultiMaterial = this.currentMaterial();
-						if ( lastMultiMaterial && lastMultiMaterial.groupEnd === -1 ) {
+		}
 
-							lastMultiMaterial.groupEnd = this.geometry.vertices.length / 3;
-							lastMultiMaterial.groupCount = lastMultiMaterial.groupEnd - lastMultiMaterial.groupStart;
-							lastMultiMaterial.inherited = false;
+		function addFace( a, b, c, d,  ua, ub, uc, ud, na, nb, nc, nd ) {
 
-						}
+			var ia = parseVertexIndex( a );
+			var ib = parseVertexIndex( b );
+			var ic = parseVertexIndex( c );
+			var id;
 
-						// Guarantee at least one empty material, this makes the creation later more straight forward.
-						if ( end !== false && this.materials.length === 0 ) {
-							this.materials.push({
-								name   : '',
-								smooth : this.smooth
-							});
-						}
+			if ( d === undefined ) {
 
-						return lastMultiMaterial;
+				addVertex( ia, ib, ic );
 
-					}
-				};
+			} else {
 
-				// Inherit previous objects material.
-				// Spec tells us that a declared material must be set to all objects until a new material is declared.
-				// If a usemtl declaration is encountered while this new object is being parsed, it will
-				// overwrite the inherited material. Exception being that there was already face declarations
-				// to the inherited material, then it will be preserved for proper MultiMaterial continuation.
+				id = parseVertexIndex( d );
 
-				if ( previousMaterial && previousMaterial.name && typeof previousMaterial.clone === "function" ) {
+				addVertex( ia, ib, id );
+				addVertex( ib, ic, id );
 
-					var declared = previousMaterial.clone( 0 );
-					declared.inherited = true;
-					this.object.materials.push( declared );
+			}
 
-				}
+			if ( ua !== undefined ) {
 
-				this.objects.push( this.object );
-
-			},
-
-			finalize : function() {
-
-				if ( this.object && typeof this.object._finalize === 'function' ) {
-
-					this.object._finalize();
-
-				}
-
-			},
-
-			parseVertexIndex: function ( value, len ) {
-
-				var index = parseInt( value, 10 );
-				return ( index >= 0 ? index - 1 : index + len / 3 ) * 3;
-
-			},
-
-			parseNormalIndex: function ( value, len ) {
-
-				var index = parseInt( value, 10 );
-				return ( index >= 0 ? index - 1 : index + len / 3 ) * 3;
-
-			},
-
-			parseUVIndex: function ( value, len ) {
-
-				var index = parseInt( value, 10 );
-				return ( index >= 0 ? index - 1 : index + len / 2 ) * 2;
-
-			},
-
-			addVertex: function ( a, b, c ) {
-
-				var src = this.vertices;
-				var dst = this.object.geometry.vertices;
-
-				dst.push( src[ a + 0 ] );
-				dst.push( src[ a + 1 ] );
-				dst.push( src[ a + 2 ] );
-				dst.push( src[ b + 0 ] );
-				dst.push( src[ b + 1 ] );
-				dst.push( src[ b + 2 ] );
-				dst.push( src[ c + 0 ] );
-				dst.push( src[ c + 1 ] );
-				dst.push( src[ c + 2 ] );
-
-			},
-
-			addVertexLine: function ( a ) {
-
-				var src = this.vertices;
-				var dst = this.object.geometry.vertices;
-
-				dst.push( src[ a + 0 ] );
-				dst.push( src[ a + 1 ] );
-				dst.push( src[ a + 2 ] );
-
-			},
-
-			addNormal : function ( a, b, c ) {
-
-				var src = this.normals;
-				var dst = this.object.geometry.normals;
-
-				dst.push( src[ a + 0 ] );
-				dst.push( src[ a + 1 ] );
-				dst.push( src[ a + 2 ] );
-				dst.push( src[ b + 0 ] );
-				dst.push( src[ b + 1 ] );
-				dst.push( src[ b + 2 ] );
-				dst.push( src[ c + 0 ] );
-				dst.push( src[ c + 1 ] );
-				dst.push( src[ c + 2 ] );
-
-			},
-
-			addUV: function ( a, b, c ) {
-
-				var src = this.uvs;
-				var dst = this.object.geometry.uvs;
-
-				dst.push( src[ a + 0 ] );
-				dst.push( src[ a + 1 ] );
-				dst.push( src[ b + 0 ] );
-				dst.push( src[ b + 1 ] );
-				dst.push( src[ c + 0 ] );
-				dst.push( src[ c + 1 ] );
-
-			},
-
-			addUVLine: function ( a ) {
-
-				var src = this.uvs;
-				var dst = this.object.geometry.uvs;
-
-				dst.push( src[ a + 0 ] );
-				dst.push( src[ a + 1 ] );
-
-			},
-
-			addFace: function ( a, b, c, d, ua, ub, uc, ud, na, nb, nc, nd ) {
-
-				var vLen = this.vertices.length;
-
-				var ia = this.parseVertexIndex( a, vLen );
-				var ib = this.parseVertexIndex( b, vLen );
-				var ic = this.parseVertexIndex( c, vLen );
-				var id;
+				ia = parseUVIndex( ua );
+				ib = parseUVIndex( ub );
+				ic = parseUVIndex( uc );
 
 				if ( d === undefined ) {
 
-					this.addVertex( ia, ib, ic );
+					addUV( ia, ib, ic );
 
 				} else {
 
-					id = this.parseVertexIndex( d, vLen );
+					id = parseUVIndex( ud );
 
-					this.addVertex( ia, ib, id );
-					this.addVertex( ib, ic, id );
-
-				}
-
-				if ( ua !== undefined ) {
-
-					var uvLen = this.uvs.length;
-
-					ia = this.parseUVIndex( ua, uvLen );
-					ib = this.parseUVIndex( ub, uvLen );
-					ic = this.parseUVIndex( uc, uvLen );
-
-					if ( d === undefined ) {
-
-						this.addUV( ia, ib, ic );
-
-					} else {
-
-						id = this.parseUVIndex( ud, uvLen );
-
-						this.addUV( ia, ib, id );
-						this.addUV( ib, ic, id );
-
-					}
-
-				}
-
-				if ( na !== undefined ) {
-
-					// Normals are many times the same. If so, skip function call and parseInt.
-					var nLen = this.normals.length;
-					ia = this.parseNormalIndex( na, nLen );
-
-					ib = na === nb ? ia : this.parseNormalIndex( nb, nLen );
-					ic = na === nc ? ia : this.parseNormalIndex( nc, nLen );
-
-					if ( d === undefined ) {
-
-						this.addNormal( ia, ib, ic );
-
-					} else {
-
-						id = this.parseNormalIndex( nd, nLen );
-
-						this.addNormal( ia, ib, id );
-						this.addNormal( ib, ic, id );
-
-					}
-
-				}
-
-			},
-
-			addLineGeometry: function ( vertices, uvs ) {
-
-				this.object.geometry.type = 'Line';
-
-				var vLen = this.vertices.length;
-				var uvLen = this.uvs.length;
-
-				for ( var vi = 0, l = vertices.length; vi < l; vi ++ ) {
-
-					this.addVertexLine( this.parseVertexIndex( vertices[ vi ], vLen ) );
-
-				}
-
-				for ( var uvi = 0, l = uvs.length; uvi < l; uvi ++ ) {
-
-					this.addUVLine( this.parseUVIndex( uvs[ uvi ], uvLen ) );
+					addUV( ia, ib, id );
+					addUV( ib, ic, id );
 
 				}
 
 			}
 
-		};
+			if ( na !== undefined ) {
 
-		state.startObject( '', false );
+				ia = parseNormalIndex( na );
+				ib = parseNormalIndex( nb );
+				ic = parseNormalIndex( nc );
 
-		return state;
+				if ( d === undefined ) {
 
-	},
+					addNormal( ia, ib, ic );
 
-	parse: function ( text ) {
+				} else {
 
-		console.time( 'OBJLoader' );
+					id = parseNormalIndex( nd );
 
-		var state = this._createParserState();
+					addNormal( ia, ib, id );
+					addNormal( ib, ic, id );
 
-		if ( text.indexOf( '\r\n' ) !== - 1 ) {
+				}
 
-			// This is faster than String.split with regex that splits on both
-			text = text.replace( '\r\n', '\n' );
+			}
 
 		}
 
+		addObject("");
+
+		// v float float float
+		var vertex_pattern = /^v\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)/;
+
+		// vn float float float
+		var normal_pattern = /^vn\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)/;
+
+		// vt float float
+		var uv_pattern = /^vt\s+([\d|\.|\+|\-|e|E]+)\s+([\d|\.|\+|\-|e|E]+)/;
+
+		// f vertex vertex vertex ...
+		var face_pattern1 = /^f\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)(?:\s+(-?\d+))?/;
+
+		// f vertex/uv vertex/uv vertex/uv ...
+		var face_pattern2 = /^f\s+((-?\d+)\/(-?\d+))\s+((-?\d+)\/(-?\d+))\s+((-?\d+)\/(-?\d+))(?:\s+((-?\d+)\/(-?\d+)))?/;
+
+		// f vertex/uv/normal vertex/uv/normal vertex/uv/normal ...
+		var face_pattern3 = /^f\s+((-?\d+)\/(-?\d+)\/(-?\d+))\s+((-?\d+)\/(-?\d+)\/(-?\d+))\s+((-?\d+)\/(-?\d+)\/(-?\d+))(?:\s+((-?\d+)\/(-?\d+)\/(-?\d+)))?/;
+
+		// f vertex//normal vertex//normal vertex//normal ...
+		var face_pattern4 = /^f\s+((-?\d+)\/\/(-?\d+))\s+((-?\d+)\/\/(-?\d+))\s+((-?\d+)\/\/(-?\d+))(?:\s+((-?\d+)\/\/(-?\d+)))?/;
+
+		var object_pattern = /^[og]\s+(.+)/;
+
+		var smoothing_pattern = /^s\s+([01]|on|off)/;
+
+		//
+
 		var lines = text.split( '\n' );
-		var line = '', lineFirstChar = '', lineSecondChar = '';
-		var lineLength = 0;
-		var result = [];
 
-		// Faster to just trim left side of the line. Use if available.
-		var trimLeft = ( typeof ''.trimLeft === 'function' );
+		for ( var i = 0; i < lines.length; i ++ ) {
 
-		for ( var i = 0, l = lines.length; i < l; i ++ ) {
+			var line = lines[ i ];
+			line = line.trim();
 
-			line = lines[ i ];
+			var result;
 
-			line = trimLeft ? line.trimLeft() : line.trim();
+			if ( line.length === 0 || line.charAt( 0 ) === '#' ) {
 
-			lineLength = line.length;
+				continue;
 
-			if ( lineLength === 0 ) continue;
+			} else if ( ( result = vertex_pattern.exec( line ) ) !== null ) {
 
-			lineFirstChar = line.charAt( 0 );
+				// ["v 1.0 2.0 3.0", "1.0", "2.0", "3.0"]
 
-			// @todo invoke passed in handler if any
-			if ( lineFirstChar === '#' ) continue;
+				vertices.push(
+					parseFloat( result[ 1 ] ),
+					parseFloat( result[ 2 ] ),
+					parseFloat( result[ 3 ] )
+				);
 
-			if ( lineFirstChar === 'v' ) {
+			} else if ( ( result = normal_pattern.exec( line ) ) !== null ) {
 
-				lineSecondChar = line.charAt( 1 );
+				// ["vn 1.0 2.0 3.0", "1.0", "2.0", "3.0"]
 
-				if ( lineSecondChar === ' ' && ( result = this.regexp.vertex_pattern.exec( line ) ) !== null ) {
+				normals.push(
+					parseFloat( result[ 1 ] ),
+					parseFloat( result[ 2 ] ),
+					parseFloat( result[ 3 ] )
+				);
 
-					// 0                  1      2      3
-					// ["v 1.0 2.0 3.0", "1.0", "2.0", "3.0"]
+			} else if ( ( result = uv_pattern.exec( line ) ) !== null ) {
 
-					state.vertices.push(
-						parseFloat( result[ 1 ] ),
-						parseFloat( result[ 2 ] ),
-						parseFloat( result[ 3 ] )
-					);
+				// ["vt 0.1 0.2", "0.1", "0.2"]
 
-				} else if ( lineSecondChar === 'n' && ( result = this.regexp.normal_pattern.exec( line ) ) !== null ) {
+				uvs.push(
+					parseFloat( result[ 1 ] ),
+					parseFloat( result[ 2 ] )
+				);
 
-					// 0                   1      2      3
-					// ["vn 1.0 2.0 3.0", "1.0", "2.0", "3.0"]
+			} else if ( ( result = face_pattern1.exec( line ) ) !== null ) {
 
-					state.normals.push(
-						parseFloat( result[ 1 ] ),
-						parseFloat( result[ 2 ] ),
-						parseFloat( result[ 3 ] )
-					);
+				// ["f 1 2 3", "1", "2", "3", undefined]
 
-				} else if ( lineSecondChar === 't' && ( result = this.regexp.uv_pattern.exec( line ) ) !== null ) {
+				addFace(
+					result[ 1 ], result[ 2 ], result[ 3 ], result[ 4 ]
+				);
 
-					// 0               1      2
-					// ["vt 0.1 0.2", "0.1", "0.2"]
+			} else if ( ( result = face_pattern2.exec( line ) ) !== null ) {
 
-					state.uvs.push(
-						parseFloat( result[ 1 ] ),
-						parseFloat( result[ 2 ] )
-					);
+				// ["f 1/1 2/2 3/3", " 1/1", "1", "1", " 2/2", "2", "2", " 3/3", "3", "3", undefined, undefined, undefined]
 
-				} else {
+				addFace(
+					result[ 2 ], result[ 5 ], result[ 8 ], result[ 11 ],
+					result[ 3 ], result[ 6 ], result[ 9 ], result[ 12 ]
+				);
 
-					throw new Error( "Unexpected vertex/normal/uv line: '" + line  + "'" );
+			} else if ( ( result = face_pattern3.exec( line ) ) !== null ) {
 
-				}
+				// ["f 1/1/1 2/2/2 3/3/3", " 1/1/1", "1", "1", "1", " 2/2/2", "2", "2", "2", " 3/3/3", "3", "3", "3", undefined, undefined, undefined, undefined]
 
-			} else if ( lineFirstChar === "f" ) {
+				addFace(
+					result[ 2 ], result[ 6 ], result[ 10 ], result[ 14 ],
+					result[ 3 ], result[ 7 ], result[ 11 ], result[ 15 ],
+					result[ 4 ], result[ 8 ], result[ 12 ], result[ 16 ]
+				);
 
-				if ( ( result = this.regexp.face_vertex_uv_normal.exec( line ) ) !== null ) {
+			} else if ( ( result = face_pattern4.exec( line ) ) !== null ) {
 
-					// f vertex/uv/normal vertex/uv/normal vertex/uv/normal
-					// 0                        1    2    3    4    5    6    7    8    9   10         11         12
-					// ["f 1/1/1 2/2/2 3/3/3", "1", "1", "1", "2", "2", "2", "3", "3", "3", undefined, undefined, undefined]
+				// ["f 1//1 2//2 3//3", " 1//1", "1", "1", " 2//2", "2", "2", " 3//3", "3", "3", undefined, undefined, undefined]
 
-					state.addFace(
-						result[ 1 ], result[ 4 ], result[ 7 ], result[ 10 ],
-						result[ 2 ], result[ 5 ], result[ 8 ], result[ 11 ],
-						result[ 3 ], result[ 6 ], result[ 9 ], result[ 12 ]
-					);
+				addFace(
+					result[ 2 ], result[ 5 ], result[ 8 ], result[ 11 ],
+					undefined, undefined, undefined, undefined,
+					result[ 3 ], result[ 6 ], result[ 9 ], result[ 12 ]
+				);
 
-				} else if ( ( result = this.regexp.face_vertex_uv.exec( line ) ) !== null ) {
-
-					// f vertex/uv vertex/uv vertex/uv
-					// 0                  1    2    3    4    5    6   7          8
-					// ["f 1/1 2/2 3/3", "1", "1", "2", "2", "3", "3", undefined, undefined]
-
-					state.addFace(
-						result[ 1 ], result[ 3 ], result[ 5 ], result[ 7 ],
-						result[ 2 ], result[ 4 ], result[ 6 ], result[ 8 ]
-					);
-
-				} else if ( ( result = this.regexp.face_vertex_normal.exec( line ) ) !== null ) {
-
-					// f vertex//normal vertex//normal vertex//normal
-					// 0                     1    2    3    4    5    6   7          8
-					// ["f 1//1 2//2 3//3", "1", "1", "2", "2", "3", "3", undefined, undefined]
-
-					state.addFace(
-						result[ 1 ], result[ 3 ], result[ 5 ], result[ 7 ],
-						undefined, undefined, undefined, undefined,
-						result[ 2 ], result[ 4 ], result[ 6 ], result[ 8 ]
-					);
-
-				} else if ( ( result = this.regexp.face_vertex.exec( line ) ) !== null ) {
-
-					// f vertex vertex vertex
-					// 0            1    2    3   4
-					// ["f 1 2 3", "1", "2", "3", undefined]
-
-					state.addFace(
-						result[ 1 ], result[ 2 ], result[ 3 ], result[ 4 ]
-					);
-
-				} else {
-
-					throw new Error( "Unexpected face line: '" + line  + "'" );
-
-				}
-
-			} else if ( lineFirstChar === "l" ) {
-
-				var lineParts = line.substring( 1 ).trim().split( " " );
-				var lineVertices = [], lineUVs = [];
-
-				if ( line.indexOf( "/" ) === - 1 ) {
-
-					lineVertices = lineParts;
-
-				} else {
-
-					for ( var li = 0, llen = lineParts.length; li < llen; li ++ ) {
-
-						var parts = lineParts[ li ].split( "/" );
-
-						if ( parts[ 0 ] !== "" ) lineVertices.push( parts[ 0 ] );
-						if ( parts[ 1 ] !== "" ) lineUVs.push( parts[ 1 ] );
-
-					}
-
-				}
-				state.addLineGeometry( lineVertices, lineUVs );
-
-			} else if ( ( result = this.regexp.object_pattern.exec( line ) ) !== null ) {
+			} else if ( ( result = object_pattern.exec( line ) ) !== null ) {
 
 				// o object_name
 				// or
 				// g group_name
 
-				var name = result[ 0 ].substr( 1 ).trim();
-				state.startObject( name );
+				var name = result[1].trim();
 
-			} else if ( this.regexp.material_use_pattern.test( line ) ) {
+				if ( foundObjects === false ) {
 
-				// material
+					foundObjects = true;
+					object.name = name;
 
-				state.object.startMaterial( line.substring( 7 ).trim(), state.materialLibraries );
+				} else {
 
-			} else if ( this.regexp.material_library_pattern.test( line ) ) {
-
-				// mtl file
-
-				state.materialLibraries.push( line.substring( 7 ).trim() );
-
-			} else if ( ( result = this.regexp.smoothing_pattern.exec( line ) ) !== null ) {
-
-				// smooth shading
-
-				// @todo Handle files that have varying smooth values for a set of faces inside one geometry,
-				// but does not define a usemtl for each face set.
-				// This should be detected and a dummy material created (later MultiMaterial and geometry groups).
-				// This requires some care to not create extra material on each smooth value for "normal" obj files.
-				// where explicit usemtl defines geometry groups.
-				// Example asset: examples/models/obj/cerberus/Cerberus.obj
-
-				var value = result[ 1 ].trim().toLowerCase();
-				state.object.smooth = ( value === '1' || value === 'on' );
-
-				var material = state.object.currentMaterial();
-				if ( material ) {
-
-					material.smooth = state.object.smooth;
+					addObject(name);
 
 				}
 
+			} else if ( /^usemtl /.test( line ) ) {
+
+				// material
+
+				object.material.name = line.substring( 7 ).trim();
+
+			} else if ( /^mtllib /.test( line ) ) {
+
+				// mtl file
+
+			} else if ( ( result = smoothing_pattern.exec( line ) ) !== null ) {
+
+				// smooth shading
+
+				object.material.smooth = result[ 1 ] === "1" || result[ 1 ] === "on";
+
 			} else {
 
-				// Handle null terminated files without exception
-				if ( line === '\0' ) continue;
-
-				throw new Error( "Unexpected line: '" + line  + "'" );
+				// console.log( "THREE.OBJLoader: Unhandled line " + line );
 
 			}
 
 		}
 
-		state.finalize();
-
 		var container = new THREE.Group();
-		container.materialLibraries = [].concat( state.materialLibraries );
 
-		for ( var i = 0, l = state.objects.length; i < l; i ++ ) {
+		for ( var i = 0, l = objects.length; i < l; i ++ ) {
 
-			var object = state.objects[ i ];
+			object = objects[ i ];
 			var geometry = object.geometry;
-			var materials = object.materials;
-			var isLine = ( geometry.type === 'Line' );
-
-			// Skip o/g line declarations that did not follow with any faces
-			if ( geometry.vertices.length === 0 ) continue;
 
 			var buffergeometry = new THREE.BufferGeometry();
 
@@ -9110,64 +8751,24 @@ THREE.OBJLoader.prototype = {
 
 			}
 
-			// Create materials
+			var material;
 
-			var createdMaterials = [];
+			if ( this.materials !== null ) {
 
-			for ( var mi = 0, miLen = materials.length; mi < miLen ; mi++ ) {
-
-				var sourceMaterial = materials[mi];
-				var material = undefined;
-
-				if ( this.materials !== null ) {
-
-					material = this.materials.create( sourceMaterial.name );
-
-					// mtl etc. loaders probably can't create line materials correctly, copy properties to a line material.
-					if ( isLine && material && ! ( material instanceof THREE.LineBasicMaterial ) ) {
-
-						var materialLine = new THREE.LineBasicMaterial();
-						materialLine.copy( material );
-						material = materialLine;
-
-					}
-
-				}
-
-				if ( ! material ) {
-
-					material = ( ! isLine ? new THREE.MeshPhongMaterial() : new THREE.LineBasicMaterial() );
-					material.name = sourceMaterial.name;
-
-				}
-
-				material.shading = sourceMaterial.smooth ? THREE.SmoothShading : THREE.FlatShading;
-
-				createdMaterials.push(material);
+				material = this.materials.create( object.material.name );
 
 			}
 
-			// Create mesh
+			if ( !material ) {
 
-			var mesh;
+				material = new THREE.MeshPhongMaterial();
+				material.name = object.material.name;
 
-			if ( createdMaterials.length > 1 ) {
-
-				for ( var mi = 0, miLen = materials.length; mi < miLen ; mi++ ) {
-
-					var sourceMaterial = materials[mi];
-					buffergeometry.addGroup( sourceMaterial.groupStart, sourceMaterial.groupCount, mi );
-
-				}
-
-				var multiMaterial = new THREE.MultiMaterial( createdMaterials );
-				mesh = ( ! isLine ? new THREE.Mesh( buffergeometry, multiMaterial ) : new THREE.Line( buffergeometry, multiMaterial ) );
-
-			} else {
-
-				mesh = ( ! isLine ? new THREE.Mesh( buffergeometry, createdMaterials[ 0 ] ) : new THREE.Line( buffergeometry, createdMaterials[ 0 ] ) );
 			}
 
+			material.shading = object.material.smooth ? THREE.SmoothShading : THREE.FlatShading;
+
+			var mesh = new THREE.Mesh( buffergeometry, material );
 			mesh.name = object.name;
 
 			container.add( mesh );
@@ -9359,8 +8960,8 @@ THREE.PlayCanvasLoader.prototype = {
 /**
  * @author Wei Meng / http://about.me/menway
  *
- * Description: A THREE loader for PLY ASCII files (known as the Polygon
- * File Format or the Stanford Triangle Format).
+ * Description: A THREE loader for PLY ASCII files (known as the Polygon File Format or the Stanford Triangle Format).
+ *
  *
  * Limitations: ASCII decoding assumes file is UTF-8.
  *
@@ -9417,438 +9018,418 @@ THREE.PLYLoader.prototype = {
 
 	},
 
+	bin2str: function ( buf ) {
+
+		var array_buffer = new Uint8Array( buf );
+		var str = '';
+		for ( var i = 0; i < buf.byteLength; i ++ ) {
+
+			str += String.fromCharCode( array_buffer[ i ] ); // implicitly assumes little-endian
+
+		}
+
+		return str;
+
+	},
+
+	isASCII: function( data ) {
+
+		var header = this.parseHeader( this.bin2str( data ) );
+
+		return header.format === "ascii";
+
+	},
+
 	parse: function ( data ) {
-
-		function isASCII( data ) {
-
-			var header = parseHeader( bin2str( data ) );
-			return header.format === "ascii";
-
-		}
-
-		function bin2str( buf ) {
-
-			var array_buffer = new Uint8Array( buf );
-			var str = '';
-
-			for ( var i = 0; i < buf.byteLength; i ++ ) {
-
-				str += String.fromCharCode( array_buffer[ i ] ); // implicitly assumes little-endian
-
-			}
-
-			return str;
-
-		}
-
-		function parseHeader( data ) {
-
-			var patternHeader = /ply([\s\S]*)end_header\s/;
-			var headerText = "";
-			var headerLength = 0;
-			var result = patternHeader.exec( data );
-
-			if ( result !== null ) {
-
-				headerText = result [ 1 ];
-				headerLength = result[ 0 ].length;
-
-			}
-
-			var header = {
-				comments: [],
-				elements: [],
-				headerLength: headerLength
-			};
-
-			var lines = headerText.split( '\n' );
-			var currentElement;
-			var lineType, lineValues;
-
-			function make_ply_element_property( propertValues, propertyNameMapping ) {
-
-				var property = { type: propertValues[ 0 ] };
-
-				if ( property.type === 'list' ) {
-
-					property.name = propertValues[ 3 ];
-					property.countType = propertValues[ 1 ];
-					property.itemType = propertValues[ 2 ];
-
-				} else {
-
-					property.name = propertValues[ 1 ];
-
-				}
-
-				if ( property.name in propertyNameMapping ) {
-
-					property.name = propertyNameMapping[ property.name ];
-
-				}
-
-				return property;
-
-			}
-
-			for ( var i = 0; i < lines.length; i ++ ) {
-
-				var line = lines[ i ];
-				line = line.trim();
-
-				if ( line === "" ) continue;
-
-				lineValues = line.split( /\s+/ );
-				lineType = lineValues.shift();
-				line = lineValues.join( " " );
-
-				switch ( lineType ) {
-
-					case "format":
-
-						header.format = lineValues[ 0 ];
-						header.version = lineValues[ 1 ];
-
-						break;
-
-					case "comment":
-
-						header.comments.push( line );
-
-						break;
-
-					case "element":
-
-						if ( currentElement !== undefined ) {
-
-							header.elements.push( currentElement );
-
-						}
-
-						currentElement = {};
-						currentElement.name = lineValues[ 0 ];
-						currentElement.count = parseInt( lineValues[ 1 ] );
-						currentElement.properties = [];
-
-						break;
-
-					case "property":
-
-						currentElement.properties.push( make_ply_element_property( lineValues, scope.propertyNameMapping ) );
-
-						break;
-
-
-					default:
-
-						console.log( "unhandled", lineType, lineValues );
-
-				}
-
-			}
-
-			if ( currentElement !== undefined ) {
-
-				header.elements.push( currentElement );
-
-			}
-
-			return header;
-
-		}
-
-		function parseASCIINumber( n, type ) {
-
-			switch ( type ) {
-
-			case 'char': case 'uchar': case 'short': case 'ushort': case 'int': case 'uint':
-			case 'int8': case 'uint8': case 'int16': case 'uint16': case 'int32': case 'uint32':
-
-				return parseInt( n );
-
-			case 'float': case 'double': case 'float32': case 'float64':
-
-				return parseFloat( n );
-
-			}
-
-		}
-
-		function parseASCIIElement( properties, line ) {
-
-			var values = line.split( /\s+/ );
-
-			var element = {};
-
-			for ( var i = 0; i < properties.length; i ++ ) {
-
-				if ( properties[ i ].type === "list" ) {
-
-					var list = [];
-					var n = parseASCIINumber( values.shift(), properties[ i ].countType );
-
-					for ( var j = 0; j < n; j ++ ) {
-
-						list.push( parseASCIINumber( values.shift(), properties[ i ].itemType ) );
-
-					}
-
-					element[ properties[ i ].name ] = list;
-
-				} else {
-
-					element[ properties[ i ].name ] = parseASCIINumber( values.shift(), properties[ i ].type );
-
-				}
-
-			}
-
-			return element;
-
-		}
-
-		function parseASCII( data ) {
-
-			// PLY ascii format specification, as per http://en.wikipedia.org/wiki/PLY_(file_format)
-
-			var geometry = new THREE.Geometry();
-
-			var result;
-
-			var header = parseHeader( data );
-
-			var patternBody = /end_header\s([\s\S]*)$/;
-			var body = "";
-			if ( ( result = patternBody.exec( data ) ) !== null ) {
-
-				body = result [ 1 ];
-
-			}
-
-			var lines = body.split( '\n' );
-			var currentElement = 0;
-			var currentElementCount = 0;
-			geometry.useColor = false;
-
-			for ( var i = 0; i < lines.length; i ++ ) {
-
-				var line = lines[ i ];
-				line = line.trim();
-				if ( line === "" ) {
-
-					continue;
-
-				}
-
-				if ( currentElementCount >= header.elements[ currentElement ].count ) {
-
-					currentElement ++;
-					currentElementCount = 0;
-
-				}
-
-				var element = parseASCIIElement( header.elements[ currentElement ].properties, line );
-
-				handleElement( geometry, header.elements[ currentElement ].name, element );
-
-				currentElementCount ++;
-
-			}
-
-			return postProcess( geometry );
-
-		}
-
-		function postProcess( geometry ) {
-
-			if ( geometry.useColor ) {
-
-				for ( var i = 0; i < geometry.faces.length; i ++ ) {
-
-					geometry.faces[ i ].vertexColors = [
-						geometry.colors[ geometry.faces[ i ].a ],
-						geometry.colors[ geometry.faces[ i ].b ],
-						geometry.colors[ geometry.faces[ i ].c ]
-					];
-
-				}
-
-				geometry.elementsNeedUpdate = true;
-
-			}
-
-			geometry.computeBoundingSphere();
-
-			return geometry;
-
-		}
-
-		function handleElement( geometry, elementName, element ) {
-
-			if ( elementName === "vertex" ) {
-
-				geometry.vertices.push(
-					new THREE.Vector3( element.x, element.y, element.z )
-				);
-
-				if ( 'red' in element && 'green' in element && 'blue' in element ) {
-
-					geometry.useColor = true;
-
-					var color = new THREE.Color();
-					color.setRGB( element.red / 255.0, element.green / 255.0, element.blue / 255.0 );
-					geometry.colors.push( color );
-
-				}
-
-			} else if ( elementName === "face" ) {
-
-				var vertex_indices = element.vertex_indices;
-				var texcoord = element.texcoord;
-
-				if ( vertex_indices.length === 3 ) {
-
-					geometry.faces.push(
-						new THREE.Face3( vertex_indices[ 0 ], vertex_indices[ 1 ], vertex_indices[ 2 ] )
-					);
-
-					if ( texcoord ) {
-						geometry.faceVertexUvs[ 0 ].push( [
-							new THREE.Vector2( texcoord[ 0 ], texcoord[ 1 ]),
-							new THREE.Vector2( texcoord[ 2 ], texcoord[ 3 ]),
-							new THREE.Vector2( texcoord[ 4 ], texcoord[ 5 ])
-						] );
-					}
-
-				} else if ( vertex_indices.length === 4 ) {
-
-					geometry.faces.push(
-						new THREE.Face3( vertex_indices[ 0 ], vertex_indices[ 1 ], vertex_indices[ 3 ] ),
-						new THREE.Face3( vertex_indices[ 1 ], vertex_indices[ 2 ], vertex_indices[ 3 ] )
-					);
-
-					if ( texcoord ) {
-						geometry.faceVertexUvs[ 0 ].push( [
-							new THREE.Vector2( texcoord[ 0 ], texcoord[ 1 ]),
-							new THREE.Vector2( texcoord[ 2 ], texcoord[ 3 ]),
-							new THREE.Vector2( texcoord[ 6 ], texcoord[ 7 ])
-						], [
-							new THREE.Vector2( texcoord[ 2 ], texcoord[ 3 ]),
-							new THREE.Vector2( texcoord[ 4 ], texcoord[ 5 ]),
-							new THREE.Vector2( texcoord[ 6 ], texcoord[ 7 ])
-						] );
-					}
-
-				}
-
-			}
-
-		}
-
-		function binaryRead( dataview, at, type, little_endian ) {
-
-			switch ( type ) {
-
-				// corespondences for non-specific length types here match rply:
-				case 'int8':		case 'char':	 return [ dataview.getInt8( at ), 1 ];
-				case 'uint8':		case 'uchar':	 return [ dataview.getUint8( at ), 1 ];
-				case 'int16':		case 'short':	 return [ dataview.getInt16( at, little_endian ), 2 ];
-				case 'uint16':	case 'ushort': return [ dataview.getUint16( at, little_endian ), 2 ];
-				case 'int32':		case 'int':		 return [ dataview.getInt32( at, little_endian ), 4 ];
-				case 'uint32':	case 'uint':	 return [ dataview.getUint32( at, little_endian ), 4 ];
-				case 'float32': case 'float':	 return [ dataview.getFloat32( at, little_endian ), 4 ];
-				case 'float64': case 'double': return [ dataview.getFloat64( at, little_endian ), 8 ];
-
-			}
-
-		}
-
-		function binaryReadElement( dataview, at, properties, little_endian ) {
-
-			var element = {};
-			var result, read = 0;
-
-			for ( var i = 0; i < properties.length; i ++ ) {
-
-				if ( properties[ i ].type === "list" ) {
-
-					var list = [];
-
-					result = binaryRead( dataview, at + read, properties[ i ].countType, little_endian );
-					var n = result[ 0 ];
-					read += result[ 1 ];
-
-					for ( var j = 0; j < n; j ++ ) {
-
-						result = binaryRead( dataview, at + read, properties[ i ].itemType, little_endian );
-						list.push( result[ 0 ] );
-						read += result[ 1 ];
-
-					}
-
-					element[ properties[ i ].name ] = list;
-
-				} else {
-
-					result = binaryRead( dataview, at + read, properties[ i ].type, little_endian );
-					element[ properties[ i ].name ] = result[ 0 ];
-					read += result[ 1 ];
-
-				}
-
-			}
-
-			return [ element, read ];
-
-		}
-
-		function parseBinary( data ) {
-
-			var geometry = new THREE.Geometry();
-
-			var header = parseHeader( bin2str( data ) );
-			var little_endian = ( header.format === "binary_little_endian" );
-			var body = new DataView( data, header.headerLength );
-			var result, loc = 0;
-
-			for ( var currentElement = 0; currentElement < header.elements.length; currentElement ++ ) {
-
-				for ( var currentElementCount = 0; currentElementCount < header.elements[ currentElement ].count; currentElementCount ++ ) {
-
-					result = binaryReadElement( body, loc, header.elements[ currentElement ].properties, little_endian );
-					loc += result[ 1 ];
-					var element = result[ 0 ];
-
-					handleElement( geometry, header.elements[ currentElement ].name, element );
-
-				}
-
-			}
-
-			return postProcess( geometry );
-
-		}
-
-		//
-
-		console.time( 'PLYLoader' );
-
-		var geometry;
-		var scope = this;
 
 		if ( data instanceof ArrayBuffer ) {
 
-			geometry = isASCII( data ) ? parseASCII( bin2str( data ) ) : parseBinary( data );
+			return this.isASCII( data )
+				? this.parseASCII( this.bin2str( data ) )
+				: this.parseBinary( data );
 
 		} else {
 
-			geometry = parseASCII( data );
+			return this.parseASCII( data );
 
 		}
 
-		console.timeEnd( 'PLYLoader' );
+	},
+
+	parseHeader: function ( data ) {
+
+		var patternHeader = /ply([\s\S]*)end_header\s/;
+		var headerText = "";
+		var headerLength = 0;
+		var result = patternHeader.exec( data );
+		if ( result !== null ) {
+
+			headerText = result [ 1 ];
+			headerLength = result[ 0 ].length;
+
+		}
+
+		var header = {
+			comments: [],
+			elements: [],
+			headerLength: headerLength
+		};
+
+		var lines = headerText.split( '\n' );
+		var currentElement = undefined;
+		var lineType, lineValues;
+
+		function make_ply_element_property( propertValues, propertyNameMapping ) {
+
+			var property = {
+				type: propertValues[ 0 ]
+			};
+
+			if ( property.type === 'list' ) {
+
+				property.name = propertValues[ 3 ];
+				property.countType = propertValues[ 1 ];
+				property.itemType = propertValues[ 2 ];
+
+			} else {
+
+				property.name = propertValues[ 1 ];
+
+			}
+
+			if ( property.name in propertyNameMapping ) {
+
+				property.name = propertyNameMapping[ property.name ];
+
+			}
+
+			return property;
+
+		}
+
+		for ( var i = 0; i < lines.length; i ++ ) {
+
+			var line = lines[ i ];
+			line = line.trim();
+			if ( line === "" ) {
+
+				continue;
+
+			}
+			lineValues = line.split( /\s+/ );
+			lineType = lineValues.shift();
+			line = lineValues.join( " " );
+
+			switch ( lineType ) {
+
+			case "format":
+
+				header.format = lineValues[ 0 ];
+				header.version = lineValues[ 1 ];
+
+				break;
+
+			case "comment":
+
+				header.comments.push( line );
+
+				break;
+
+			case "element":
+
+				if ( ! ( currentElement === undefined ) ) {
+
+					header.elements.push( currentElement );
+
+				}
+
+				currentElement = Object();
+				currentElement.name = lineValues[ 0 ];
+				currentElement.count = parseInt( lineValues[ 1 ] );
+				currentElement.properties = [];
+
+				break;
+
+			case "property":
+
+				currentElement.properties.push( make_ply_element_property( lineValues, this.propertyNameMapping ) );
+
+				break;
+
+
+			default:
+
+				console.log( "unhandled", lineType, lineValues );
+
+			}
+
+		}
+
+		if ( ! ( currentElement === undefined ) ) {
+
+			header.elements.push( currentElement );
+
+		}
+
+		return header;
+
+	},
+
+	parseASCIINumber: function ( n, type ) {
+
+		switch ( type ) {
+
+		case 'char': case 'uchar': case 'short': case 'ushort': case 'int': case 'uint':
+		case 'int8': case 'uint8': case 'int16': case 'uint16': case 'int32': case 'uint32':
+
+			return parseInt( n );
+
+		case 'float': case 'double': case 'float32': case 'float64':
+
+			return parseFloat( n );
+
+		}
+
+	},
+
+	parseASCIIElement: function ( properties, line ) {
+
+		var values = line.split( /\s+/ );
+
+		var element = Object();
+
+		for ( var i = 0; i < properties.length; i ++ ) {
+
+			if ( properties[ i ].type === "list" ) {
+
+				var list = [];
+				var n = this.parseASCIINumber( values.shift(), properties[ i ].countType );
+
+				for ( var j = 0; j < n; j ++ ) {
+
+					list.push( this.parseASCIINumber( values.shift(), properties[ i ].itemType ) );
+
+				}
+
+				element[ properties[ i ].name ] = list;
+
+			} else {
+
+				element[ properties[ i ].name ] = this.parseASCIINumber( values.shift(), properties[ i ].type );
+
+			}
+
+		}
+
+		return element;
+
+	},
+
+	parseASCII: function ( data ) {
+
+		// PLY ascii format specification, as per http://en.wikipedia.org/wiki/PLY_(file_format)
+
+		var geometry = new THREE.Geometry();
+
+		var result;
+
+		var header = this.parseHeader( data );
+
+		var patternBody = /end_header\s([\s\S]*)$/;
+		var body = "";
+		if ( ( result = patternBody.exec( data ) ) !== null ) {
+
+			body = result [ 1 ];
+
+		}
+
+		var lines = body.split( '\n' );
+		var currentElement = 0;
+		var currentElementCount = 0;
+		geometry.useColor = false;
+
+		for ( var i = 0; i < lines.length; i ++ ) {
+
+			var line = lines[ i ];
+			line = line.trim();
+			if ( line === "" ) {
+
+				continue;
+
+			}
+
+			if ( currentElementCount >= header.elements[ currentElement ].count ) {
+
+				currentElement ++;
+				currentElementCount = 0;
+
+			}
+
+			var element = this.parseASCIIElement( header.elements[ currentElement ].properties, line );
+
+			this.handleElement( geometry, header.elements[ currentElement ].name, element );
+
+			currentElementCount ++;
+
+		}
+
+		return this.postProcess( geometry );
+
+	},
+
+	postProcess: function ( geometry ) {
+
+		if ( geometry.useColor ) {
+
+			for ( var i = 0; i < geometry.faces.length; i ++ ) {
+
+				geometry.faces[ i ].vertexColors = [
+					geometry.colors[ geometry.faces[ i ].a ],
+					geometry.colors[ geometry.faces[ i ].b ],
+					geometry.colors[ geometry.faces[ i ].c ]
+				];
+
+			}
+
+			geometry.elementsNeedUpdate = true;
+
+		}
+
+		geometry.computeBoundingSphere();
 
 		return geometry;
+
+	},
+
+	handleElement: function ( geometry, elementName, element ) {
+
+		if ( elementName === "vertex" ) {
+
+			geometry.vertices.push(
+				new THREE.Vector3( element.x, element.y, element.z )
+			);
+
+			if ( 'red' in element && 'green' in element && 'blue' in element ) {
+
+				geometry.useColor = true;
+
+				var color = new THREE.Color();
+				color.setRGB( element.red / 255.0, element.green / 255.0, element.blue / 255.0 );
+				geometry.colors.push( color );
+
+			}
+
+		} else if ( elementName === "face" ) {
+
+			var vertex_indices = element.vertex_indices;
+
+			if ( vertex_indices.length === 3 ) {
+
+				geometry.faces.push(
+					new THREE.Face3( vertex_indices[ 0 ], vertex_indices[ 1 ], vertex_indices[ 2 ] )
+				);
+
+			} else if ( vertex_indices.length === 4 ) {
+
+				geometry.faces.push(
+					new THREE.Face3( vertex_indices[ 0 ], vertex_indices[ 1 ], vertex_indices[ 3 ] ),
+					new THREE.Face3( vertex_indices[ 1 ], vertex_indices[ 2 ], vertex_indices[ 3 ] )
+				);
+
+			}
+
+		}
+
+	},
+
+	binaryRead: function ( dataview, at, type, little_endian ) {
+
+		switch ( type ) {
+
+			// corespondences for non-specific length types here match rply:
+		case 'int8':		case 'char':	 return [ dataview.getInt8( at ), 1 ];
+
+		case 'uint8':		case 'uchar':	 return [ dataview.getUint8( at ), 1 ];
+
+		case 'int16':		case 'short':	 return [ dataview.getInt16( at, little_endian ), 2 ];
+
+		case 'uint16':	case 'ushort': return [ dataview.getUint16( at, little_endian ), 2 ];
+
+		case 'int32':		case 'int':		 return [ dataview.getInt32( at, little_endian ), 4 ];
+
+		case 'uint32':	case 'uint':	 return [ dataview.getUint32( at, little_endian ), 4 ];
+
+		case 'float32': case 'float':	 return [ dataview.getFloat32( at, little_endian ), 4 ];
+
+		case 'float64': case 'double': return [ dataview.getFloat64( at, little_endian ), 8 ];
+
+		}
+
+	},
+
+	binaryReadElement: function ( dataview, at, properties, little_endian ) {
+
+		var element = Object();
+		var result, read = 0;
+
+		for ( var i = 0; i < properties.length; i ++ ) {
+
+			if ( properties[ i ].type === "list" ) {
+
+				var list = [];
+
+				result = this.binaryRead( dataview, at + read, properties[ i ].countType, little_endian );
+				var n = result[ 0 ];
+				read += result[ 1 ];
+
+				for ( var j = 0; j < n; j ++ ) {
+
+					result = this.binaryRead( dataview, at + read, properties[ i ].itemType, little_endian );
+					list.push( result[ 0 ] );
+					read += result[ 1 ];
+
+				}
+
+				element[ properties[ i ].name ] = list;
+
+			} else {
+
+				result = this.binaryRead( dataview, at + read, properties[ i ].type, little_endian );
+				element[ properties[ i ].name ] = result[ 0 ];
+				read += result[ 1 ];
+
+			}
+
+		}
+
+		return [ element, read ];
+
+	},
+
+	parseBinary: function ( data ) {
+
+		var geometry = new THREE.Geometry();
+
+		var header = this.parseHeader( this.bin2str( data ) );
+		var little_endian = ( header.format === "binary_little_endian" );
+		var body = new DataView( data, header.headerLength );
+		var result, loc = 0;
+
+		for ( var currentElement = 0; currentElement < header.elements.length; currentElement ++ ) {
+
+			for ( var currentElementCount = 0; currentElementCount < header.elements[ currentElement ].count; currentElementCount ++ ) {
+
+				result = this.binaryReadElement( body, loc, header.elements[ currentElement ].properties, little_endian );
+				loc += result[ 1 ];
+				var element = result[ 0 ];
+
+				this.handleElement( geometry, header.elements[ currentElement ].name, element );
+
+			}
+
+		}
+
+		return this.postProcess( geometry );
 
 	}
 
@@ -11310,8 +10891,6 @@ THREE.VRMLLoader.prototype = {
 
 			};
 
-			var index = [];
-
 			var parseProperty = function ( node, line ) {
 
 				var parts = [], part, property = {}, fieldName;
@@ -11322,7 +10901,7 @@ THREE.VRMLLoader.prototype = {
 				 */
 				var regex = /[^\s,\[\]]+/g;
 
-				var point, angles, colors;
+				var point, index, angles, colors;
 
 				while ( null != ( part = regex.exec( line ) ) ) {
 
@@ -11364,6 +10943,8 @@ THREE.VRMLLoader.prototype = {
 					// the parts hold the indexes as strings
 					if ( parts.length > 0 ) {
 
+						index = [];
+
 						for ( var ind = 0; ind < parts.length; ind ++ ) {
 
 							// the part should either be positive integer or -1
@@ -11397,15 +10978,6 @@ THREE.VRMLLoader.prototype = {
 
 					// end
 					if ( /]/.exec( line ) ) {
-
-						if ( index.length > 0 ) {
-
-							this.indexes.push( index );
-
-						}
-
-						// start new one
-						index = [];
 
 						this.isRecordingFaces = false;
 						node[this.recordingFieldname] = this.indexes;
@@ -11689,7 +11261,7 @@ THREE.VRMLLoader.prototype = {
 
 					if ( /USE/.exec( data ) ) {
 
-						var defineKey = /USE\s+?([^\s]+)/.exec( data )[ 1 ];
+						var defineKey = /USE\s+?(\w+)/.exec( data )[ 1 ];
 
 						if ( undefined == defines[ defineKey ] ) {
 
@@ -11736,7 +11308,7 @@ THREE.VRMLLoader.prototype = {
 
 					if ( /DEF/.exec( data.string ) ) {
 
-						object.name = /DEF\s+([^\s]+)/.exec( data.string )[ 1 ];
+						object.name = /DEF\s+(\w+)/.exec( data.string )[ 1 ];
 						defines[ object.name ] = object;
 
 					}
@@ -11773,7 +11345,7 @@ THREE.VRMLLoader.prototype = {
 
 					if ( /DEF/.exec( data.string ) ) {
 
-						object.name = /DEF\s+([^\s]+)/.exec( data.string )[ 1 ];
+						object.name = /DEF\s+(\w+)/.exec( data.string )[ 1 ];
 
 						defines[ object.name ] = object;
 
@@ -11879,7 +11451,7 @@ THREE.VRMLLoader.prototype = {
 
 								if ( child.string.indexOf ( 'DEF' ) > -1 ) {
 
-									var name = /DEF\s+([^\s]+)/.exec( child.string )[ 1 ];
+									var name = /DEF\s+(\w+)/.exec( child.string )[ 1 ];
 
 									defines[ name ] = geometry.vertices;
 
@@ -11887,7 +11459,7 @@ THREE.VRMLLoader.prototype = {
 
 								if ( child.string.indexOf ( 'USE' ) > -1 ) {
 
-									var defineKey = /USE\s+([^\s]+)/.exec( child.string )[ 1 ];
+									var defineKey = /USE\s+(\w+)/.exec( child.string )[ 1 ];
 
 									geometry.vertices = defines[ defineKey ];
 								}
@@ -11969,7 +11541,7 @@ THREE.VRMLLoader.prototype = {
 						// see if it's a define
 						if ( /DEF/.exec( data.string ) ) {
 
-							geometry.name = /DEF ([^\s]+)/.exec( data.string )[ 1 ];
+							geometry.name = /DEF (\w+)/.exec( data.string )[ 1 ];
 							defines[ geometry.name ] = geometry;
 
 						}
@@ -12027,7 +11599,7 @@ THREE.VRMLLoader.prototype = {
 
 							if ( /DEF/.exec( data.string ) ) {
 
-								material.name = /DEF ([^\s]+)/.exec( data.string )[ 1 ];
+								material.name = /DEF (\w+)/.exec( data.string )[ 1 ];
 
 								defines[ material.name ] = material;
 
@@ -12134,316 +11706,149 @@ THREE.VRMLLoader.prototype = {
  * @author Alex Pletzer
  */
 
-THREE.VTKLoader = function( manager ) {
+THREE.VTKLoader = function ( manager ) {
 
 	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
 
 };
 
-Object.assign( THREE.VTKLoader.prototype, THREE.EventDispatcher.prototype, {
+THREE.VTKLoader.prototype = {
+
+	constructor: THREE.VTKLoader,
 
 	load: function ( url, onLoad, onProgress, onError ) {
 
+		// Will we bump into trouble reading the whole file into memory?
 		var scope = this;
-
 		var loader = new THREE.XHRLoader( scope.manager );
-		loader.setResponseType( 'arraybuffer' );
-		loader.load( url, function( text ) {
+		loader.load( url, function ( text ) {
 
 			onLoad( scope.parse( text ) );
 
-		}, onProgress, onError );
+		},
+
+		onProgress, onError );
 
 	},
 
 	parse: function ( data ) {
 
-		function parseASCII( data ) {
+		// connectivity of the triangles
+		var indices = [];
 
-			// connectivity of the triangles
-			var indices = [];
+		// triangles vertices
+		var positions = [];
 
-			// triangles vertices
-			var positions = [];
+		// red, green, blue colors in the range 0 to 1
+		var colors = [];
 
-			// red, green, blue colors in the range 0 to 1
-			var colors = [];
+		// normal vector, one per vertex
+		var normals = [];
 
-			// normal vector, one per vertex
-			var normals = [];
+		var result;
 
-			var result;
+		// pattern for reading vertices, 3 floats or integers
+		var pat3Floats = /(\-?\d+\.?[\d\-\+e]*)\s+(\-?\d+\.?[\d\-\+e]*)\s+(\-?\d+\.?[\d\-\+e]*)/g;
 
-			// pattern for reading vertices, 3 floats or integers
-			var pat3Floats = /(\-?\d+\.?[\d\-\+e]*)\s+(\-?\d+\.?[\d\-\+e]*)\s+(\-?\d+\.?[\d\-\+e]*)/g;
+		// pattern for connectivity, an integer followed by any number of ints
+		// the first integer is the number of polygon nodes
+		var patConnectivity = /^(\d+)\s+([\s\d]*)/;
 
-			// pattern for connectivity, an integer followed by any number of ints
-			// the first integer is the number of polygon nodes
-			var patConnectivity = /^(\d+)\s+([\s\d]*)/;
+		// indicates start of vertex data section
+		var patPOINTS = /^POINTS /;
 
-			// indicates start of vertex data section
-			var patPOINTS = /^POINTS /;
+		// indicates start of polygon connectivity section
+		var patPOLYGONS = /^POLYGONS /;
 
-			// indicates start of polygon connectivity section
-			var patPOLYGONS = /^POLYGONS /;
+		// POINT_DATA number_of_values
+		var patPOINT_DATA = /^POINT_DATA[ ]+(\d+)/;
 
-			// indicates start of triangle strips section
-			var patTRIANGLE_STRIPS = /^TRIANGLE_STRIPS /;
+		// CELL_DATA number_of_polys
+		var patCELL_DATA = /^CELL_DATA[ ]+(\d+)/;
 
-			// POINT_DATA number_of_values
-			var patPOINT_DATA = /^POINT_DATA[ ]+(\d+)/;
+		// Start of color section
+		var patCOLOR_SCALARS = /^COLOR_SCALARS[ ]+(\w+)[ ]+3/;
 
-			// CELL_DATA number_of_polys
-			var patCELL_DATA = /^CELL_DATA[ ]+(\d+)/;
+		// NORMALS Normals float
+		var patNORMALS = /^NORMALS[ ]+(\w+)[ ]+(\w+)/;
 
-			// Start of color section
-			var patCOLOR_SCALARS = /^COLOR_SCALARS[ ]+(\w+)[ ]+3/;
+		var inPointsSection = false;
+		var inPolygonsSection = false;
+		var inPointDataSection = false;
+		var inCellDataSection = false;
+		var inColorSection = false;
+		var inNormalsSection = false;
 
-			// NORMALS Normals float
-			var patNORMALS = /^NORMALS[ ]+(\w+)[ ]+(\w+)/;
+		var lines = data.split( '\n' );
 
-			var inPointsSection = false;
-			var inPolygonsSection = false;
-			var inTriangleStripSection = false;
-			var inPointDataSection = false;
-			var inCellDataSection = false;
-			var inColorSection = false;
-			var inNormalsSection = false;
+		for ( var i in lines ) {
 
-			var lines = data.split( '\n' );
+			var line = lines[ i ];
 
-			for ( var i in lines ) {
+			if ( inPointsSection ) {
 
-				var line = lines[ i ];
+				// get the vertices
+				while ( ( result = pat3Floats.exec( line ) ) !== null ) {
 
-				if ( inPointsSection ) {
+					var x = parseFloat( result[ 1 ] );
+					var y = parseFloat( result[ 2 ] );
+					var z = parseFloat( result[ 3 ] );
+					positions.push( x, y, z );
 
-					// get the vertices
+				}
+
+			} else if ( inPolygonsSection ) {
+
+				if ( ( result = patConnectivity.exec( line ) ) !== null ) {
+
+					// numVertices i0 i1 i2 ...
+					var numVertices = parseInt( result[ 1 ] );
+					var inds = result[ 2 ].split( /\s+/ );
+
+					if ( numVertices >= 3 ) {
+
+						var i0 = parseInt( inds[ 0 ] );
+						var i1, i2;
+						var k = 1;
+						// split the polygon in numVertices - 2 triangles
+						for ( var j = 0; j < numVertices - 2; ++ j ) {
+
+							i1 = parseInt( inds[ k ] );
+							i2 = parseInt( inds[ k  + 1 ] );
+							indices.push( i0, i1, i2 );
+							k ++;
+
+						}
+
+					}
+
+				}
+
+			} else if ( inPointDataSection || inCellDataSection ) {
+
+				if ( inColorSection ) {
+
+					// Get the colors
+
 					while ( ( result = pat3Floats.exec( line ) ) !== null ) {
 
-						var x = parseFloat( result[ 1 ] );
-						var y = parseFloat( result[ 2 ] );
-						var z = parseFloat( result[ 3 ] );
-						positions.push( x, y, z );
+						var r = parseFloat( result[ 1 ] );
+						var g = parseFloat( result[ 2 ] );
+						var b = parseFloat( result[ 3 ] );
+						colors.push( r, g, b );
 
 					}
 
-				} else if ( inPolygonsSection ) {
+				} else if ( inNormalsSection ) {
 
-					if ( ( result = patConnectivity.exec( line ) ) !== null ) {
+					// Get the normal vectors
 
-						// numVertices i0 i1 i2 ...
-						var numVertices = parseInt( result[ 1 ] );
-						var inds = result[ 2 ].split( /\s+/ );
+					while ( ( result = pat3Floats.exec( line ) ) !== null ) {
 
-						if ( numVertices >= 3 ) {
-
-							var i0 = parseInt( inds[ 0 ] );
-							var i1, i2;
-							var k = 1;
-							// split the polygon in numVertices - 2 triangles
-							for ( var j = 0; j < numVertices - 2; ++ j ) {
-
-								i1 = parseInt( inds[ k ] );
-								i2 = parseInt( inds[ k + 1 ] );
-								indices.push( i0, i1, i2 );
-								k ++;
-
-							}
-
-						}
-
-					}
-
-				} else if ( inTriangleStripSection ) {
-
-					if ( ( result = patConnectivity.exec( line ) ) !== null ) {
-
-						// numVertices i0 i1 i2 ...
-						var numVertices = parseInt( result[ 1 ] );
-						var inds = result[ 2 ].split( /\s+/ );
-
-						if ( numVertices >= 3 ) {
-
-							var i0, i1, i2;
-							// split the polygon in numVertices - 2 triangles
-							for ( var j = 0; j < numVertices - 2; j ++ ) {
-
-								if ( j % 2 === 1 ) {
-
-									i0 = parseInt( inds[ j ] );
-									i1 = parseInt( inds[ j + 2 ] );
-									i2 = parseInt( inds[ j + 1 ] );
-									indices.push( i0, i1, i2 );
-
-								} else {
-
-									i0 = parseInt( inds[ j ] );
-									i1 = parseInt( inds[ j + 1 ] );
-									i2 = parseInt( inds[ j + 2 ] );
-									indices.push( i0, i1, i2 );
-
-								}
-
-							}
-
-						}
-
-					}
-
-				} else if ( inPointDataSection || inCellDataSection ) {
-
-					if ( inColorSection ) {
-
-						// Get the colors
-
-						while ( ( result = pat3Floats.exec( line ) ) !== null ) {
-
-							var r = parseFloat( result[ 1 ] );
-							var g = parseFloat( result[ 2 ] );
-							var b = parseFloat( result[ 3 ] );
-							colors.push( r, g, b );
-
-						}
-
-					} else if ( inNormalsSection ) {
-
-						// Get the normal vectors
-
-						while ( ( result = pat3Floats.exec( line ) ) !== null ) {
-
-							var nx = parseFloat( result[ 1 ] );
-							var ny = parseFloat( result[ 2 ] );
-							var nz = parseFloat( result[ 3 ] );
-							normals.push( nx, ny, nz );
-
-						}
-
-					}
-
-				}
-
-				if ( patPOLYGONS.exec( line ) !== null ) {
-
-					inPolygonsSection = true;
-					inPointsSection = false;
-					inTriangleStripSection = false;
-
-				} else if ( patPOINTS.exec( line ) !== null ) {
-
-					inPolygonsSection = false;
-					inPointsSection = true;
-					inTriangleStripSection = false;
-
-				} else if ( patTRIANGLE_STRIPS.exec( line ) !== null ) {
-
-					inPolygonsSection = false;
-					inPointsSection = false;
-					inTriangleStripSection = true;
-
-				} else if ( patPOINT_DATA.exec( line ) !== null ) {
-
-					inPointDataSection = true;
-					inPointsSection = false;
-					inPolygonsSection = false;
-					inTriangleStripSection = false;
-
-				} else if ( patCELL_DATA.exec( line ) !== null ) {
-
-					inCellDataSection = true;
-					inPointsSection = false;
-					inPolygonsSection = false;
-					inTriangleStripSection = false;
-
-				} else if ( patCOLOR_SCALARS.exec( line ) !== null ) {
-
-					inColorSection = true;
-					inNormalsSection = false;
-					inPointsSection = false;
-					inPolygonsSection = false;
-					inTriangleStripSection = false;
-
-				} else if ( patNORMALS.exec( line ) !== null ) {
-
-					inNormalsSection = true;
-					inColorSection = false;
-					inPointsSection = false;
-					inPolygonsSection = false;
-					inTriangleStripSection = false;
-
-				}
-
-			}
-
-			var geometry;
-			var stagger = 'point';
-
-			if ( colors.length == indices.length ) {
-
-				stagger = 'cell';
-
-			}
-
-			if ( stagger == 'point' ) {
-
-				// Nodal. Use BufferGeometry
-				geometry = new THREE.BufferGeometry();
-				geometry.setIndex( new THREE.BufferAttribute( new Uint32Array( indices ), 1 ) );
-				geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( positions ), 3 ) );
-
-				if ( colors.length == positions.length ) {
-
-					geometry.addAttribute( 'color', new THREE.BufferAttribute( new Float32Array( colors ), 3 ) );
-
-				}
-
-				if ( normals.length == positions.length ) {
-
-					geometry.addAttribute( 'normal', new THREE.BufferAttribute( new Float32Array( normals ), 3 ) );
-
-				}
-
-			} else {
-
-				// Cell centered colors. The only way to attach a solid color to each triangle
-				// is to use Geometry, which is less efficient than BufferGeometry
-				geometry = new THREE.Geometry();
-
-				var numTriangles = indices.length / 3;
-				var numPoints = positions.length / 3;
-				var va, vb, vc;
-				var face;
-				var ia, ib, ic;
-				var x, y, z;
-				var r, g, b;
-
-				for ( var j = 0; j < numPoints; ++ j ) {
-
-					x = positions[ 3 * j + 0 ];
-					y = positions[ 3 * j + 1 ];
-					z = positions[ 3 * j + 2 ];
-					geometry.vertices.push( new THREE.Vector3( x, y, z ) );
-
-				}
-
-				for ( var i = 0; i < numTriangles; ++ i ) {
-
-					ia = indices[ 3 * i + 0 ];
-					ib = indices[ 3 * i + 1 ];
-					ic = indices[ 3 * i + 2 ];
-					geometry.faces.push( new THREE.Face3( ia, ib, ic ) );
-
-				}
-
-				if ( colors.length == numTriangles * 3 ) {
-
-					for ( var i = 0; i < numTriangles; ++ i ) {
-
-						face = geometry.faces[ i ];
-						r = colors[ 3 * i + 0 ];
-						g = colors[ 3 * i + 1 ];
-						b = colors[ 3 * i + 2 ];
-						face.color = new THREE.Color().setRGB( r, g, b );
+						var nx = parseFloat( result[ 1 ] );
+						var ny = parseFloat( result[ 2 ] );
+						var nz = parseFloat( result[ 3 ] );
+						normals.push( nx, ny, nz );
 
 					}
 
@@ -12451,793 +11856,129 @@ Object.assign( THREE.VTKLoader.prototype, THREE.EventDispatcher.prototype, {
 
 			}
 
-			return geometry;
+			if ( patPOLYGONS.exec( line ) !== null ) {
 
-		}
+				inPolygonsSection = true;
+				inPointsSection = false;
 
-		function parseBinary( data ) {
+			} else if ( patPOINTS.exec( line ) !== null ) {
 
-			var count, pointIndex, i, numberOfPoints, pt, s;
-			var buffer = new Uint8Array ( data );
-			var dataView = new DataView ( data );
+				inPolygonsSection = false;
+				inPointsSection = true;
 
-			// Points and normals, by default, are empty
-			var points = [];
-			var normals = [];
-			var indices = [];
+			} else if ( patPOINT_DATA.exec( line ) !== null ) {
 
-			// Going to make a big array of strings
-			var vtk = [];
-			var index = 0;
+				inPointDataSection = true;
+				inPointsSection = false;
+				inPolygonsSection = false;
 
-			function findString( buffer, start ) {
+			} else if ( patCELL_DATA.exec( line ) !== null ) {
 
-				var index = start;
-				var c = buffer[ index ];
-				var s = [];
-				while ( c != 10 ) {
+				inCellDataSection = true;
+				inPointsSection = false;
+				inPolygonsSection = false;
 
-					s.push ( String.fromCharCode ( c ) );
-					index ++;
-					c = buffer[ index ];
+			} else if ( patCOLOR_SCALARS.exec( line ) !== null ) {
 
-				}
+				inColorSection = true;
+				inNormalsSection = false;
+				inPointsSection = false;
+				inPolygonsSection = false;
 
-				return { start: start,
-						end: index,
-						next: index + 1,
-						parsedString: s.join( '' ) };
+			} else if ( patNORMALS.exec( line ) !== null ) {
 
-			}
-
-			var state, line;
-
-			while ( true ) {
-
-				// Get a string
-				state = findString ( buffer, index );
-				line = state.parsedString;
-
-				if ( line.indexOf ( 'POINTS' ) === 0 ) {
-
-					vtk.push ( line );
-					// Add the points
-					numberOfPoints = parseInt ( line.split( ' ' )[ 1 ], 10 );
-
-					// Each point is 3 4-byte floats
-					count = numberOfPoints * 4 * 3;
-
-					points = new Float32Array( numberOfPoints * 3 );
-
-					pointIndex = state.next;
-					for ( i = 0; i < numberOfPoints; i ++ ) {
-
-						points[ 3 * i ] = dataView.getFloat32( pointIndex, false );
-						points[ 3 * i + 1 ] = dataView.getFloat32( pointIndex + 4, false );
-						points[ 3 * i + 2 ] = dataView.getFloat32( pointIndex + 8, false );
-						pointIndex = pointIndex + 12;
-
-					}
-					// increment our next pointer
-					state.next = state.next + count + 1;
-
-				} else if ( line.indexOf ( 'TRIANGLE_STRIPS' ) === 0 ) {
-
-					var numberOfStrips = parseInt ( line.split( ' ' )[ 1 ], 10 );
-					var size = parseInt ( line.split ( ' ' )[ 2 ], 10 );
-					// 4 byte integers
-					count = size * 4;
-
-					indices = new Uint32Array( 3 * size - 9 * numberOfStrips );
-					var indicesIndex = 0;
-
-					pointIndex = state.next;
-					for ( i = 0; i < numberOfStrips; i ++ ) {
-
-						// For each strip, read the first value, then record that many more points
-						var indexCount = dataView.getInt32( pointIndex, false );
-						var strip = [];
-						pointIndex += 4;
-						for ( s = 0; s < indexCount; s ++ ) {
-
-							strip.push ( dataView.getInt32( pointIndex, false ) );
-							pointIndex += 4;
-
-						}
-
-						// retrieves the n-2 triangles from the triangle strip
-						for ( var j = 0; j < indexCount - 2; j ++ ) {
-
-							if ( j % 2 ) {
-
-								indices[ indicesIndex ++ ] = strip[ j ];
-								indices[ indicesIndex ++ ] = strip[ j + 2 ];
-								indices[ indicesIndex ++ ] = strip[ j + 1 ];
-
-							} else {
-
-
-								indices[ indicesIndex ++ ] = strip[ j ];
-								indices[ indicesIndex ++ ] = strip[ j + 1 ];
-								indices[ indicesIndex ++ ] = strip[ j + 2 ];
-
-							}
-
-						}
-
-					}
-					// increment our next pointer
-					state.next = state.next + count + 1;
-
-				} else if ( line.indexOf ( 'POLYGONS' ) === 0 ) {
-
-					var numberOfStrips = parseInt ( line.split( ' ' )[ 1 ], 10 );
-					var size = parseInt ( line.split ( ' ' )[ 2 ], 10 );
-					// 4 byte integers
-					count = size * 4;
-
-					indices = new Uint32Array( 3 * size - 9 * numberOfStrips );
-					var indicesIndex = 0;
-
-					pointIndex = state.next;
-					for ( i = 0; i < numberOfStrips; i ++ ) {
-
-						// For each strip, read the first value, then record that many more points
-						var indexCount = dataView.getInt32( pointIndex, false );
-						var strip = [];
-						pointIndex += 4;
-						for ( s = 0; s < indexCount; s ++ ) {
-
-							strip.push ( dataView.getInt32( pointIndex, false ) );
-							pointIndex += 4;
-
-						}
-						var i0 = strip[ 0 ];
-						// divide the polygon in n-2 triangle
-						for ( var j = 1; j < indexCount - 1; j ++ ) {
-
-							indices[ indicesIndex ++ ] = strip[ 0 ];
-							indices[ indicesIndex ++ ] = strip[ j ];
-							indices[ indicesIndex ++ ] = strip[ j + 1 ];
-
-						}
-
-					}
-					// increment our next pointer
-					state.next = state.next + count + 1;
-
-				} else if ( line.indexOf ( 'POINT_DATA' ) === 0 ) {
-
-					numberOfPoints = parseInt ( line.split( ' ' )[ 1 ], 10 );
-
-					// Grab the next line
-					state = findString ( buffer, state.next );
-
-					// Now grab the binary data
-					count = numberOfPoints * 4 * 3;
-
-					normals = new Float32Array( numberOfPoints * 3 );
-					pointIndex = state.next;
-					for ( i = 0; i < numberOfPoints; i ++ ) {
-
-						normals[ 3 * i ] = dataView.getFloat32( pointIndex, false );
-						normals[ 3 * i + 1 ] = dataView.getFloat32( pointIndex + 4, false );
-						normals[ 3 * i + 2 ] = dataView.getFloat32( pointIndex + 8, false );
-						pointIndex += 12;
-
-					}
-
-					// Increment past our data
-					state.next = state.next + count;
-
-				}
-
-				// Increment index
-				index = state.next;
-
-				if ( index >= buffer.byteLength ) {
-
-					break;
-
-				}
-
-			}
-
-			var geometry = new THREE.BufferGeometry();
-			geometry.setIndex( new THREE.BufferAttribute( indices, 1 ) );
-			geometry.addAttribute( 'position', new THREE.BufferAttribute( points, 3 ) );
-
-			if ( normals.length == points.length ) {
-
-				geometry.addAttribute( 'normal', new THREE.BufferAttribute( normals, 3 ) );
-
-			}
-
-			return geometry;
-
-		}
-
-		function parseXML( stringFile ) {
-
-			// Changes XML to JSON, based on https://davidwalsh.name/convert-xml-json
-
-			function xmlToJson( xml ) {
-
-				// Create the return object
-				var obj = {};
-
-				if ( xml.nodeType == 1 ) { // element
-
-					// do attributes
-
-					if ( xml.attributes ) {
-
-						if ( xml.attributes.length > 0 ) {
-
-							obj[ 'attributes' ] = {};
-
-							for ( var j = 0; j < xml.attributes.length; j ++ ) {
-
-								var attribute = xml.attributes.item( j );
-								obj[ 'attributes' ][ attribute.nodeName ] = attribute.nodeValue.trim();
-
-							}
-
-						}
-
-					}
-
-				} else if ( xml.nodeType == 3 ) { // text
-
-					obj = xml.nodeValue.trim();
-
-				}
-
-				// do children
-				if ( xml.hasChildNodes() ) {
-
-					for ( var i = 0; i < xml.childNodes.length; i ++ ) {
-
-						var item = xml.childNodes.item( i );
-						var nodeName = item.nodeName;
-
-						if ( typeof( obj[ nodeName ] ) === 'undefined' ) {
-
-							var tmp = xmlToJson( item );
-
-							if ( tmp !== '' ) obj[ nodeName ] = tmp;
-
-						} else {
-
-							if ( typeof( obj[ nodeName ].push ) === 'undefined' ) {
-
-								var old = obj[ nodeName ];
-								obj[ nodeName ] = [ old ];
-
-							}
-
-							var tmp = xmlToJson( item );
-
-							if ( tmp !== '' ) obj[ nodeName ].push( tmp );
-
-						}
-
-					}
-
-				}
-
-				return obj;
-
-			}
-
-			// Taken from Base64-js
-			function Base64toByteArray( b64 ) {
-
-				var Arr = typeof Uint8Array !== 'undefined' ? Uint8Array : Array;
-				var i;
-				var lookup = [];
-				var revLookup = [];
-				var code = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-				var len = code.length;
-
-				for ( i = 0; i < len; i ++ ) {
-
-					lookup[ i ] = code[ i ];
-
-				}
-
-				for ( i = 0; i < len; ++ i ) {
-
-					revLookup[ code.charCodeAt( i ) ] = i;
-
-				}
-
-				revLookup[ '-'.charCodeAt( 0 ) ] = 62;
-				revLookup[ '_'.charCodeAt( 0 ) ] = 63;
-
-				var j, l, tmp, placeHolders, arr;
-				var len = b64.length;
-
-				if ( len % 4 > 0 ) {
-
-					throw new Error( 'Invalid string. Length must be a multiple of 4' );
-
-				}
-
-				placeHolders = b64[ len - 2 ] === '=' ? 2 : b64[ len - 1 ] === '=' ? 1 : 0;
-				arr = new Arr( len * 3 / 4 - placeHolders );
-				l = placeHolders > 0 ? len - 4 : len;
-
-				var L = 0;
-
-				for ( i = 0, j = 0; i < l; i += 4, j += 3 ) {
-
-					tmp = ( revLookup[ b64.charCodeAt( i ) ] << 18 ) | ( revLookup[ b64.charCodeAt( i + 1 ) ] << 12 ) | ( revLookup[ b64.charCodeAt( i + 2 ) ] << 6 ) | revLookup[ b64.charCodeAt( i + 3 ) ];
-					arr[ L ++ ] = ( tmp & 0xFF0000 ) >> 16;
-					arr[ L ++ ] = ( tmp & 0xFF00 ) >> 8;
-					arr[ L ++ ] = tmp & 0xFF;
-
-				}
-
-				if ( placeHolders === 2 ) {
-
-					tmp = ( revLookup[ b64.charCodeAt( i ) ] << 2 ) | ( revLookup[ b64.charCodeAt( i + 1 ) ] >> 4 );
-					arr[ L ++ ] = tmp & 0xFF;
-
-				} else if ( placeHolders === 1 ) {
-
-					tmp = ( revLookup[ b64.charCodeAt( i ) ] << 10 ) | ( revLookup[ b64.charCodeAt( i + 1 ) ] << 4 ) | ( revLookup[ b64.charCodeAt( i + 2 ) ] >> 2 );
-					arr[ L ++ ] = ( tmp >> 8 ) & 0xFF;
-					arr[ L ++ ] = tmp & 0xFF;
-
-				}
-
-				return arr;
-
-			}
-
-			function parseDataArray( ele, compressed ) {
-
-				// Check the format
-
-				if ( ele.attributes.format == 'binary' ) {
-
-					if ( compressed ) {
-
-						// Split the blob_header and compressed Data
-						if ( ele[ '#text' ].indexOf( '==' ) != - 1 ) {
-
-							var data = ele[ '#text' ].split( '==' );
-
-							// console.log( data );
-
-							if ( data.length == 2 ) {
-
-								var blob = data.shift();
-								var content = data.shift();
-
-								if ( content === '' ) {
-
-									content = blob + '==';
-
-								}
-
-							} else if ( data.length > 2 ) {
-
-								var blob = data.shift();
-								var content = data.shift();
-								content = content + '==';
-
-							} else if ( data.length < 2 ) {
-
-								var content = data.shift();
-								content = content + '==';
-
-							}
-
-							// Convert to bytearray
-							var arr = Base64toByteArray( content );
-
-							// decompress
-							var inflate = new Zlib.Inflate( arr, { resize: true, verify: true } );
-							var content = inflate.decompress();
-
-						} else {
-
-							var content = Base64toByteArray( ele[ '#text' ] );
-
-						}
-
-					} else {
-
-						var content = Base64toByteArray( ele[ '#text' ] );
-
-					}
-
-					var content = content.buffer;
-
-				} else {
-
-					if ( ele[ '#text' ] ) {
-
-						var content = ele[ '#text' ].replace( /\n/g, ' ' ).split( ' ' ).filter( function ( el, idx, arr ) {
-
-							if ( el !== '' ) return el;
-
-						} );
-
-					} else {
-
-						var content = new Int32Array( 0 ).buffer;
-
-					}
-
-				}
-
-				delete ele[ '#text' ];
-
-				// Get the content and optimize it
-
-				if ( ele.attributes.type == 'Float32' ) {
-
-					var txt = new Float32Array( content );
-
-					if ( ele.attributes.format == 'binary' ) {
-
-						if ( ! compressed ) {
-
-							txt = txt.filter( function( el, idx, arr ) {
-
-								if ( idx !== 0 ) return true;
-
-							} );
-
-						}
-
-					}
-
-				} else if ( ele.attributes.type === 'Int64' ) {
-
-					var txt = new Int32Array( content );
-
-					if ( ele.attributes.format == 'binary' ) {
-
-						if ( ! compressed ) {
-
-							txt = txt.filter( function ( el, idx, arr ) {
-
-								if ( idx !== 0 ) return true;
-
-							} );
-
-						}
-
-						txt = txt.filter( function ( el, idx, arr ) {
-
-							if ( idx % 2 !== 1 ) return true;
-
-						} );
-
-					}
-
-				}
-
-				// console.log( txt );
-
-				return txt;
-
-			}
-
-			// Main part
-			// Get Dom
-			var dom = null;
-
-			if ( window.DOMParser ) {
-
-				try {
-
-					dom = ( new DOMParser() ).parseFromString( stringFile, 'text/xml' );
-
-				} catch ( e ) {
-
-					dom = null;
-
-				}
-
-			} else if ( window.ActiveXObject ) {
-
-				try {
-
-					dom = new ActiveXObject( 'Microsoft.XMLDOM' );
-					dom.async = false;
-
-					if ( ! dom.loadXML( xml ) ) {
-
-						throw new Error( dom.parseError.reason + dom.parseError.srcText );
-
-					}
-
-				} catch ( e ) {
-
-					dom = null;
-
-				}
-
-			} else {
-
-				throw new Error( 'Cannot parse xml string!' );
-
-			}
-
-			// Get the doc
-			var doc = dom.documentElement;
-			// Convert to json
-			var json = xmlToJson( doc );
-			var points = [];
-			var normals = [];
-			var indices = [];
-
-			if ( json.PolyData ) {
-
-				var piece = json.PolyData.Piece;
-				var compressed = json.attributes.hasOwnProperty( 'compressor' );
-
-				// Can be optimized
-				// Loop through the sections
-				var sections = [ 'PointData', 'Points', 'Strips', 'Polys' ];// +['CellData', 'Verts', 'Lines'];
-				var sectionIndex = 0, numberOfSections = sections.length;
-
-				while ( sectionIndex < numberOfSections ) {
-
-					var section = piece[ sections[ sectionIndex ] ];
-
-					// If it has a DataArray in it
-
-					if ( section.DataArray ) {
-
-						// Depending on the number of DataArrays
-
-						if ( Object.prototype.toString.call( section.DataArray ) === '[object Array]' ) {
-
-							var arr = section.DataArray;
-
-						} else {
-
-							var arr = [ section.DataArray ];
-
-						}
-
-						var dataArrayIndex = 0, numberOfDataArrays = arr.length;
-
-						while ( dataArrayIndex < numberOfDataArrays ) {
-
-							// Parse the DataArray
-							arr[ dataArrayIndex ].text = parseDataArray( arr[ dataArrayIndex ], compressed );
-							dataArrayIndex ++;
-
-						}
-
-						switch ( sections[ sectionIndex ] ) {
-
-							// if iti is point data
-							case 'PointData':
-
-								var numberOfPoints = parseInt( piece.attributes.NumberOfPoints );
-								var normalsName = section.attributes.Normals;
-
-								if ( numberOfPoints > 0 ) {
-
-									for ( var i = 0, len = arr.length; i < len; i ++ ) {
-
-										if ( normalsName == arr[ i ].attributes.Name ) {
-
-											var components = arr[ i ].attributes.NumberOfComponents;
-											normals = new Float32Array( numberOfPoints * components );
-											normals.set( arr[ i ].text, 0 );
-
-										}
-
-									}
-
-								}
-
-								// console.log('Normals', normals);
-
-								break;
-
-							// if it is points
-							case 'Points':
-
-								var numberOfPoints = parseInt( piece.attributes.NumberOfPoints );
-
-								if ( numberOfPoints > 0 ) {
-
-									var components = section.DataArray.attributes.NumberOfComponents;
-									points = new Float32Array( numberOfPoints * components );
-									points.set( section.DataArray.text, 0 );
-
-								}
-
-								// console.log('Points', points);
-
-								break;
-
-							// if it is strips
-							case 'Strips':
-
-								var numberOfStrips = parseInt( piece.attributes.NumberOfStrips );
-
-								if ( numberOfStrips > 0 ) {
-
-									var connectivity = new Int32Array( section.DataArray[ 0 ].text.length );
-									var offset = new Int32Array( section.DataArray[ 1 ].text.length );
-									connectivity.set( section.DataArray[ 0 ].text, 0 );
-									offset.set( section.DataArray[ 1 ].text, 0 );
-
-									var size = numberOfStrips + connectivity.length;
-									indices = new Uint32Array( 3 * size - 9 * numberOfStrips );
-
-									var indicesIndex = 0;
-
-									for ( var i = 0,len = numberOfStrips; i < len; i ++ ) {
-
-										var strip = [];
-
-										for ( var s = 0, len1 = offset[ i ], len0 = 0; s < len1 - len0; s ++ ) {
-
-											strip.push ( connectivity[ s ] );
-
-											if ( i > 0 ) len0 = offset[ i - 1 ];
-
-										}
-
-										for ( var j = 0, len1 = offset[ i ], len0 = 0; j < len1 - len0 - 2; j ++ ) {
-
-											if ( j % 2 ) {
-
-												indices[ indicesIndex ++ ] = strip[ j ];
-												indices[ indicesIndex ++ ] = strip[ j + 2 ];
-												indices[ indicesIndex ++ ] = strip[ j + 1 ];
-
-											} else {
-
-												indices[ indicesIndex ++ ] = strip[ j ];
-												indices[ indicesIndex ++ ] = strip[ j + 1 ];
-												indices[ indicesIndex ++ ] = strip[ j + 2 ];
-
-											}
-
-											if ( i > 0 ) len0 = offset[ i - 1 ];
-
-										}
-
-									}
-
-								}
-
-								//console.log('Strips', indices);
-
-								break;
-
-							// if it is polys
-							case 'Polys':
-
-								var numberOfPolys = parseInt( piece.attributes.NumberOfPolys );
-
-								if ( numberOfPolys > 0 ) {
-
-									var connectivity = new Int32Array( section.DataArray[ 0 ].text.length );
-									var offset = new Int32Array( section.DataArray[ 1 ].text.length );
-									connectivity.set( section.DataArray[ 0 ].text, 0 );
-									offset.set( section.DataArray[ 1 ].text, 0 );
-
-									var size = numberOfPolys + connectivity.length;
-									indices = new Uint32Array( 3 * size - 9 * numberOfPolys );
-									var indicesIndex = 0, connectivityIndex = 0;
-									var i = 0,len = numberOfPolys, len0 = 0;
-
-									while ( i < len ) {
-
-										var poly = [];
-										var s = 0, len1 = offset[ i ];
-
-										while ( s < len1 - len0 ) {
-
-											poly.push( connectivity[ connectivityIndex ++ ] );
-											s ++;
-
-										}
-
-										var j = 1;
-
-										while ( j < len1 - len0 - 1 ) {
-
-											indices[ indicesIndex ++ ] = poly[ 0 ];
-											indices[ indicesIndex ++ ] = poly[ j ];
-											indices[ indicesIndex ++ ] = poly[ j + 1 ];
-											j ++;
-
-										}
-
-										i ++;
-										len0 = offset[ i - 1 ];
-
-									}
-
-								}
-								//console.log('Polys', indices);
-								break;
-
-							default:
-								break;
-
-						}
-
-					}
-
-					sectionIndex ++;
-
-				}
-
-				var geometry = new THREE.BufferGeometry();
-				geometry.setIndex( new THREE.BufferAttribute( indices, 1 ) );
-				geometry.addAttribute( 'position', new THREE.BufferAttribute( points, 3 ) );
-
-				if ( normals.length == points.length ) {
-
-					geometry.addAttribute( 'normal', new THREE.BufferAttribute( normals, 3 ) );
-
-				}
-
-				// console.log( json );
-
-				return geometry;
-
-			} else {
-
-				// TODO for vtu,vti,and other xml formats
+				inNormalsSection = true;
+				inColorSection = false;
+				inPointsSection = false;
+				inPolygonsSection = false;
 
 			}
 
 		}
 
-		function getStringFile( data ) {
+		var geometry;
+		var stagger = 'point';
 
-			var stringFile = '';
-			var charArray = new Uint8Array( data );
-			var i = 0;
-			var len = charArray.length;
+		if ( colors.length == indices.length ) {
 
-			while ( len -- ) {
-
-				stringFile += String.fromCharCode( charArray[ i ++ ] );
-
-			}
-
-			return stringFile;
+			stagger = 'cell';
 
 		}
 
-		// get the 5 first lines of the files to check if there is the key word binary
-		var meta = String.fromCharCode.apply( null, new Uint8Array( data, 0, 250 ) ).split( '\n' );
+		if ( stagger == 'point' ) {
 
-		if ( meta[ 0 ].indexOf( 'xml' ) !== - 1 ) {
+			// Nodal. Use BufferGeometry
+			geometry = new THREE.BufferGeometry();
+			geometry.setIndex( new THREE.BufferAttribute( new ( indices.length > 65535 ? Uint32Array : Uint16Array )( indices ), 1 ) );
+			geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( positions ), 3 ) );
 
-			return parseXML( getStringFile( data ) );
+			if ( colors.length == positions.length ) {
 
-		} else if ( meta[ 2 ].includes( 'ASCII' ) ) {
+				geometry.addAttribute( 'color', new THREE.BufferAttribute( new Float32Array( colors ), 3 ) );
 
-			return parseASCII( getStringFile( data ) );
+			}
+
+			if ( normals.length == positions.length ) {
+
+				geometry.addAttribute( 'normal', new THREE.BufferAttribute( new Float32Array( normals ), 3 ) );
+
+			}
 
 		} else {
 
-			return parseBinary( data );
+			// Cell centered colors. The only way to attach a solid color to each triangle
+			// is to use Geometry, which is less efficient than BufferGeometry
+			geometry = new THREE.Geometry();
+
+			var numTriangles = indices.length / 3;
+			var numPoints = positions.length / 3;
+			var va, vb, vc;
+			var face;
+			var ia, ib, ic;
+			var x, y, z;
+			var r, g, b;
+
+			for ( var j = 0; j < numPoints; ++ j ) {
+
+				x = positions[ 3 * j + 0 ];
+				y = positions[ 3 * j + 1 ];
+				z = positions[ 3 * j + 2 ];
+				geometry.vertices.push( new THREE.Vector3( x, y, z ) );
+
+			}
+
+			for ( var i = 0; i < numTriangles; ++ i ) {
+
+				ia = indices[ 3 * i + 0 ];
+				ib = indices[ 3 * i + 1 ];
+				ic = indices[ 3 * i + 2 ];
+				geometry.faces.push( new THREE.Face3( ia, ib, ic ) );
+
+			}
+
+			if ( colors.length == numTriangles * 3 ) {
+
+				for ( var i = 0; i < numTriangles; ++ i ) {
+
+					face = geometry.faces[ i ];
+					r = colors[ 3 * i + 0 ];
+					g = colors[ 3 * i + 1 ];
+					b = colors[ 3 * i + 2 ];
+					face.color = new THREE.Color().setRGB( r, g, b );
+
+				}
+
+			 }
 
 		}
 
+		return geometry;
+
 	}
 
-} );
+};
+
+THREE.EventDispatcher.prototype.apply( THREE.VTKLoader.prototype );
 
 // File:examples/js/loaders/ctm/lzma.js
 
@@ -14439,6 +13180,25 @@ THREE.CTMLoader = function () {
 
 	THREE.Loader.call( this );
 
+	// Deprecated
+	
+	Object.defineProperties( this, {
+		statusDomElement: {
+			get: function () {
+
+				if ( this._statusDomElement === undefined ) {
+
+					this._statusDomElement = document.createElement( 'div' );
+
+				}
+
+				console.warn( 'THREE.BinaryLoader: .statusDomElement has been removed.' );
+				return this._statusDomElement;
+
+			}
+		},
+	} );
+
 };
 
 THREE.CTMLoader.prototype = Object.create( THREE.Loader.prototype );
@@ -14492,7 +13252,7 @@ THREE.CTMLoader.prototype.loadParts = function( url, callback, parameters ) {
 				// load joined CTM file
 
 				var partUrl = basePath + jsonObject.data;
-				var parametersPart = { useWorker: parameters.useWorker, worker:parameters.worker, offsets: jsonObject.offsets };
+				var parametersPart = { useWorker: parameters.useWorker, offsets: jsonObject.offsets };
 				scope.load( partUrl, callbackFinal, parametersPart );
 
 			}
@@ -14703,70 +13463,58 @@ THREE.OBJExporter.prototype = {
 		var indexVertexUvs = 0;
 		var indexNormals = 0;
 
-		var vertex = new THREE.Vector3();
-		var normal = new THREE.Vector3();
-		var uv = new THREE.Vector2();
-
-		var i, j, l, m, face = [];
-
 		var parseMesh = function ( mesh ) {
 
 			var nbVertex = 0;
-			var nbNormals = 0;
 			var nbVertexUvs = 0;
+			var nbNormals = 0;
 
 			var geometry = mesh.geometry;
 
-			var normalMatrixWorld = new THREE.Matrix3();
+			if ( geometry instanceof THREE.BufferGeometry ) {
 
-			if ( geometry instanceof THREE.Geometry ) {
-
-				geometry = new THREE.BufferGeometry().setFromObject( mesh );
+				geometry = new THREE.Geometry().fromBufferGeometry(geometry);
 
 			}
 
-			if ( geometry instanceof THREE.BufferGeometry ) {
+			if ( geometry instanceof THREE.Geometry ) {
 
-				// shortcuts
-				var vertices = geometry.getAttribute( 'position' );
-				var normals = geometry.getAttribute( 'normal' );
-				var uvs = geometry.getAttribute( 'uv' );
-				var indices = geometry.getIndex();
-
-				// name of the mesh object
 				output += 'o ' + mesh.name + '\n';
 
-				// vertices
+				var vertices = geometry.vertices;
 
-				if( vertices !== undefined ) {
+				for ( var i = 0, l = vertices.length; i < l; i ++ ) {
 
-					for ( i = 0, l = vertices.count; i < l; i ++, nbVertex++ ) {
+					var vertex = vertices[ i ].clone();
+					vertex.applyMatrix4( mesh.matrixWorld );
 
-						vertex.x = vertices.getX( i );
-						vertex.y = vertices.getY( i );
-						vertex.z = vertices.getZ( i );
+					output += 'v ' + vertex.x + ' ' + vertex.y + ' ' + vertex.z + '\n';
 
-						// transfrom the vertex to world space
-						vertex.applyMatrix4( mesh.matrixWorld );
-
-						// transform the vertex to export format
-						output += 'v ' + vertex.x + ' ' + vertex.y + ' ' + vertex.z + '\n';
-
-					}
+					nbVertex ++;
 
 				}
 
 				// uvs
 
-				if( uvs !== undefined ) {
+				var faces = geometry.faces;
+				var faceVertexUvs = geometry.faceVertexUvs[ 0 ];
+				var hasVertexUvs = faces.length === faceVertexUvs.length;
 
-					for ( i = 0, l = uvs.count; i < l; i ++, nbVertexUvs++ ) {
+				if ( hasVertexUvs ) {
 
-						uv.x = uvs.getX( i );
-						uv.y = uvs.getY( i );
+					for ( var i = 0, l = faceVertexUvs.length; i < l; i ++ ) {
 
-						// transform the uv to export format
-						output += 'vt ' + uv.x + ' ' + uv.y + '\n';
+						var vertexUvs = faceVertexUvs[ i ];
+
+						for ( var j = 0, jl = vertexUvs.length; j < jl; j ++ ) {
+
+							var uv = vertexUvs[ j ];
+
+							output += 'vt ' + uv.x + ' ' + uv.y + '\n';
+
+							nbVertexUvs ++;
+
+						}
 
 					}
 
@@ -14774,21 +13522,39 @@ THREE.OBJExporter.prototype = {
 
 				// normals
 
-				if( normals !== undefined ) {
+				var normalMatrixWorld = new THREE.Matrix3();
+				normalMatrixWorld.getNormalMatrix( mesh.matrixWorld );
 
-					normalMatrixWorld.getNormalMatrix( mesh.matrixWorld );
+				for ( var i = 0, l = faces.length; i < l; i ++ ) {
 
-					for ( i = 0, l = normals.count; i < l; i ++, nbNormals++ ) {
+					var face = faces[ i ];
+					var vertexNormals = face.vertexNormals;
 
-						normal.x = normals.getX( i );
-						normal.y = normals.getY( i );
-						normal.z = normals.getZ( i );
+					if ( vertexNormals.length === 3 ) {
 
-						// transfrom the normal to world space
+						for ( var j = 0, jl = vertexNormals.length; j < jl; j ++ ) {
+
+							var normal = vertexNormals[ j ].clone();
+							normal.applyMatrix3( normalMatrixWorld );
+
+							output += 'vn ' + normal.x + ' ' + normal.y + ' ' + normal.z + '\n';
+
+							nbNormals ++;
+
+						}
+
+					} else {
+
+						var normal = face.normal.clone();
 						normal.applyMatrix3( normalMatrixWorld );
 
-						// transform the normal to export format
-						output += 'vn ' + normal.x + ' ' + normal.y + ' ' + normal.z + '\n';
+						for ( var j = 0; j < 3; j ++ ) {
+
+							output += 'vn ' + normal.x + ' ' + normal.y + ' ' + normal.z + '\n';
+
+							nbNormals ++;
+
+						}
 
 					}
 
@@ -14796,45 +13562,21 @@ THREE.OBJExporter.prototype = {
 
 				// faces
 
-				if( indices !== null ) {
 
-					for ( i = 0, l = indices.count; i < l; i += 3 ) {
+				for ( var i = 0, j = 1, l = faces.length; i < l; i ++, j += 3 ) {
 
-						for( m = 0; m < 3; m ++ ){
+					var face = faces[ i ];
 
-							j = indices.getX( i + m ) + 1;
-
-							face[ m ] = ( indexVertex + j ) + '/' + ( uvs ? ( indexVertexUvs + j ) : '' ) + '/' + ( indexNormals + j );
-
-						}
-
-						// transform the face to export format
-						output += 'f ' + face.join( ' ' ) + "\n";
-
-					}
-
-				} else {
-
-					for ( i = 0, l = vertices.count; i < l; i += 3 ) {
-
-						for( m = 0; m < 3; m ++ ){
-
-							j = i + m + 1;
-
-							face[ m ] = ( indexVertex + j ) + '/' + ( uvs ? ( indexVertexUvs + j ) : '' ) + '/' + ( indexNormals + j );
-
-						}
-
-						// transform the face to export format
-						output += 'f ' + face.join( ' ' ) + "\n";
-
-					}
+					output += 'f ';
+					output += ( indexVertex + face.a + 1 ) + '/' + ( hasVertexUvs ? ( indexVertexUvs + j     ) : '' ) + '/' + ( indexNormals + j     ) + ' ';
+					output += ( indexVertex + face.b + 1 ) + '/' + ( hasVertexUvs ? ( indexVertexUvs + j + 1 ) : '' ) + '/' + ( indexNormals + j + 1 ) + ' ';
+					output += ( indexVertex + face.c + 1 ) + '/' + ( hasVertexUvs ? ( indexVertexUvs + j + 2 ) : '' ) + '/' + ( indexNormals + j + 2 ) + '\n';
 
 				}
 
 			} else {
 
-				console.warn( 'THREE.OBJExporter.parseMesh(): geometry type unsupported', geometry );
+				console.warn( 'THREE.OBJExporter.parseMesh(): geometry type unsupported', mesh );
 
 			}
 
@@ -14845,94 +13587,9 @@ THREE.OBJExporter.prototype = {
 
 		};
 
-		var parseLine = function( line ) {
-
-			var nbVertex = 0;
-
-			var geometry = line.geometry;
-			var type = line.type;
-
-			if ( geometry instanceof THREE.Geometry ) {
-
-				geometry = new THREE.BufferGeometry().setFromObject( line );
-
-			}
-
-			if ( geometry instanceof THREE.BufferGeometry ) {
-
-				// shortcuts
-				var vertices = geometry.getAttribute( 'position' );
-				var indices = geometry.getIndex();
-
-				// name of the line object
-				output += 'o ' + line.name + '\n';
-
-				if( vertices !== undefined ) {
-
-					for ( i = 0, l = vertices.count; i < l; i ++, nbVertex++ ) {
-
-						vertex.x = vertices.getX( i );
-						vertex.y = vertices.getY( i );
-						vertex.z = vertices.getZ( i );
-
-						// transfrom the vertex to world space
-						vertex.applyMatrix4( line.matrixWorld );
-
-						// transform the vertex to export format
-						output += 'v ' + vertex.x + ' ' + vertex.y + ' ' + vertex.z + '\n';
-
-					}
-
-				}
-
-				if ( type === 'Line' ) {
-
-					output += 'l ';
-
-					for ( j = 1, l = vertices.count; j <= l; j++ ) {
-
-						output += ( indexVertex + j ) + ' ';
-
-					}
-
-					output += '\n';
-
-				}
-
-				if ( type === 'LineSegments' ) {
-
-					for ( j = 1, k = j + 1, l = vertices.count; j < l; j += 2, k = j + 1 ) {
-
-						output += 'l ' + ( indexVertex + j ) + ' ' + ( indexVertex + k ) + '\n';
-
-					}
-
-				}
-
-			} else {
-
-				console.warn('THREE.OBJExporter.parseLine(): geometry type unsupported', geometry );
-
-			}
-
-			// update index
-			indexVertex += nbVertex;
-
-		};
-
 		object.traverse( function ( child ) {
 
-			if ( child instanceof THREE.Mesh ) {
-
-				parseMesh( child );
-
-			}
-
-			if ( child instanceof THREE.Line ) {
-
-				parseLine( child );
-
-			}
+			if ( child instanceof THREE.Mesh ) parseMesh( child );
 
 		} );
 
@@ -15248,7 +13905,7 @@ THREE.SceneLoader.prototype = {
 
 							if ( ! objJSON.material ) {
 
-								material = new THREE.MultiMaterial( result.face_materials[ objJSON.geometry ] );
+								material = new THREE.MeshFaceMaterial( result.face_materials[ objJSON.geometry ] );
 
 							}
 
@@ -15256,9 +13913,9 @@ THREE.SceneLoader.prototype = {
 							// if there is just empty face material
 							// (must create new material as each model has its own face material)
 
-							if ( ( material instanceof THREE.MultiMaterial ) && material.materials.length === 0 ) {
+							if ( ( material instanceof THREE.MeshFaceMaterial ) && material.materials.length === 0 ) {
 
-								material = new THREE.MultiMaterial( result.face_materials[ objJSON.geometry ] );
+								material = new THREE.MeshFaceMaterial( result.face_materials[ objJSON.geometry ] );
 
 							}
 
@@ -15369,7 +14026,7 @@ THREE.SceneLoader.prototype = {
 								break;
 
 							case 'SpotLight':
-								light = new THREE.SpotLight( color, intensity, distance );
+								light = new THREE.SpotLight( color, intensity, distance, 1 );
 								light.angle = objJSON.angle;
 								light.position.fromArray( position );
 								light.target.set( position[ 0 ], position[ 1 ] - distance, position[ 2 ] );
@@ -15915,27 +14572,26 @@ THREE.SceneLoader.prototype = {
 			if ( Array.isArray( textureJSON.url ) ) {
 
 				var count = textureJSON.url.length;
-				var urls = [];
+				var url_array = [];
 
 				for ( var i = 0; i < count; i ++ ) {
 
-					urls[ i ] = get_url( textureJSON.url[ i ], data.urlBaseType );
+					url_array[ i ] = get_url( textureJSON.url[ i ], data.urlBaseType );
 
 				}
 
-				var loader = THREE.Loader.Handlers.get( urls[ 0 ] );
+				var loader = THREE.Loader.Handlers.get( url_array[ 0 ] );
 
 				if ( loader !== null ) {
 
-					texture = loader.load( urls, generateTextureCallback( count ) );
+					texture = loader.load( url_array, generateTextureCallback( count ) );
 
 					if ( textureJSON.mapping !== undefined )
 						texture.mapping = textureJSON.mapping;
 
 				} else {
 
-					texture = new THREE.CubeTextureLoader().load( urls, generateTextureCallback( count ) );
-					texture.mapping = textureJSON.mapping;
+					texture = THREE.ImageUtils.loadTextureCube( url_array, textureJSON.mapping, generateTextureCallback( count ) );
 
 				}
 
@@ -16101,7 +14757,7 @@ THREE.SceneLoader.prototype = {
 
 		}
 
-		// second pass through all materials to initialize MultiMaterials
+		// second pass through all materials to initialize MeshFaceMaterials
 		// that could be referring to other materials out of order
 
 		for ( matID in data.materials ) {
@@ -16498,40 +15154,32 @@ THREE.Projector = function () {
 		_renderData.objects.length = 0;
 		_renderData.lights.length = 0;
 
-		function addObject( object ) {
-
-			_object = getNextObjectInPool();
-			_object.id = object.id;
-			_object.object = object;
-
-			_vector3.setFromMatrixPosition( object.matrixWorld );
-			_vector3.applyProjection( _viewProjectionMatrix );
-			_object.z = _vector3.z;
-			_object.renderOrder = object.renderOrder;
-
-			_renderData.objects.push( _object );
-
-		}
-
 		scene.traverseVisible( function ( object ) {
 
 			if ( object instanceof THREE.Light ) {
 
 				_renderData.lights.push( object );
 
-			} else if ( object instanceof THREE.Mesh || object instanceof THREE.Line ) {
+			} else if ( object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Sprite ) {
 
-				if ( object.material.visible === false ) return;
-				if ( object.frustumCulled === true && _frustum.intersectsObject( object ) === false ) return;
+				var material = object.material;
 
-				addObject( object );
+				if ( material.visible === false ) return;
 
-			} else if ( object instanceof THREE.Sprite ) {
+				if ( object.frustumCulled === false || _frustum.intersectsObject( object ) === true ) {
 
-				if ( object.material.visible === false ) return;
-				if ( object.frustumCulled === true && _frustum.intersectsSprite( object ) === false ) return;
+					_object = getNextObjectInPool();
+					_object.id = object.id;
+					_object.object = object;
 
-				addObject( object );
+					_vector3.setFromMatrixPosition( object.matrixWorld );
+					_vector3.applyProjection( _viewProjectionMatrix );
+					_object.z = _vector3.z;
+					_object.renderOrder = object.renderOrder;
+
+					_renderData.objects.push( _object );
+
+				}
 
 			}
 
@@ -16645,7 +15293,7 @@ THREE.Projector = function () {
 
 					var material = object.material;
 
-					var isFaceMaterial = material instanceof THREE.MultiMaterial;
+					var isFaceMaterial = material instanceof THREE.MeshFaceMaterial;
 					var objectMaterials = isFaceMaterial === true ? object.material : null;
 
 					for ( var v = 0, vl = vertices.length; v < vl; v ++ ) {
@@ -17147,7 +15795,7 @@ THREE.CanvasRenderer = function ( parameters ) {
 	_viewportWidth = _canvasWidth,
 	_viewportHeight = _canvasHeight,
 
-	_pixelRatio = 1,
+	pixelRatio = 1,
 
 	_context = _canvas.getContext( '2d', {
 		alpha: parameters.alpha === true
@@ -17256,20 +15904,20 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 	this.getPixelRatio = function () {
 
-		return _pixelRatio;
+		return pixelRatio;
 
 	};
 
 	this.setPixelRatio = function ( value ) {
 
-		if ( value !== undefined ) _pixelRatio = value;
+		if ( value !== undefined ) pixelRatio = value;
 
 	};
 
 	this.setSize = function ( width, height, updateStyle ) {
 
-		_canvasWidth = width * _pixelRatio;
-		_canvasHeight = height * _pixelRatio;
+		_canvasWidth = width * pixelRatio;
+		_canvasHeight = height * pixelRatio;
 
 		_canvas.width = _canvasWidth;
 		_canvas.height = _canvasHeight;
@@ -17304,16 +15952,16 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 	this.setViewport = function ( x, y, width, height ) {
 
-		_viewportX = x * _pixelRatio;
-		_viewportY = y * _pixelRatio;
+		_viewportX = x * pixelRatio;
+		_viewportY = y * pixelRatio;
 
-		_viewportWidth = width * _pixelRatio;
-		_viewportHeight = height * _pixelRatio;
+		_viewportWidth = width * pixelRatio;
+		_viewportHeight = height * pixelRatio;
 
 	};
 
 	this.setScissor = function () {};
-	this.setScissorTest = function () {};
+	this.enableScissorTest = function () {};
 
 	this.setClearColor = function ( color, alpha ) {
 
@@ -17352,7 +16000,7 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 	this.clear = function () {
 
-		if ( _clearBox.isEmpty() === false ) {
+		if ( _clearBox.empty() === false ) {
 
 			_clearBox.intersect( _clipBox );
 			_clearBox.expandByScalar( 2 );
@@ -18124,10 +16772,6 @@ THREE.CanvasRenderer = function ( parameters ) {
 
 				_context.globalCompositeOperation = 'darker';
 
-			} else if ( value === THREE.MultiplyBlending ) {
-
-				_context.globalCompositeOperation = 'multiply';
-
 			}
 
 			_contextGlobalCompositeOperation = value;
@@ -18498,7 +17142,7 @@ THREE.RaytracingRenderer = function ( parameters ) {
 
 };
 
-Object.assign( THREE.RaytracingRenderer.prototype, THREE.EventDispatcher.prototype );
+THREE.EventDispatcher.prototype.apply( THREE.RaytracingRenderer.prototype );
 
 // File:examples/js/renderers/SoftwareRenderer.js
 
@@ -18522,8 +17166,6 @@ THREE.SoftwareRenderer = function ( parameters ) {
 	var context = canvas.getContext( '2d', {
 		alpha: parameters.alpha === true
 	} );
-	
-	var alpha = parameters.alpha;
 
 	var shaders = {};
 	var textures = {};
@@ -18548,8 +17190,8 @@ THREE.SoftwareRenderer = function ( parameters ) {
 	var maxZVal = ( 1 << 24 ); // Note: You want to size this so you don't get overflows.
 	var lineMode = false;
 	var lookVector = new THREE.Vector3( 0, 0, 1 );
-	var crossVector = new THREE.Vector3();
-
+	var crossVector = new THREE.Vector3();        
+    
 	var rectx1 = Infinity, recty1 = Infinity;
 	var rectx2 = 0, recty2 = 0;
 
@@ -18558,20 +17200,13 @@ THREE.SoftwareRenderer = function ( parameters ) {
 
 	var projector = new THREE.Projector();
 
-	var spriteV1 = new THREE.Vector4();
-	var spriteV2 = new THREE.Vector4();
-	var spriteV3 = new THREE.Vector4();
+	var vector1 = new THREE.Vector3();
+	var vector2 = new THREE.Vector3();
+	var vector3 = new THREE.Vector3();
 
-	var spriteUV1 = new THREE.Vector2();
-	var spriteUV2 = new THREE.Vector2();
-	var spriteUV3 = new THREE.Vector2();
-
-	var mpVPool = [];
-	var mpVPoolCount = 0;
-	var mpNPool = [];
-	var mpNPoolCount = 0;
-	var mpUVPool = [];
-	var mpUVPoolCount = 0;
+	var texCoord1 = new THREE.Vector2();
+	var texCoord2 = new THREE.Vector2();
+	var texCoord3 = new THREE.Vector2();
 
 	this.domElement = canvas;
 
@@ -18611,7 +17246,7 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		canvas.width = canvasWidth;
 		canvas.height = canvasHeight;
 
-		context.fillStyle = alpha ? "rgba(0, 0, 0, 0)" : clearColor.getStyle();
+		context.fillStyle = clearColor.getStyle();
 		context.fillRect( 0, 0, canvasWidth, canvasHeight );
 
 		imagedata = context.getImageData( 0, 0, canvasWidth, canvasHeight );
@@ -18647,9 +17282,6 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		recty1 = Infinity;
 		rectx2 = 0;
 		recty2 = 0;
-		mpVPoolCount = 0;
-		mpNPoolCount = 0;
-		mpUVPoolCount = 0;
 
 		for ( var i = 0; i < numBlocks; i ++ ) {
 
@@ -18673,8 +17305,6 @@ THREE.SoftwareRenderer = function ( parameters ) {
 			var element = elements[ e ];
 			var material = element.material;
 			var shader = getMaterialShader( material );
-
-			if ( !shader ) continue;
 
 			if ( element instanceof THREE.RenderableFace ) {
 
@@ -18706,68 +17336,68 @@ THREE.SoftwareRenderer = function ( parameters ) {
 				var scaleX = element.scale.x * 0.5;
 				var scaleY = element.scale.y * 0.5;
 
-				spriteV1.copy( element );
-				spriteV1.x -= scaleX;
-				spriteV1.y += scaleY;
+				vector1.copy( element );
+				vector1.x -= scaleX;
+				vector1.y += scaleY;
 
-				spriteV2.copy( element );
-				spriteV2.x -= scaleX;
-				spriteV2.y -= scaleY;
+				vector2.copy( element );
+				vector2.x -= scaleX;
+				vector2.y -= scaleY;
 
-				spriteV3.copy( element );
-				spriteV3.x += scaleX;
-				spriteV3.y += scaleY;
+				vector3.copy( element );
+				vector3.x += scaleX;
+				vector3.y += scaleY;
 
 				if ( material.map ) {
 
-					spriteUV1.set( 0, 1 );
-					spriteUV2.set( 0, 0 );
-					spriteUV3.set( 1, 1 );
+					texCoord1.set( 0, 1 );
+					texCoord2.set( 0, 0 );
+					texCoord3.set( 1, 1 );
 
 					drawTriangle(
-						spriteV1, spriteV2, spriteV3,
-						spriteUV1, spriteUV2, spriteUV3,
+						vector1, vector2, vector3,
+						texCoord1, texCoord2, texCoord3,
 						shader, element, material
 					);
 
 				} else {
 
 					drawTriangle(
-						spriteV1, spriteV2, spriteV3,
+						vector1, vector2, vector3,
 						null, null, null,
 						shader, element, material
 					);
 
 				}
 
-				spriteV1.copy( element );
-				spriteV1.x += scaleX;
-				spriteV1.y += scaleY;
+				vector1.copy( element );
+				vector1.x += scaleX;
+				vector1.y += scaleY;
 
-				spriteV2.copy( element );
-				spriteV2.x -= scaleX;
-				spriteV2.y -= scaleY;
+				vector2.copy( element );
+				vector2.x -= scaleX;
+				vector2.y -= scaleY;
 
-				spriteV3.copy( element );
-				spriteV3.x += scaleX;
-				spriteV3.y -= scaleY;
+				vector3.copy( element );
+				vector3.x += scaleX;
+				vector3.y -= scaleY;
 
 				if ( material.map ) {
 
-					spriteUV1.set( 1, 1 );
-					spriteUV2.set( 0, 0 );
-					spriteUV3.set( 1, 0 );
+					texCoord1.set( 1, 1 );
+					texCoord2.set( 0, 0 );
+					texCoord3.set( 1, 0 );
 
 					drawTriangle(
-						spriteV1, spriteV2, spriteV3,
-						spriteUV1, spriteUV2, spriteUV3,
+						vector1, vector2, vector3,
+						texCoord1, texCoord2, texCoord3,
 						shader, element, material
 					);
 
 				} else {
 
 					drawTriangle(
-						spriteV1, spriteV2, spriteV3,
+						vector1, vector2, vector3,
 						null, null, null,
 						shader, element, material
 					);
@@ -18775,7 +17405,7 @@ THREE.SoftwareRenderer = function ( parameters ) {
 				}
 
 			} else if ( element instanceof THREE.RenderableLine ) {
-
+				
 				var shader = getMaterialShader( material );
 
 				drawLine(
@@ -18823,7 +17453,7 @@ THREE.SoftwareRenderer = function ( parameters ) {
 	};
 
 	function setSize( width, height ) {
-
+        
 		canvasWBlocks = Math.floor( width / blockSize );
 		canvasHBlocks = Math.floor( height / blockSize );
 		canvasWidth   = canvasWBlocks * blockSize;
@@ -18834,15 +17464,15 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		viewportXScale =  fixScale * canvasWidth  / 2;
 		viewportYScale = -fixScale * canvasHeight / 2;
 		viewportZScale =             maxZVal      / 2;
-
+              
 		viewportXOffs  =  fixScale * canvasWidth  / 2 + 0.5;
 		viewportYOffs  =  fixScale * canvasHeight / 2 + 0.5;
 		viewportZOffs  =             maxZVal      / 2 + 0.5;
-
+        
 		canvas.width = canvasWidth;
 		canvas.height = canvasHeight;
 
-		context.fillStyle = alpha ? "rgba(0, 0, 0, 0)" : clearColor.getStyle();
+		context.fillStyle = clearColor.getStyle();
 		context.fillRect( 0, 0, canvasWidth, canvasHeight );
 
 		imagedata = context.getImageData( 0, 0, canvasWidth, canvasHeight );
@@ -18868,7 +17498,7 @@ THREE.SoftwareRenderer = function ( parameters ) {
 
 		cleanColorBuffer();
 	}
-
+    
 	function cleanColorBuffer() {
 
 		var size = canvasWidth * canvasHeight * 4;
@@ -18878,11 +17508,11 @@ THREE.SoftwareRenderer = function ( parameters ) {
 			data[ i ] = clearColor.r * 255 | 0;
 			data[ i + 1 ] = clearColor.g * 255 | 0;
 			data[ i + 2 ] = clearColor.b * 255 | 0;
-			data[ i + 3 ] = alpha ? 0 : 255;
+			data[ i + 3 ] = 255;
 
 		}
 
-		context.fillStyle = alpha ? "rgba(0, 0, 0, 0)" : clearColor.getStyle();
+		context.fillStyle = clearColor.getStyle();
 		context.fillRect( 0, 0, canvasWidth, canvasHeight );
 
 	}
@@ -18953,26 +17583,25 @@ THREE.SoftwareRenderer = function ( parameters ) {
 			buffer[ colorOffset ] = tdata[ tIndex ];
 			buffer[ colorOffset + 1 ] = tdata[ tIndex + 1 ];
 			buffer[ colorOffset + 2 ] = tdata[ tIndex + 2 ];
-			buffer[ colorOffset + 3 ] = ( material.opacity << 8 ) - 1;
+			buffer[ colorOffset + 3 ] = material.opacity * 255;
 			depthBuf[ offset ] = depth;
 
 		} else {
 
-			var srcR = tdata[ tIndex ];
-			var srcG = tdata[ tIndex + 1 ];
-			var srcB = tdata[ tIndex + 2 ];
-			var opaci = tdata[ tIndex + 3 ] * material.opacity / 255;
-			var destR = buffer[ colorOffset ];
-			var destG = buffer[ colorOffset + 1 ];
-			var destB = buffer[ colorOffset + 2 ];
-	
-			buffer[ colorOffset ] = ( srcR * opaci + destR * ( 1 - opaci ) );
-			buffer[ colorOffset + 1 ] = ( srcG * opaci + destG * ( 1 - opaci ) );
-			buffer[ colorOffset + 2 ] = ( srcB * opaci + destB * ( 1 - opaci ) );
-			buffer[ colorOffset + 3 ] = ( material.opacity << 8 ) - 1;
+			var opaci = tdata[ tIndex + 3 ] * material.opacity;
+			var texel = ( tdata[ tIndex ] << 16 ) + ( tdata[ tIndex + 1 ] << 8 ) + tdata[ tIndex + 2 ];
+			if ( opaci < 250 ) {
 
-			if ( buffer[ colorOffset + 3 ] == 255 )	// Only opaue pixls write to the depth buffer
-				depthBuf[ offset ] = depth;
+				var backColor = ( buffer[ colorOffset ] << 16 ) + ( buffer[ colorOffset + 1 ] << 8 ) + buffer[ colorOffset + 2 ];
+				texel = texel * opaci + backColor * ( 1 - opaci );
+
+			}
+
+			buffer[ colorOffset ] = ( texel & 0xff0000 ) >> 16;
+			buffer[ colorOffset + 1 ] = ( texel & 0xff00 ) >> 8;
+			buffer[ colorOffset + 2 ] = texel & 0xff;
+			buffer[ colorOffset + 3 ] = material.opacity * 255;
+
 		}
 
 	}
@@ -18998,26 +17627,28 @@ THREE.SoftwareRenderer = function ( parameters ) {
 			buffer[ colorOffset ] = ( material.palette[ cIndex ] * tdata[ tIndex ] ) >> 8;
 			buffer[ colorOffset + 1 ] = ( material.palette[ cIndex + 1 ] * tdata[ tIndex + 1 ] ) >> 8;
 			buffer[ colorOffset + 2 ] = ( material.palette[ cIndex + 2 ] * tdata[ tIndex + 2 ] ) >> 8;
-			buffer[ colorOffset + 3 ] = ( material.opacity << 8 ) - 1;
+			buffer[ colorOffset + 3 ] = material.opacity * 255;
 			depthBuf[ offset ] = depth;
 
 		} else {
 
-			var foreColorR = material.palette[ cIndex ] * tdata[ tIndex ];
-			var foreColorG = material.palette[ cIndex + 1 ] * tdata[ tIndex + 1 ];
-			var foreColorB = material.palette[ cIndex + 2 ] * tdata[ tIndex + 2 ];
-			var opaci = tdata[ tIndex + 3 ] * material.opacity / 256;
-			var destR = buffer[ colorOffset ];
-			var destG = buffer[ colorOffset + 1 ];
-			var destB = buffer[ colorOffset + 2 ];
+			var opaci = tdata[ tIndex + 3 ] * material.opacity;
+			var foreColor = ( ( material.palette[ cIndex ] * tdata[ tIndex ] ) << 16 )
+							+ ( ( material.palette[ cIndex + 1 ] * tdata[ tIndex + 1 ] ) << 8 )
+							+ ( material.palette[ cIndex + 2 ] * tdata[ tIndex + 2 ] );
 
-			buffer[ colorOffset ] = foreColorR * opaci + destR * ( 1 - opaci );
-			buffer[ colorOffset + 1 ] = foreColorG * opaci + destG * ( 1 - opaci );
-			buffer[ colorOffset + 2 ] = foreColorB * opaci + destB * ( 1 - opaci );
-			buffer[ colorOffset + 3 ] = ( material.opacity << 8 ) - 1;
+			if ( opaci < 250 ) {
 
-			if ( buffer[ colorOffset + 3 ] == 255 )	// Only opaue pixls write to the depth buffer
-				depthBuf[ offset ] = depth;
+				var backColor = buffer[ colorOffset ] << 24 + buffer[ colorOffset + 1 ] << 16 + buffer[ colorOffset + 2 ] << 8;
+				foreColor = foreColor * opaci + backColor * ( 1 - opaci );
+
+			}
+
+			buffer[ colorOffset ] = ( foreColor & 0xff0000 ) >> 16;
+			buffer[ colorOffset + 1 ] = ( foreColor & 0xff00 ) >> 8;
+			buffer[ colorOffset + 2 ] = ( foreColor & 0xff );
+			buffer[ colorOffset + 3 ] = material.opacity * 255;
+
 		}
 
 	}
@@ -19036,8 +17667,6 @@ THREE.SoftwareRenderer = function ( parameters ) {
 
 		var id = material.id;
 		var shader = shaders[ id ];
-
-		if ( shader && material.map && !textures[ material.map.id ] ) delete shaders[ id ];
 
 		if ( shaders[ id ] === undefined ) {
 
@@ -19074,8 +17703,6 @@ THREE.SoftwareRenderer = function ( parameters ) {
 
 					var texture = new THREE.SoftwareRenderer.Texture();
 					texture.fromImage( material.map.image );
-
-					if ( !texture.data ) return;
 
 					textures[ material.map.id ] = texture;
 
@@ -19122,7 +17749,7 @@ THREE.SoftwareRenderer = function ( parameters ) {
 				}
 
 			} else if ( material instanceof THREE.LineBasicMaterial ) {
-
+                
 				var string = [
 					'var colorOffset = offset * 4;',
 					'buffer[ colorOffset ] = material.color.r * (color1.r+color2.r) * 0.5 * 255;',
@@ -19190,8 +17817,6 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		// https://gist.github.com/2486101
 		// explanation: http://pouet.net/topic.php?which=8760&page=1
 
-		var fixscale = ( 1 << subpixelBits );
-
 		// 28.4 fixed-point coordinates
 
 		var x1 = ( v1.x * viewportXScale + viewportXOffs ) | 0;
@@ -19201,150 +17826,6 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		var y1 = ( v1.y * viewportYScale + viewportYOffs ) | 0;
 		var y2 = ( v2.y * viewportYScale + viewportYOffs ) | 0;
 		var y3 = ( v3.y * viewportYScale + viewportYOffs ) | 0;
-
-		var bHasNormal = face.vertexNormalsModel && face.vertexNormalsModel.length;
-		var bHasUV = uv1 && uv2 && uv3;
-
-		var longestSide = Math.max(
-			Math.sqrt( (x1 - x2)*(x1 - x2) + (y1 - y2)*(y1 - y2) ),
-			Math.sqrt( (x2 - x3)*(x2 - x3) + (y2 - y3)*(y2 - y3) ),
-			Math.sqrt( (x3 - x1)*(x3 - x1) + (y3 - y1)*(y3 - y1) )
-		);
-
-		if( !(face instanceof THREE.RenderableSprite) 
-			&& (longestSide > 100 * fixscale) ) {
-
-			// 1
-			// |\
-			// |a\
-			// |__\
-			// |\c|\
-			// |b\|d\
-			// |__\__\
-			// 2      3
-			var tempFace = { vertexNormalsModel : [], 
-						color : face.color };
-			var mpUV12, mpUV23, mpUV31;
-			if ( bHasUV ) {
-				if ( mpUVPoolCount === mpUVPool.length ) {
-					mpUV12 = new THREE.Vector2();
-					mpUVPool.push( mpUV12 );
-					++mpUVPoolCount;
-
-					mpUV23 = new THREE.Vector2();
-					mpUVPool.push( mpUV23 );
-					++mpUVPoolCount;
-
-					mpUV31 = new THREE.Vector2();
-					mpUVPool.push( mpUV31 );
-					++mpUVPoolCount;
-				} else {
-					mpUV12 = mpUVPool[ mpUVPoolCount ];
-					++mpUVPoolCount;				
-					mpUV23 = mpUVPool[ mpUVPoolCount ];
-					++mpUVPoolCount;
-					mpUV31 = mpUVPool[ mpUVPoolCount ];
-					++mpUVPoolCount;
-				}
-
-				var weight;
-
-				weight = (1 + v2.z) * (v2.w / v1.w) / (1 + v1.z);
-				mpUV12.copy( uv1 ).multiplyScalar( weight ).add( uv2 ).multiplyScalar( 1 / (weight + 1) );
-				weight = (1 + v3.z) * (v3.w / v2.w) / (1 + v2.z);
-				mpUV23.copy( uv2 ).multiplyScalar( weight ).add( uv3 ).multiplyScalar( 1 / (weight + 1) );
-				weight = (1 + v1.z) * (v1.w / v3.w) / (1 + v3.z);
-				mpUV31.copy( uv3 ).multiplyScalar( weight ).add( uv1 ).multiplyScalar( 1 / (weight + 1) );
-			}
-			
-			var mpV12, mpV23, mpV31;
-			if ( mpVPoolCount === mpVPool.length ) {
-				mpV12 = new THREE.Vector4();
-				mpVPool.push( mpV12 );
-				++mpVPoolCount;
-
-				mpV23 = new THREE.Vector4();
-				mpVPool.push( mpV23 );
-				++mpVPoolCount;
-
-				mpV31 = new THREE.Vector4();
-				mpVPool.push( mpV31 );
-				++mpVPoolCount;
-			} else {
-				mpV12 = mpVPool[ mpVPoolCount ];
-				++mpVPoolCount;				
-				mpV23 = mpVPool[ mpVPoolCount ];
-				++mpVPoolCount;
-				mpV31 = mpVPool[ mpVPoolCount ];
-				++mpVPoolCount;
-			}
-
-			mpV12.copy( v1 ).add( v2 ).multiplyScalar( 0.5 );
-			mpV23.copy( v2 ).add( v3 ).multiplyScalar( 0.5 );
-			mpV31.copy( v3 ).add( v1 ).multiplyScalar( 0.5 );
-
-			var mpN12, mpN23, mpN31;
-			if( bHasNormal ) {
-				if ( mpNPoolCount === mpNPool.length ) {
-					mpN12 = new THREE.Vector3();
-					mpNPool.push( mpN12 );
-					++mpNPoolCount;
-
-					mpN23 = new THREE.Vector3();
-					mpNPool.push( mpN23 );
-					++mpNPoolCount;
-
-					mpN31 = new THREE.Vector3();
-					mpNPool.push( mpN31 );
-					++mpNPoolCount;
-				} else {
-					mpN12 = mpNPool[ mpNPoolCount ];
-					++mpNPoolCount;				
-					mpN23 = mpNPool[ mpNPoolCount ];
-					++mpNPoolCount;
-					mpN31 = mpNPool[ mpNPoolCount ];
-					++mpNPoolCount;
-				}
-
-				mpN12.copy( face.vertexNormalsModel[ 0 ] ).add( face.vertexNormalsModel[ 1 ] ).normalize();
-				mpN23.copy( face.vertexNormalsModel[ 1 ] ).add( face.vertexNormalsModel[ 2 ] ).normalize();
-				mpN31.copy( face.vertexNormalsModel[ 2 ] ).add( face.vertexNormalsModel[ 0 ] ).normalize();
-			}
-
-			// a
-			if( bHasNormal ) {
-				tempFace.vertexNormalsModel[ 0 ] = face.vertexNormalsModel[ 0 ];
-				tempFace.vertexNormalsModel[ 1 ] = mpN12;
-				tempFace.vertexNormalsModel[ 2 ] = mpN31;
-			}
-			drawTriangle( v1, mpV12, mpV31, uv1, mpUV12, mpUV31, shader, tempFace, material );
-
-			// b
-			if( bHasNormal ) {
-				tempFace.vertexNormalsModel[ 0 ] = face.vertexNormalsModel[ 1 ];
-				tempFace.vertexNormalsModel[ 1 ] = mpN23;
-				tempFace.vertexNormalsModel[ 2 ] = mpN12;
-			}
-			drawTriangle( v2, mpV23, mpV12, uv2, mpUV23, mpUV12, shader, tempFace, material );
-
-			// c
-			if( bHasNormal ) {
-				tempFace.vertexNormalsModel[ 0 ] = mpN12;
-				tempFace.vertexNormalsModel[ 1 ] = mpN23;
-				tempFace.vertexNormalsModel[ 2 ] = mpN31;
-			}
-			drawTriangle( mpV12, mpV23, mpV31, mpUV12, mpUV23, mpUV31, shader, tempFace, material );
-
-			// d
-			if( bHasNormal ) {
-				tempFace.vertexNormalsModel[ 0 ] = face.vertexNormalsModel[ 2 ];
-				tempFace.vertexNormalsModel[ 1 ] = mpN31;
-				tempFace.vertexNormalsModel[ 2 ] = mpN23;
-			}
-			drawTriangle( v3, mpV31, mpV23, uv3, mpUV31, mpUV23, shader, tempFace, material );
-
-			return;
-		}
 
 		// Z values (.28 fixed-point)
 
@@ -19370,9 +17851,12 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		}
 
 		// Normal values
+		var bHasNormal = false;
 		var n1, n2, n3, nz1, nz2, nz3;
 
-		if ( bHasNormal ) {
+		if ( face.vertexNormalsModel ) {
+
+			bHasNormal = true;
 
 			n1 = face.vertexNormalsModel[ 0 ];
 			n2 = face.vertexNormalsModel[ 1 ];
@@ -19444,6 +17928,7 @@ THREE.SoftwareRenderer = function ( parameters ) {
 
 		// Z pixel steps
 
+		var fixscale = ( 1 << subpixelBits );
 		dzdx = ( dzdx * fixscale ) | 0;
 		dzdy = ( dzdy * fixscale ) | 0;
 
@@ -19856,15 +18341,15 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		}
 
 	}
-
+    
 	// When drawing line, the blockShiftShift has to be zero. In order to clean pixel
 	// Using color1 and color2 to interpolation pixel color
 	// LineWidth is according to material.linewidth
 	function drawLine( v1, v2, color1, color2, shader, material ) {
-
+        
 		// While the line mode is enable, blockSize has to be changed to 0.
 		if ( !lineMode ) {
-			lineMode = true;
+			lineMode = true;            
 			blockShift = 0;
 			blockSize = 1 << blockShift;
 
@@ -19874,20 +18359,20 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		// TODO: Implement per-pixel z-clipping
 		if ( v1.z < -1 || v1.z > 1 || v2.z < -1 || v2.z > 1 ) return;
 
-		var halfLineWidth = Math.floor( ( material.linewidth - 1 ) * 0.5 );
-
+		var halfLineWidth = Math.floor( (material.linewidth-1) * 0.5 );
+      
 		// https://gist.github.com/2486101
 		// explanation: http://pouet.net/topic.php?which=8760&page=1
 
 		// 28.4 fixed-point coordinates
-		var x1 = ( v1.x * viewportXScale + viewportXOffs ) | 0;
-		var x2 = ( v2.x * viewportXScale + viewportXOffs ) | 0;
+		var x1 = (v1.x * viewportXScale + viewportXOffs) | 0;
+		var x2 = (v2.x * viewportXScale + viewportXOffs) | 0;
 
-		var y1 = ( v1.y * viewportYScale + viewportYOffs ) | 0;
-		var y2 = ( v2.y * viewportYScale + viewportYOffs ) | 0;
+		var y1 = (v1.y * viewportYScale + viewportYOffs) | 0;
+		var y2 = (v2.y * viewportYScale + viewportYOffs) | 0;
 
-		var z1 = ( v1.z * viewportZScale + viewportZOffs ) | 0;
-		var z2 = ( v2.z * viewportZScale + viewportZOffs ) | 0;
+		var z1 = (v1.z * viewportZScale + viewportZOffs) | 0;
+		var z2 = (v2.z * viewportZScale + viewportZOffs) | 0;
 
 		// Deltas
 		var dx12 = x1 - x2, dy12 = y1 - y2, dz12 = z1 - z2;
@@ -19898,7 +18383,7 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		var miny = Math.max( ( Math.min( y1, y2 ) + subpixelBias ) >> subpixelBits, 0 );
 		var maxy = Math.min( ( Math.max( y1, y2 ) + subpixelBias ) >> subpixelBits, canvasHeight );
 		var minz = Math.max( ( Math.min( z1, z2 ) + subpixelBias ) >> subpixelBits, 0 );
-		var maxz = ( Math.max( z1, z2 ) + subpixelBias ) >> subpixelBits;
+		var maxz = Math.min( ( Math.max( z1, z2 ) + subpixelBias ) >> subpixelBits, 0 );
 
 		rectx1 = Math.min( minx, rectx1 );
 		rectx2 = Math.max( maxx, rectx2 );
@@ -19906,37 +18391,37 @@ THREE.SoftwareRenderer = function ( parameters ) {
 		recty2 = Math.max( maxy, recty2 );
 
 		// Get the line's unit vector and cross vector
-		var length = Math.sqrt( ( dy12 * dy12 ) + ( dx12 * dx12 ) );
-		var unitX = ( dx12 / length );
-		var unitY = ( dy12 / length );
-		var unitZ = ( dz12 / length );
+		var length = Math.sqrt((dy12 * dy12) + (dx12 * dx12));
+		var unitX = (dx12 / length);
+		var unitY = (dy12 / length);
+		var unitZ = (dz12 / length);        
 		var pixelX, pixelY, pixelZ;
 		var pX, pY, pZ;
 		crossVector.set( unitX, unitY, unitZ );
 		crossVector.cross( lookVector );
 		crossVector.normalize();
-
+            
 		while (length > 0) {
 
 			// Get this pixel.
-			pixelX = x2 + length * unitX;
-			pixelY = y2 + length * unitY;
-			pixelZ = z2 + length * unitZ;
+			pixelX = (x2 + length * unitX);
+			pixelY = (y2 + length * unitY);
+			pixelZ = (z2 + length * unitZ);               
 
-			pixelX = ( pixelX + subpixelBias ) >> subpixelBits;
-			pixelY = ( pixelY + subpixelBias ) >> subpixelBits;
-			pZ = ( pixelZ + subpixelBias ) >> subpixelBits;
+			pixelX = (pixelX + subpixelBias) >> subpixelBits;
+			pixelY = (pixelY + subpixelBias) >> subpixelBits;
+			pZ = (pixelZ + subpixelBias) >> subpixelBits;
 
 			// Draw line with line width
 			for ( var i = -halfLineWidth; i <= halfLineWidth; ++i ) {
 
 				// Compute the line pixels.
 				// Get the pixels on the vector that crosses to the line vector
-				pX = Math.floor( ( pixelX + crossVector.x * i ) );
-				pY = Math.floor( ( pixelY + crossVector.y * i ) );
+				pX = Math.floor((pixelX + crossVector.x * i));
+				pY = Math.floor((pixelY + crossVector.y * i));                    
 
 				// if pixel is over the rect. Continue
-				if ( rectx1 >= pX || rectx2 <= pX || recty1 >= pY
+				if ( rectx1 >= pX || rectx2 <= pX || recty1 >= pY 
 					|| recty2 <= pY )
 				continue;
 
@@ -19948,25 +18433,25 @@ THREE.SoftwareRenderer = function ( parameters ) {
 				// Compare the pixel depth width z block.
 				if ( blockMaxZ[ blockId ] < minz ) continue;
 
-				blockMaxZ[ blockId ] = Math.min( blockMaxZ[ blockId ], maxz );
+				blockMaxZ[ blockId ] = Math.min( blockMaxZ[ blockId ], maxz );                    
 
 				var bflags = blockFlags[ blockId ];
 				if ( bflags & BLOCK_NEEDCLEAR ) clearBlock( blockX, blockY );
-				blockFlags[ blockId ] = bflags & ~( BLOCK_ISCLEAR | BLOCK_NEEDCLEAR );
-
+				blockFlags[ blockId ] = bflags & ~( BLOCK_ISCLEAR | BLOCK_NEEDCLEAR );                   
+		        
 				// draw pixel
 				var offset = pX + pY * canvasWidth;
 
-				if ( pZ < zbuffer[ offset ] ) {
-					shader( data, zbuffer, offset, pZ, color1, color2, material );
+				if ( pZ < zbuffer[ offset ] ) {		 
+					shader( data, zbuffer, offset, pZ, color1, color2, material );								
 				}
 			}
 
 			--length;
-		}
+		}           
 
 	}
-
+    
 	function clearBlock( blockX, blockY ) {
 
 		var zoffset = blockX * blockSize + blockY * blockSize * canvasWidth;
@@ -19984,7 +18469,7 @@ THREE.SoftwareRenderer = function ( parameters ) {
 				data[ poffset ++ ] = clearColor.r * 255 | 0;
 				data[ poffset ++ ] = clearColor.g * 255 | 0;
 				data[ poffset ++ ] = clearColor.b * 255 | 0;
-				data[ poffset ++ ] = alpha ? 0 : 255;
+				data[ poffset ++ ] = 255;
 
 			}
 
@@ -20669,8 +19154,7 @@ UI.Element.prototype = {
 
 var properties = [ 'position', 'left', 'top', 'right', 'bottom', 'width', 'height', 'border', 'borderLeft',
 'borderTop', 'borderRight', 'borderBottom', 'borderColor', 'display', 'overflow', 'margin', 'marginLeft', 'marginTop', 'marginRight', 'marginBottom', 'padding', 'paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'color',
-'background', 'backgroundColor', 'opacity', 'fontSize', 'fontWeight', 'textAlign', 'textDecoration', 'textTransform', 'cursor', 'zIndex','backgroundImage' ];
-
+'backgroundColor', 'opacity', 'fontSize', 'fontWeight', 'textAlign', 'textDecoration', 'textTransform', 'cursor', 'zIndex','backgroundImage' ];
 
 properties.forEach( function ( property ) {
 
@@ -21238,7 +19722,6 @@ UI.Number = function ( number ) {
 
 	this.precision = 2;
 	this.step = 1;
-	this.unit = '';
 
 	this.dom = dom;
 
@@ -21306,7 +19789,19 @@ UI.Number = function ( number ) {
 
 	function onChange( event ) {
 
-		scope.setValue( dom.value );
+		var value = 0;
+
+		try {
+
+			value = eval( dom.value );
+
+		} catch ( error ) {
+
+			console.error( error.message );
+
+		}
+
+		scope.setValue( parseFloat( value ) );
 
 	}
 
@@ -21348,31 +19843,10 @@ UI.Number.prototype.setValue = function ( value ) {
 
 	if ( value !== undefined ) {
 
-		value = parseFloat( value );
-
-		if ( value < this.min ) value = this.min;
-		if ( value > this.max ) value = this.max;
-
 		this.value = value;
-		this.dom.value = value.toFixed( this.precision ) + ' ' + this.unit;
+		this.dom.value = value.toFixed( this.precision );
 
 	}
-
-	return this;
-
-};
-
-UI.Number.prototype.setPrecision = function ( precision ) {
-
-	this.precision = precision;
-
-	return this;
-
-};
-
-UI.Number.prototype.setStep = function ( step ) {
-
-	this.step = step;
 
 	return this;
 
@@ -21387,13 +19861,14 @@ UI.Number.prototype.setRange = function ( min, max ) {
 
 };
 
-UI.Number.prototype.setUnit = function ( unit ) {
+UI.Number.prototype.setPrecision = function ( precision ) {
 
-	this.unit = unit;
+	this.precision = precision;
 
 	return this;
 
 };
+
 
 // Integer
 
@@ -21486,7 +19961,19 @@ UI.Integer = function ( number ) {
 
 	function onChange( event ) {
 
-		scope.setValue( dom.value );
+		var value = 0;
+
+		try {
+
+			value = eval( dom.value );
+
+		} catch ( error ) {
+
+			console.error( error.message );
+
+		}
+
+		scope.setValue( value );
 
 	}
 
@@ -21528,20 +20015,10 @@ UI.Integer.prototype.setValue = function ( value ) {
 
 	if ( value !== undefined ) {
 
-		value = parseInt( value );
-
-		this.value = value;
-		this.dom.value = value;
+		this.value = value | 0;
+		this.dom.value = value | 0;
 
 	}
-
-	return this;
-
-};
-
-UI.Number.prototype.setStep = function ( step ) {
-
-	this.step = step;
 
 	return this;
 
@@ -21600,6 +20077,8 @@ UI.HorizontalRule.prototype.constructor = UI.HorizontalRule;
 UI.Button = function ( value ) {
 
 	UI.Element.call( this );
+
+	var scope = this;
 
 	var dom = document.createElement( 'button' );
 	dom.className = 'Button';
@@ -21733,15 +20212,14 @@ UI.Texture = function ( mapping ) {
 		if ( file.type.match( 'image.*' ) ) {
 
 			var reader = new FileReader();
+			reader.addEventListener( 'load', function ( event ) {
 
-			if ( file.type === 'image/targa' ) {
+				var image = document.createElement( 'img' );
+				image.addEventListener( 'load', function( event ) {
 
-				reader.addEventListener( 'load', function ( event ) {
-
-					var canvas = new THREE.TGALoader().parse( event.target.result );
-
-					var texture = new THREE.CanvasTexture( canvas, mapping );
+					var texture = new THREE.Texture( this, mapping );
 					texture.sourceFile = file.name;
+					texture.needsUpdate = true;
 
 					scope.setValue( texture );
 
@@ -21749,32 +20227,11 @@ UI.Texture = function ( mapping ) {
 
 				}, false );
 
-				reader.readAsArrayBuffer( file );
+				image.src = event.target.result;
 
-			} else {
+			}, false );
 
-				reader.addEventListener( 'load', function ( event ) {
-
-					var image = document.createElement( 'img' );
-					image.addEventListener( 'load', function( event ) {
-
-						var texture = new THREE.Texture( this, mapping );
-						texture.sourceFile = file.name;
-						texture.needsUpdate = true;
-
-						scope.setValue( texture );
-
-						if ( scope.onChangeCallback ) scope.onChangeCallback();
-
-					}, false );
-
-					image.src = event.target.result;
-
-				}, false );
-
-				reader.readAsDataURL( file );
-
-			}
+			reader.readAsDataURL( file );
 
 		}
 
@@ -21824,14 +20281,7 @@ UI.Texture.prototype.setValue = function ( texture ) {
 	} else {
 
 		name.value = '';
-
-		if ( context !== null ) {
-
-			// Seems like context can be null if the canvas is not visible
-
-			context.clearRect( 0, 0, canvas.width, canvas.height );
-
-		}
+		context.clearRect( 0, 0, canvas.width, canvas.height );
 
 	}
 
@@ -21994,8 +20444,33 @@ UI.Outliner = function ( editor ) {
 	dom.className = 'Outliner';
 	dom.tabIndex = 0;	// keyup event is ignored without setting tabIndex
 
-	// hack
-	this.scene = editor.scene;
+	var scene = editor.scene;
+
+	var sortable = Sortable.create( dom, {
+		draggable: '.draggable',
+		onUpdate: function ( event ) {
+
+			var item = event.item;
+
+			var object = scene.getObjectById( item.value );
+
+			if ( item.nextSibling === null ) {
+
+				editor.execute( new MoveObjectCommand( object, editor.scene ) );
+
+			} else {
+
+				var nextObject = scene.getObjectById( item.nextSibling.value );
+				editor.execute( new MoveObjectCommand( object, nextObject.parent, nextObject ) );
+
+			}
+
+		}
+	} );
+
+	// Broadcast for object selection after arrow navigation
+	var changeEvent = document.createEvent( 'HTMLEvents' );
+	changeEvent.initEvent( 'change', true, true );
 
 	// Prevent native scroll behavior
 	dom.addEventListener( 'keydown', function ( event ) {
@@ -22013,12 +20488,26 @@ UI.Outliner = function ( editor ) {
 	// Keybindings to support arrow navigation
 	dom.addEventListener( 'keyup', function ( event ) {
 
+		function select( index ) {
+
+			if ( index >= 0 && index < scope.options.length ) {
+
+				scope.selectedIndex = index;
+
+				// Highlight selected dom elem and scroll parent if needed
+				scope.setValue( scope.options[ index ].value );
+				scope.dom.dispatchEvent( changeEvent );
+
+			}
+
+		}
+
 		switch ( event.keyCode ) {
 			case 38: // up
-				scope.selectIndex( scope.selectedIndex - 1 );
+				select( scope.selectedIndex - 1 );
 				break;
 			case 40: // down
-				scope.selectIndex( scope.selectedIndex + 1 );
+				select( scope.selectedIndex + 1 );
 				break;
 		}
 
@@ -22037,23 +20526,12 @@ UI.Outliner = function ( editor ) {
 UI.Outliner.prototype = Object.create( UI.Element.prototype );
 UI.Outliner.prototype.constructor = UI.Outliner;
 
-UI.Outliner.prototype.selectIndex = function ( index ) {
-
-	if ( index >= 0 && index < this.options.length ) {
-
-		this.setValue( this.options[ index ].value );
-
-		var changeEvent = document.createEvent( 'HTMLEvents' );
-		changeEvent.initEvent( 'change', true, true );
-		this.dom.dispatchEvent( changeEvent );
-
-	}
-
-};
-
 UI.Outliner.prototype.setOptions = function ( options ) {
 
 	var scope = this;
+
+	var changeEvent = document.createEvent( 'HTMLEvents' );
+	changeEvent.initEvent( 'change', true, true );
 
 	while ( scope.dom.children.length > 0 ) {
 
@@ -22061,139 +20539,26 @@ UI.Outliner.prototype.setOptions = function ( options ) {
 
 	}
 
-	function onClick() {
-
-		scope.setValue( this.value );
-
-		var changeEvent = document.createEvent( 'HTMLEvents' );
-		changeEvent.initEvent( 'change', true, true );
-		scope.dom.dispatchEvent( changeEvent );
-
-	}
-
-	// Drag
-
-	var currentDrag;
-
-	function onDrag( event ) {
-
-		currentDrag = this;
-
-	}
-
-	function onDragStart( event ) {
-
-		event.dataTransfer.setData( 'text', 'foo' );
-
-	}
-
-	function onDragOver( event ) {
-
-		if ( this === currentDrag ) return;
-
-		var area = event.offsetY / this.clientHeight;
-
-		if ( area < 0.25 ) {
-
-			this.className = 'option dragTop';
-
-		} else if ( area > 0.75 ) {
-
-			this.className = 'option dragBottom';
-
-		} else {
-
-			this.className = 'option drag';
-
-		}
-
-	}
-
-	function onDragLeave() {
-
-		if ( this === currentDrag ) return;
-
-		this.className = 'option';
-
-	}
-
-	function onDrop( event ) {
-
-		if ( this === currentDrag ) return;
-
-		this.className = 'option';
-
-		var scene = scope.scene;
-		var object = scene.getObjectById( currentDrag.value );
-
-		var area = event.offsetY / this.clientHeight;
-
-		if ( area < 0.25 ) {
-
-			var nextObject = scene.getObjectById( this.value );
-			moveObject( object, nextObject.parent, nextObject );
-
-		} else if ( area > 0.75 ) {
-
-			var nextObject = scene.getObjectById( this.nextSibling.value );
-			moveObject( object, nextObject.parent, nextObject );
-
-		} else {
-
-			var parentObject = scene.getObjectById( this.value );
-			moveObject( object, parentObject );
-
-		}
-
-	}
-
-	function moveObject( object, newParent, nextObject ) {
-
-		if ( nextObject === null ) nextObject = undefined;
-
-		var newParentIsChild = false;
-
-		object.traverse( function ( child ) {
-
-			if ( child === newParent ) newParentIsChild = true;
-
-		} );
-
-		if ( newParentIsChild ) return;
-
-		editor.execute( new MoveObjectCommand( object, newParent, nextObject ) );
-
-		var changeEvent = document.createEvent( 'HTMLEvents' );
-		changeEvent.initEvent( 'change', true, true );
-		scope.dom.dispatchEvent( changeEvent );
-
-	}
-
-	//
-
 	scope.options = [];
 
 	for ( var i = 0; i < options.length; i ++ ) {
 
-		var div = options[ i ];
-		div.className = 'option';
+		var option = options[ i ];
+
+		var div = document.createElement( 'div' );
+		div.className = 'option ' + ( option.static === true ? '' : 'draggable' );
+		div.innerHTML = option.html;
+		div.value = option.value;
 		scope.dom.appendChild( div );
 
 		scope.options.push( div );
 
-		div.addEventListener( 'click', onClick, false );
+		div.addEventListener( 'click', function ( event ) {
 
-		if ( div.draggable === true ) {
+			scope.setValue( this.value );
+			scope.dom.dispatchEvent( changeEvent );
 
-			div.addEventListener( 'drag', onDrag, false );
-			div.addEventListener( 'dragstart', onDragStart, false ); // Firefox needs this
-
-			div.addEventListener( 'dragover', onDragOver, false );
-			div.addEventListener( 'dragleave', onDragLeave, false );
-			div.addEventListener( 'drop', onDrop, false );
-
-		}
-
+		}, false );
 
 	}
 
@@ -22293,36 +20658,26 @@ var APP = {
 		var scope = this;
 
 		var loader = new THREE.ObjectLoader();
-		var camera, scene, renderer;
+		var camera, scene, renderer, listener;
 
-		var controls, effect, cameraVR, isVR;
+		var vr, controls, effect;
 
 		var events = {};
 
-		this.dom = document.createElement( 'div' );
+		this.dom = undefined;
 
 		this.width = 500;
 		this.height = 500;
 
 		this.load = function ( json ) {
 
-			isVR = json.project.vr;
+			vr = json.project.vr;
 
 			renderer = new THREE.WebGLRenderer( { antialias: true } );
 			renderer.setClearColor( 0x000000 );
 			renderer.setPixelRatio( window.devicePixelRatio );
-
-			if ( json.project.gammaInput ) renderer.gammaInput = true;
-			if ( json.project.gammaOutput ) renderer.gammaOutput = true;
-
-			if ( json.project.shadows ) {
-
-				renderer.shadowMap.enabled = true;
-				// renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-			}
-
-			this.dom.appendChild( renderer.domElement );
+			if ( json.project.shadows ) renderer.shadowMap.enabled = true;
+			this.dom = renderer.domElement;
 
 			this.setScene( loader.parse( json.scene ) );
 			this.setCamera( loader.parse( json.camera ) );
@@ -22398,30 +20753,49 @@ var APP = {
 
 		this.setCamera = function ( value ) {
 
+
+
 			camera = value;
 			camera.aspect = this.width / this.height;
 			camera.updateProjectionMatrix();
 
-			if ( isVR === true ) {
+			listener = new THREE.AudioListener();
+			listener.name = "Listener";
+        	camera.add( listener );
 
-				cameraVR = new THREE.PerspectiveCamera();
-				cameraVR.projectionMatrix = camera.projectionMatrix;
-				camera.add( cameraVR );
+			if ( vr === true ) {
 
-				controls = new THREE.VRControls( cameraVR );
+				if ( camera.parent === null ) {
+
+					// camera needs to be in the scene so camera2 matrix updates
+
+					scene.add( camera );
+
+				}
+
+				var camera2 = camera.clone();
+				camera.add( camera2 );
+
+				camera = camera2;
+
+				controls = new THREE.VRControls( camera );
 				effect = new THREE.VREffect( renderer );
 
-				if ( WEBVR.isAvailable() === true ) {
+				document.addEventListener( 'keyup', function ( event ) {
 
-					this.dom.appendChild( WEBVR.getButton( effect ) );
+					switch ( event.keyCode ) {
+						case 90:
+							controls.zeroSensor();
+							break;
+					}
 
-				}
+				} );
 
-				if ( WEBVR.isLatestAvailable() === false ) {
+				this.dom.addEventListener( 'dblclick', function () {
 
-					this.dom.appendChild( WEBVR.getMessage() );
+					effect.setFullScreen( true );
 
-				}
+				} );
 
 			}
 
@@ -22435,21 +20809,15 @@ var APP = {
 
 		this.setSize = function ( width, height ) {
 
+			if ( renderer._fullScreen ) return;
+
 			this.width = width;
 			this.height = height;
 
-			if ( camera ) {
+			camera.aspect = this.width / this.height;
+			camera.updateProjectionMatrix();
 
-				camera.aspect = this.width / this.height;
-				camera.updateProjectionMatrix();
-
-			}
-
-			if ( renderer ) {
-
-				renderer.setSize( width, height );
-
-			}
+			renderer.setSize( width, height );
 
 		};
 
@@ -22457,7 +20825,15 @@ var APP = {
 
 			for ( var i = 0, l = array.length; i < l; i ++ ) {
 
-				array[ i ]( event );
+				try {
+
+					array[ i ]( event );
+
+				} catch ( e ) {
+
+					console.error( ( e.message || e ), ( e.stack || "" ) );
+
+				}
 
 			}
 
@@ -22469,22 +20845,12 @@ var APP = {
 
 			request = requestAnimationFrame( animate );
 
-			try {
+			dispatch( events.update, { time: time, delta: time - prevTime } );
 
-				dispatch( events.update, { time: time, delta: time - prevTime } );
-
-			} catch ( e ) {
-
-				console.error( ( e.message || e ), ( e.stack || "" ) );
-
-			}
-
-			if ( isVR === true ) {
-
-				camera.updateMatrixWorld();
+			if ( vr === true ) {
 
 				controls.update();
-				effect.render( scene, cameraVR );
+				effect.render( scene, camera );
 
 			} else {
 
@@ -22528,22 +20894,6 @@ var APP = {
 			dispatch( events.stop, arguments );
 
 			cancelAnimationFrame( request );
-
-		};
-
-		this.dispose = function () {
-
-			while ( this.dom.children.length ) {
-
-				this.dom.removeChild( this.dom.firstChild );
-
-			}
-
-			renderer.dispose();
-
-			camera = undefined;
-			scene = undefined;
-			renderer = undefined;
 
 		};
 
@@ -22616,7 +20966,18 @@ var Player = function ( editor ) {
 	container.setPosition( 'absolute' );
 	container.setDisplay( 'none' );
 
+	//
+
+	// var player = new APP.Player();
 	var _scene;
+
+	// window.addEventListener( 'resize', function () {
+
+	// 	if ( player.dom === undefined ) return;
+
+	// 	player.setSize( container.dom.clientWidth, container.dom.clientHeight );
+
+	// } );
 
 	signals.startPlayer.add( function () {
 
@@ -22625,56 +20986,65 @@ var Player = function ( editor ) {
 		delete _scene.history;
 
 		// console.log(_scene);
-		// App.Helper.Preview(_scene);
+		App.Helper.Preview(_scene);
 
-        // preview box
-        var preview = "<div id='preview' class='modal-box' style='height:600px;width:900px;text-align: center;'> \
-        <header style='background-color:#333;'> \
-            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
-        </header> \
-        <div style='height:100%;'> \
-            <iframe id='preview_iframe' width='100%' height='100%' allowfullscreen src='../../ZAAK.IO-Viewer/index.html'></iframe> \
-        </div></div>";
-        $("body").append($.parseHTML(preview));
+        // // preview box
+        // var preview = "<div id='preview' class='modal-box' style='height:600px;width:900px;text-align: center;'> \
+        // <header style='background-color:#333;'> \
+        //     <a class='js-modal-close close' style='top:1.5%;'>×</a> \
+        // </header> \
+        // <div style='height:100%;'> \
+        //     <iframe id='preview_iframe' width='100%' height='100%' allowfullscreen src='../../ZAAK.IO-Viewer/index.html'></iframe> \
+        // </div></div>";
+        // $("body").append($.parseHTML(preview));
 
-        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
-        $("body").append(modal);
+        // var modal =  ("<div class='modal-overlay js-modal-close'></div>");
+        // $("body").append(modal);
 
-         setTimeout(function() {
+        //  setTimeout(function() {
 
-	        // $('#preview_iframe').load(function(){
-	        // 	console.log($('#preview_iframe')[0]);
-	        var parentFrame = $('#preview_iframe');//.find('#myIframe');
-	        parentFrame[0].contentWindow.viewer.startScene(_scene); // load json data
-	            // $('#preview_iframe')[0].contentWindow.setManagerMode(); // load json data
-	        // });
-        }, 1000);
+	       //  // $('#preview_iframe').load(function(){
+	       //  // 	console.log($('#preview_iframe')[0]);
+	       //  var parentFrame = $('#preview_iframe').contents().find('#myIframe');
+	       //  // console.log(parentFrame[0].contentWindow.viewer);
+	       //  parentFrame[0].contentWindow.viewer.startScene(_scene); // load json data
+	       //      // $('#preview_iframe')[0].contentWindow.setManagerMode(); // load json data
+	       //  // });
+        // }, 1000);
 
 
-        $(".modal-overlay").fadeTo(500, 0.9);
-        $('#preview').fadeIn();
-        // modal helper
-        $(".js-modal-close, .modal-overlay").click(function() {
-            $(".modal-box, .modal-overlay").fadeOut(500, function() {
-            	// player.stop();
-            	scene = _scene;
-                $(".modal-overlay").remove();
-                $("#preview").remove();
-                signals.stopPlayer.dispatch();
+        // $(".modal-overlay").fadeTo(500, 0.9);
+        // $('#preview').fadeIn();
+        // // modal helper
+        // $(".js-modal-close, .modal-overlay").click(function() {
+        //     $(".modal-box, .modal-overlay").fadeOut(500, function() {
+        //     	// player.stop();
+        //     	scene = _scene;
+        //         $(".modal-overlay").remove();
+        //         $("#preview").remove();
+        //     });
+        // });
+        // $(window).resize(function() {
+        //     $(".modal-box").css({
+        //         top: ($(window).height() - $("#preview").outerHeight()) / 2,
+        //         left: ($(window).width() - $("#preview").outerWidth()) / 2
+        //     });
+        // });
 
-            });
-        });
-        $(window).resize(function() {
-            $(".modal-box").css({
-                top: ($(window).height() - $("#preview").outerHeight()) / 2,
-                left: ($(window).width() - $("#preview").outerWidth()) / 2
-            });
-        });
-
-        $(window).resize();
+        // $(window).resize();
         
 
 	} );
+
+	// signals.stopPlayer.add( function () {
+
+	// 	// container.setDisplay( 'none' );
+
+	// 	// player.stop();
+
+	// 	// container.dom.removeChild( player.dom );
+
+	// } );
 
 	return container;
 
@@ -22773,8 +21143,6 @@ var Script = function ( editor ) {
 	} );
 	codemirror.setOption( 'theme', 'monokai' );
 	codemirror.on( 'change', function () {
-
-		if ( codemirror.state.focused === false ) return;
 
 		clearTimeout( delay );
 		delay = setTimeout( function () {
@@ -23163,37 +21531,46 @@ var Script = function ( editor ) {
 
 THREE.VREffect = function ( renderer, onError ) {
 
-	var isWebVR1 = true;
+	var vrHMD;
+	var eyeTranslationL, eyeFOVL;
+	var eyeTranslationR, eyeFOVR;
 
-	var vrDisplay, vrDisplays;
-	var eyeTranslationL = new THREE.Vector3();
-	var eyeTranslationR = new THREE.Vector3();
-	var renderRectL, renderRectR;
-	var eyeFOVL, eyeFOVR;
+	function gotVRDevices( devices ) {
 
-	function gotVRDisplays( displays ) {
+		for ( var i = 0; i < devices.length; i ++ ) {
 
-		vrDisplays = displays;
+			if ( devices[ i ] instanceof HMDVRDevice ) {
 
-		for ( var i = 0; i < displays.length; i ++ ) {
+				vrHMD = devices[ i ];
 
-			if ( 'VRDisplay' in window && displays[ i ] instanceof VRDisplay ) {
+				if ( vrHMD.getEyeParameters !== undefined ) {
 
-				vrDisplay = displays[ i ];
-				isWebVR1 = true;
-				break; // We keep the first we encounter
+					var eyeParamsL = vrHMD.getEyeParameters( 'left' );
+					var eyeParamsR = vrHMD.getEyeParameters( 'right' );
 
-			} else if ( 'HMDVRDevice' in window && displays[ i ] instanceof HMDVRDevice ) {
+					eyeTranslationL = eyeParamsL.eyeTranslation;
+					eyeTranslationR = eyeParamsR.eyeTranslation;
+					eyeFOVL = eyeParamsL.recommendedFieldOfView;
+					eyeFOVR = eyeParamsR.recommendedFieldOfView;
 
-				vrDisplay = displays[ i ];
-				isWebVR1 = false;
+				} else {
+
+					// TODO: This is an older code path and not spec compliant.
+					// It should be removed at some point in the near future.
+					eyeTranslationL = vrHMD.getEyeTranslation( 'left' );
+					eyeTranslationR = vrHMD.getEyeTranslation( 'right' );
+					eyeFOVL = vrHMD.getRecommendedEyeFieldOfView( 'left' );
+					eyeFOVR = vrHMD.getRecommendedEyeFieldOfView( 'right' );
+
+				}
+
 				break; // We keep the first we encounter
 
 			}
 
 		}
 
-		if ( vrDisplay === undefined ) {
+		if ( vrHMD === undefined ) {
 
 			if ( onError ) onError( 'HMD not available' );
 
@@ -23201,330 +21578,80 @@ THREE.VREffect = function ( renderer, onError ) {
 
 	}
 
-	if ( navigator.getVRDisplays ) {
+	if ( navigator.getVRDevices ) {
 
-		navigator.getVRDisplays().then( gotVRDisplays );
-
-	} else if ( navigator.getVRDevices ) {
-
-		// Deprecated API.
-		navigator.getVRDevices().then( gotVRDisplays );
+		navigator.getVRDevices().then( gotVRDevices );
 
 	}
 
 	//
 
-	this.isPresenting = false;
 	this.scale = 1;
 
-	var scope = this;
+	this.setSize = function( width, height ) {
 
-	var rendererSize = renderer.getSize();
-	var rendererPixelRatio = renderer.getPixelRatio();
-
-	this.getVRDisplay = function () {
-
-		return vrDisplay;
-
-	};
-
-	this.getVRDisplays = function () {
-
-		return vrDisplays;
-
-	};
-
-	this.setSize = function ( width, height ) {
-
-		rendererSize = { width: width, height: height };
-
-		if ( scope.isPresenting ) {
-
-			var eyeParamsL = vrDisplay.getEyeParameters( 'left' );
-			renderer.setPixelRatio( 1 );
-
-			if ( isWebVR1 ) {
-
-				renderer.setSize( eyeParamsL.renderWidth * 2, eyeParamsL.renderHeight, false );
-
-			} else {
-
-				renderer.setSize( eyeParamsL.renderRect.width * 2, eyeParamsL.renderRect.height, false );
-
-			}
-
-		} else {
-
-			renderer.setPixelRatio( rendererPixelRatio );
-			renderer.setSize( width, height );
-
-		}
+		renderer.setSize( width, height );
 
 	};
 
 	// fullscreen
 
+	var isFullscreen = false;
+
 	var canvas = renderer.domElement;
-	var requestFullscreen;
-	var exitFullscreen;
-	var fullscreenElement;
-	var leftBounds = [ 0.0, 0.0, 0.5, 1.0 ];
-	var rightBounds = [ 0.5, 0.0, 0.5, 1.0 ];
+	var fullscreenchange = canvas.mozRequestFullScreen ? 'mozfullscreenchange' : 'webkitfullscreenchange';
 
-	function onFullscreenChange () {
+	document.addEventListener( fullscreenchange, function ( event ) {
 
-		var wasPresenting = scope.isPresenting;
-		scope.isPresenting = vrDisplay !== undefined && ( vrDisplay.isPresenting || ( ! isWebVR1 && document[ fullscreenElement ] instanceof window.HTMLElement ) );
+		isFullscreen = document.mozFullScreenElement || document.webkitFullscreenElement;
 
-		if ( scope.isPresenting ) {
-
-			var eyeParamsL = vrDisplay.getEyeParameters( 'left' );
-			var eyeWidth, eyeHeight;
-
-			if ( isWebVR1 ) {
-
-				eyeWidth = eyeParamsL.renderWidth;
-				eyeHeight = eyeParamsL.renderHeight;
-
-				if ( vrDisplay.getLayers ) {
-
-					var layers = vrDisplay.getLayers();
-					if (layers.length) {
-
-						leftBounds = layers[0].leftBounds || [ 0.0, 0.0, 0.5, 1.0 ];
-						rightBounds = layers[0].rightBounds || [ 0.5, 0.0, 0.5, 1.0 ];
-
-					}
-				}
-
-			} else {
-
-				eyeWidth = eyeParamsL.renderRect.width;
-				eyeHeight = eyeParamsL.renderRect.height;
-
-			}
-
-			if ( !wasPresenting ) {
-
-				rendererPixelRatio = renderer.getPixelRatio();
-				rendererSize = renderer.getSize();
-
-				renderer.setPixelRatio( 1 );
-				renderer.setSize( eyeWidth * 2, eyeHeight, false );
-
-			}
-
-		} else if ( wasPresenting ) {
-
-			renderer.setPixelRatio( rendererPixelRatio );
-			renderer.setSize( rendererSize.width, rendererSize.height );
-
-		}
-
-	}
-
-	if ( canvas.requestFullscreen ) {
-
-		requestFullscreen = 'requestFullscreen';
-		fullscreenElement = 'fullscreenElement';
-		exitFullscreen = 'exitFullscreen';
-		document.addEventListener( 'fullscreenchange', onFullscreenChange, false );
-
-	} else if ( canvas.mozRequestFullScreen ) {
-
-		requestFullscreen = 'mozRequestFullScreen';
-		fullscreenElement = 'mozFullScreenElement';
-		exitFullscreen = 'mozCancelFullScreen';
-		document.addEventListener( 'mozfullscreenchange', onFullscreenChange, false );
-
-	} else {
-
-		requestFullscreen = 'webkitRequestFullscreen';
-		fullscreenElement = 'webkitFullscreenElement';
-		exitFullscreen = 'webkitExitFullscreen';
-		document.addEventListener( 'webkitfullscreenchange', onFullscreenChange, false );
-
-	}
-
-	window.addEventListener( 'vrdisplaypresentchange', onFullscreenChange, false );
+	}, false );
 
 	this.setFullScreen = function ( boolean ) {
 
-		return new Promise( function ( resolve, reject ) {
+		if ( vrHMD === undefined ) return;
+		if ( isFullscreen === boolean ) return;
 
-			if ( vrDisplay === undefined ) {
+		if ( canvas.mozRequestFullScreen ) {
 
-				reject( new Error( 'No VR hardware found.' ) );
-				return;
+			canvas.mozRequestFullScreen( { vrDisplay: vrHMD } );
 
-			}
+		} else if ( canvas.webkitRequestFullscreen ) {
 
-			if ( scope.isPresenting === boolean ) {
-
-				resolve();
-				return;
-
-			}
-
-			if ( isWebVR1 ) {
-
-				if ( boolean ) {
-
-					resolve( vrDisplay.requestPresent( [ { source: canvas } ] ) );
-
-				} else {
-
-					resolve( vrDisplay.exitPresent() );
-
-				}
-
-			} else {
-
-				if ( canvas[ requestFullscreen ] ) {
-
-					canvas[ boolean ? requestFullscreen : exitFullscreen ]( { vrDisplay: vrDisplay } );
-					resolve();
-
-				} else {
-
-					console.error( 'No compatible requestFullscreen method found.' );
-					reject( new Error( 'No compatible requestFullscreen method found.' ) );
-
-				}
-
-			}
-
-		} );
-
-	};
-
-	this.requestPresent = function () {
-
-		return this.setFullScreen( true );
-
-	};
-
-	this.exitPresent = function () {
-
-		return this.setFullScreen( false );
-
-	};
-
-	this.requestAnimationFrame = function ( f ) {
-
-		if ( isWebVR1 && vrDisplay !== undefined ) {
-
-			return vrDisplay.requestAnimationFrame( f );
-
-		} else {
-
-			return window.requestAnimationFrame( f );
+			canvas.webkitRequestFullscreen( { vrDisplay: vrHMD } );
 
 		}
 
 	};
-	
-	this.cancelAnimationFrame = function ( h ) {
-
-		if ( isWebVR1 && vrDisplay !== undefined ) {
-
-			vrDisplay.cancelAnimationFrame( h );
-
-		} else {
-
-			window.cancelAnimationFrame( h );
-
-		}
-
-	};
-	
-	this.submitFrame = function () {
-
-		if ( isWebVR1 && vrDisplay !== undefined && scope.isPresenting ) {
-
-			vrDisplay.submitFrame();
-
-		}
-
-	};
-
-	this.autoSubmitFrame = true;
 
 	// render
 
 	var cameraL = new THREE.PerspectiveCamera();
-	cameraL.layers.enable( 1 );
-
 	var cameraR = new THREE.PerspectiveCamera();
-	cameraR.layers.enable( 2 );
 
-	this.render = function ( scene, camera, renderTarget, forceClear ) {
+	this.render = function ( scene, camera ) {
 
-		if ( vrDisplay && scope.isPresenting ) {
+		if ( vrHMD ) {
 
-			var autoUpdate = scene.autoUpdate;
-
-			if ( autoUpdate ) {
-
-				scene.updateMatrixWorld();
-				scene.autoUpdate = false;
-
-			}
-
-			var eyeParamsL = vrDisplay.getEyeParameters( 'left' );
-			var eyeParamsR = vrDisplay.getEyeParameters( 'right' );
-
-			if ( isWebVR1 ) {
-
-				eyeTranslationL.fromArray( eyeParamsL.offset );
-				eyeTranslationR.fromArray( eyeParamsR.offset );
-				eyeFOVL = eyeParamsL.fieldOfView;
-				eyeFOVR = eyeParamsR.fieldOfView;
-
-			} else {
-
-				eyeTranslationL.copy( eyeParamsL.eyeTranslation );
-				eyeTranslationR.copy( eyeParamsR.eyeTranslation );
-				eyeFOVL = eyeParamsL.recommendedFieldOfView;
-				eyeFOVR = eyeParamsR.recommendedFieldOfView;
-
-			}
+			var sceneL, sceneR;
 
 			if ( Array.isArray( scene ) ) {
 
-				console.warn( 'THREE.VREffect.render() no longer supports arrays. Use object.layers instead.' );
-				scene = scene[ 0 ];
+				sceneL = scene[ 0 ];
+				sceneR = scene[ 1 ];
+
+			} else {
+
+				sceneL = scene;
+				sceneR = scene;
 
 			}
 
-			// When rendering we don't care what the recommended size is, only what the actual size
-			// of the backbuffer is.
 			var size = renderer.getSize();
-			renderRectL = {
-				x: Math.round( size.width * leftBounds[ 0 ] ),
-				y: Math.round( size.height * leftBounds[ 1 ] ),
-				width: Math.round( size.width * leftBounds[ 2 ] ),
-				height:  Math.round(size.height * leftBounds[ 3 ] )
-			};
-			renderRectR = {
-				x: Math.round( size.width * rightBounds[ 0 ] ),
-				y: Math.round( size.height * rightBounds[ 1 ] ),
-				width: Math.round( size.width * rightBounds[ 2 ] ),
-				height:  Math.round(size.height * rightBounds[ 3 ] )
-			};
+			size.width /= 2;
 
-			if (renderTarget) {
-				
-				renderer.setRenderTarget(renderTarget);
-				renderTarget.scissorTest = true;
-				
-			} else  {
-				
-				renderer.setScissorTest( true );
-			
-			}
-
-			if ( renderer.autoClear || forceClear ) renderer.clear();
+			renderer.enableScissorTest( true );
+			renderer.clear();
 
 			if ( camera.parent === null ) camera.updateMatrixWorld();
 
@@ -23534,63 +21661,20 @@ THREE.VREffect = function ( renderer, onError ) {
 			camera.matrixWorld.decompose( cameraL.position, cameraL.quaternion, cameraL.scale );
 			camera.matrixWorld.decompose( cameraR.position, cameraR.quaternion, cameraR.scale );
 
-			var scale = this.scale;
-			cameraL.translateOnAxis( eyeTranslationL, scale );
-			cameraR.translateOnAxis( eyeTranslationR, scale );
-
+			cameraL.translateX( eyeTranslationL.x * this.scale );
+			cameraR.translateX( eyeTranslationR.x * this.scale );
 
 			// render left eye
-			if ( renderTarget ) {
-
-				renderTarget.viewport.set(renderRectL.x, renderRectL.y, renderRectL.width, renderRectL.height);
-				renderTarget.scissor.set(renderRectL.x, renderRectL.y, renderRectL.width, renderRectL.height);
-
-			} else {
-
-				renderer.setViewport( renderRectL.x, renderRectL.y, renderRectL.width, renderRectL.height );
-				renderer.setScissor( renderRectL.x, renderRectL.y, renderRectL.width, renderRectL.height );
-
-			}
-			renderer.render( scene, cameraL, renderTarget, forceClear );
+			renderer.setViewport( 0, 0, size.width, size.height );
+			renderer.setScissor( 0, 0, size.width, size.height );
+			renderer.render( sceneL, cameraL );
 
 			// render right eye
-			if (renderTarget) {
+			renderer.setViewport( size.width, 0, size.width, size.height );
+			renderer.setScissor( size.width, 0, size.width, size.height );
+			renderer.render( sceneR, cameraR );
 
-				renderTarget.viewport.set(renderRectR.x, renderRectR.y, renderRectR.width, renderRectR.height);
-  				renderTarget.scissor.set(renderRectR.x, renderRectR.y, renderRectR.width, renderRectR.height);
-
-			} else {
-
-				renderer.setViewport( renderRectR.x, renderRectR.y, renderRectR.width, renderRectR.height );
-				renderer.setScissor( renderRectR.x, renderRectR.y, renderRectR.width, renderRectR.height );
-
-			}
-			renderer.render( scene, cameraR, renderTarget, forceClear );
-
-			if (renderTarget) {
-
-				renderTarget.viewport.set( 0, 0, size.width, size.height );
-				renderTarget.scissor.set( 0, 0, size.width, size.height );
-				renderTarget.scissorTest = false;
-				renderer.setRenderTarget( null );
-
-			} else {
-				
-				renderer.setScissorTest( false );
-
-			}
-			
-			if ( autoUpdate ) {
-
-				scene.autoUpdate = true;
-
-			}
-
-			if ( scope.autoSubmitFrame ) {
-
-				scope.submitFrame();
-
-			}
+			renderer.enableScissorTest( false );
 
 			return;
 
@@ -23598,7 +21682,9 @@ THREE.VREffect = function ( renderer, onError ) {
 
 		// Regular render mode if not HMD
 
-		renderer.render( scene, camera, renderTarget, forceClear );
+		if ( Array.isArray( scene ) ) scene = scene[ 0 ];
+
+		renderer.render( scene, camera );
 
 	};
 
@@ -23689,42 +21775,55 @@ THREE.VRControls = function ( object, onError ) {
 
 	var scope = this;
 
-	var vrDisplay, vrDisplays;
+	var vrInputs = [];
 
-	var standingMatrix = new THREE.Matrix4();
+	function filterInvalidDevices( devices ) {
 
-	function gotVRDisplays( displays ) {
+		// Exclude Cardboard position sensor if Oculus exists.
 
-		vrDisplays = displays;
+		var oculusDevices = devices.filter( function ( device ) {
 
-		for ( var i = 0; i < displays.length; i ++ ) {
+			return device.deviceName.toLowerCase().indexOf( 'oculus' ) !== - 1;
 
-			if ( ( 'VRDisplay' in window && displays[ i ] instanceof VRDisplay ) ||
-				 ( 'PositionSensorVRDevice' in window && displays[ i ] instanceof PositionSensorVRDevice ) ) {
+		} );
 
-				vrDisplay = displays[ i ];
-				break;  // We keep the first we encounter
+		if ( oculusDevices.length >= 1 ) {
 
-			}
+			return devices.filter( function ( device ) {
 
-		}
+				return device.deviceName.toLowerCase().indexOf( 'cardboard' ) === - 1;
 
-		if ( vrDisplay === undefined ) {
+			} );
 
-			if ( onError ) onError( 'VR input not available.' );
+		} else {
+
+			return devices;
 
 		}
 
 	}
 
-	if ( navigator.getVRDisplays ) {
+	function gotVRDevices( devices ) {
 
-		navigator.getVRDisplays().then( gotVRDisplays );
+		devices = filterInvalidDevices( devices );
 
-	} else if ( navigator.getVRDevices ) {
+		for ( var i = 0; i < devices.length; i ++ ) {
 
-		// Deprecated API.
-		navigator.getVRDevices().then( gotVRDisplays );
+			if ( devices[ i ] instanceof PositionSensorVRDevice ) {
+
+				vrInputs.push( devices[ i ] );
+
+			}
+
+		}
+
+		if ( onError ) onError( 'HMD not available' );
+
+	}
+
+	if ( navigator.getVRDevices ) {
+
+		navigator.getVRDevices().then( gotVRDevices );
 
 	}
 
@@ -23734,119 +21833,23 @@ THREE.VRControls = function ( object, onError ) {
 
 	this.scale = 1;
 
-	// If true will use "standing space" coordinate system where y=0 is the
-	// floor and x=0, z=0 is the center of the room.
-	this.standing = false;
-
-	// Distance from the users eyes to the floor in meters. Used when
-	// standing=true but the VRDisplay doesn't provide stageParameters.
-	this.userHeight = 1.6;
-
-	this.getVRDisplay = function () {
-
-		return vrDisplay;
-
-	};
-
-	this.getVRDisplays = function () {
-
-		return vrDisplays;
-
-	};
-
-	this.getStandingMatrix = function () {
-
-		return standingMatrix;
-
-	};
-
 	this.update = function () {
 
-		if ( vrDisplay ) {
+		for ( var i = 0; i < vrInputs.length; i ++ ) {
 
-			if ( vrDisplay.getPose ) {
+			var vrInput = vrInputs[ i ];
 
-				var pose = vrDisplay.getPose();
+			var state = vrInput.getState();
 
-				if ( pose.orientation !== null ) {
+			if ( state.orientation !== null ) {
 
-					object.quaternion.fromArray( pose.orientation );
-
-				}
-
-				if ( pose.position !== null ) {
-
-					object.position.fromArray( pose.position );
-
-				} else {
-
-					object.position.set( 0, 0, 0 );
-
-				}
-
-			} else {
-
-				// Deprecated API.
-				var state = vrDisplay.getState();
-
-				if ( state.orientation !== null ) {
-
-					object.quaternion.copy( state.orientation );
-
-				}
-
-				if ( state.position !== null ) {
-
-					object.position.copy( state.position );
-
-				} else {
-
-					object.position.set( 0, 0, 0 );
-
-				}
+				object.quaternion.copy( state.orientation );
 
 			}
 
-			if ( this.standing ) {
+			if ( state.position !== null ) {
 
-				if ( vrDisplay.stageParameters ) {
-
-					object.updateMatrix();
-
-					standingMatrix.fromArray( vrDisplay.stageParameters.sittingToStandingTransform );
-					object.applyMatrix( standingMatrix );
-
-				} else {
-
-					object.position.setY( object.position.y + this.userHeight );
-
-				}
-
-			}
-
-			object.position.multiplyScalar( scope.scale );
-
-		}
-
-	};
-
-	this.resetPose = function () {
-
-		if ( vrDisplay ) {
-
-			if ( vrDisplay.resetPose !== undefined ) {
-
-				vrDisplay.resetPose();
-
-			} else if ( vrDisplay.resetSensor !== undefined ) {
-
-				// Deprecated API.
-				vrDisplay.resetSensor();
-
-			} else if ( vrDisplay.zeroSensor !== undefined ) {
-
-				// Really deprecated API.
-				vrDisplay.zeroSensor();
+				object.position.copy( state.position ).multiplyScalar( scope.scale );
 
 			}
 
@@ -23856,21 +21859,34 @@ THREE.VRControls = function ( object, onError ) {
 
 	this.resetSensor = function () {
 
-		console.warn( 'THREE.VRControls: .resetSensor() is now .resetPose().' );
-		this.resetPose();
+		for ( var i = 0; i < vrInputs.length; i ++ ) {
+
+			var vrInput = vrInputs[ i ];
+
+			if ( vrInput.resetSensor !== undefined ) {
+
+				vrInput.resetSensor();
+
+			} else if ( vrInput.zeroSensor !== undefined ) {
+
+				vrInput.zeroSensor();
+
+			}
+
+		}
 
 	};
 
 	this.zeroSensor = function () {
 
-		console.warn( 'THREE.VRControls: .zeroSensor() is now .resetPose().' );
-		this.resetPose();
+		console.warn( 'THREE.VRControls: .zeroSensor() is now .resetSensor().' );
+		this.resetSensor();
 
 	};
 
 	this.dispose = function () {
 
-		vrDisplay = null;
+		vrInputs = [];
 
 	};
 
@@ -23887,11 +21903,8 @@ var Storage = function () {
 	var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
 
 	if ( indexedDB === undefined  ) {
-
 		console.warn( 'Storage: IndexedDB not available.' );
-
 		return { init: function () {}, get: function () {}, set: function () {}, clear: function () {}, size: function () {} };
-
 	}
 
 	var name = 'threejs-editor';
@@ -23968,8 +21981,6 @@ var Storage = function () {
 
 		clear: function () {
 
-			if ( database === undefined ) return;
-
 			var transaction = database.transaction( [ 'states' ], 'readwrite' );
 			var objectStore = transaction.objectStore( 'states' );
 			var request = objectStore.clear();
@@ -24016,7 +22027,7 @@ var Storage = function () {
 		    }
 		}
 
-	};
+	}
 
 };
 
@@ -24026,27 +22037,23 @@ var Storage = function () {
  * @author mrdoob / http://mrdoob.com/
  */
 
-var Config = function ( name ) {
+var Config = function () {
+
+	var name = 'threejs-editor';
 
 	var storage = {
 		'autosave': true,
 		'theme': 'css/light.css',
 
-		'degree': true,
+		'degree': false,
 
 		'backgroundColor': 0xcccccc,
 
 		'project/history/stored': true,
 		'project/renderer': 'WebGLRenderer',
 		'project/renderer/antialias': true,
-		'project/renderer/gammaInput': false,
-		'project/renderer/gammaOutput': false,
 		'project/renderer/shadows': true,
-		'project/editable': false,
 		'project/vr': false,
-		'project/gazetime':2.4,
-		'project/crosshair':true,
-		'project/quality':1.0,
 
 		'ui/sidebar/animation/collapsed': true,
 		'ui/sidebar/geometry/collapsed': true,
@@ -24452,16 +22459,6 @@ var Loader = function ( editor ) {
 		var filename = file.name;
 		var extension = filename.split( '.' ).pop().toLowerCase();
 
-		//Debug download stuff
-		// var reader = new FileReader();
-		// reader.addEventListener( 'progress', function ( event ) {
-
-		// 	var size = '(' + Math.floor( event.total / 1000 ).format() + ' KB)';
-		// 	var progress = Math.floor( ( event.loaded / event.total ) * 100 ) + '%';
-		// 	console.log( 'Loading', filename, size, progress );
-
-		// } );
-
 		switch ( extension ) {
 
 			case 'amf':
@@ -24583,41 +22580,6 @@ var Loader = function ( editor ) {
 				reader.readAsText( file );
 
 				break;
-
-			case 'fbx':
-
-				reader.addEventListener( 'load', function ( event ) {
-
-					var contents = event.target.result;
-
-					var loader = new THREE.FBXLoader();
-					var object = loader.parse( contents );
-
-					editor.execute( new AddObjectCommand( object ) );
-
-				}, false );
-				reader.readAsText( file );
-
-				break;
-
-				case 'gltf':
-
-					reader.addEventListener( 'load', function ( event ) {
-
-						var contents = event.target.result;
-						var json = JSON.parse( contents );
-
-						var loader = new THREE.GLTFLoader();
-						var collada = loader.parse( json );
-
-						collada.scene.name = filename;
-
-						editor.execute( new AddObjectCommand( collada.scene ) );
-
-					}, false );
-					reader.readAsText( file );
-
-					break;
 
 			case 'js':
 			case 'json':
@@ -24901,7 +22863,7 @@ var Loader = function ( editor ) {
 		switch ( data.metadata.type.toLowerCase() ) {
 
 			case 'buffergeometry':
-				// console.log("buffergeometry");
+				console.log("buffergeometry");
 
 				var loader = new THREE.BufferGeometryLoader();
 				var result = loader.parse( data );
@@ -24913,7 +22875,7 @@ var Loader = function ( editor ) {
 				break;
 
 			case 'geometry':
-				// console.log("geometry");
+				console.log("geometry");
 
 				var loader = new THREE.JSONLoader();
 				loader.setTexturePath( scope.texturePath );
@@ -24929,7 +22891,7 @@ var Loader = function ( editor ) {
 
 					if ( result.materials.length > 1 ) {
 
-						material = new THREE.MultiMaterial( result.materials );
+						material = new THREE.MeshFaceMaterial( result.materials );
 
 					} else {
 
@@ -25028,9 +22990,7 @@ var Menubar = function ( editor ) {
 	container.add( new Menubar.File( editor ) );
 	container.add( new Menubar.Edit( editor ) );
 	container.add( new Menubar.Add( editor ) );
-	container.add( new Menubar.Library( editor ));
 	container.add( new Menubar.Play( editor ) );
-
 	// container.add( new Menubar.Examples( editor ) );
 	container.add( new Menubar.Help( editor ) );
 
@@ -25370,81 +23330,51 @@ Menubar.File = function ( editor ) {
     } );
     options.add( option );
 
-	/*var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Publish' );
-	option.onClick( function () {
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Publish' );
+	// option.onClick( function () {
 
-		var zip = new JSZip();
+	// 	var zip = new JSZip();
 
-		//
+	// 	//
 
+	// 	var output = editor.toJSON();
+	// 	output.metadata.type = 'App';
+	// 	delete output.history;
 
-		var vr = output.project.vr;
+	// 	output = JSON.stringify( output, null, '\t' );
+	// 	output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-		output = JSON.stringify( output, null, '\t' );
-		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+	// 	zip.file( 'app.json', output );
 
-			var includes = [];
+	// 	//
 
-			if ( vr ) {
+	// 	var manager = new THREE.LoadingManager( function () {
 
-				includes.push( '<script src="js/VRControls.js"></script>' );
-				includes.push( '<script src="js/VREffect.js"></script>' );
-				includes.push( '<script src="js/WebVR.js"></script>' );
+	// 		save( zip.generate( { type: 'blob' } ), 'download.zip' );
 
-			}
+	// 	} );
 
-			content = content.replace( '<!-- includes -->', includes.join( '\n\t\t' ) );
+	// 	var loader = new THREE.XHRLoader( manager );
+	// 	loader.load( 'js/libs/app/index.html', function ( content ) {
 
-			zip.file( 'index.html', content );
+	// 		zip.file( 'index.html', content );
 
+	// 	} );
+	// 	loader.load( 'js/libs/app.js', function ( content ) {
 
-		if ( vr ) {
+	// 		zip.file( 'js/app.js', content );
 
-			loader.load( '../examples/js/controls/VRControls.js', function ( content ) {
+	// 	} );
+	// 	loader.load( '../build/three.min.js', function ( content ) {
 
-				zip.file( 'js/VRControls.js', content );
+	// 		zip.file( 'js/three.min.js', content );
 
-			} );
+	// 	} );
 
-			loader.load( '../examples/js/effects/VREffect.js', function ( content ) {
-
-				zip.file( 'js/VREffect.js', content );
-
-			} );
-
-			loader.load( '../examples/js/WebVR.js', function ( content ) {
-
-				zip.file( 'js/WebVR.js', content );
-
-			} );
-
-		}
-
-	} );
-	options.add( option );
-	*/
-
-	/*
-	// Publish (Dropbox)
-
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Publish (Dropbox)' );
-	option.onClick( function () {
-
-		var parameters = {
-			files: [
-				{ 'url': 'data:text/plain;base64,' + window.btoa( "Hello, World" ), 'filename': 'app/test.txt' }
-			]
-		};
-
-		Dropbox.save( parameters );
-
-	} );
-	options.add( option );
-	*/
+	// } );
+	// options.add( option );
 
 
 	//
@@ -25581,7 +23511,7 @@ Menubar.Edit = function ( editor ) {
 
 	var option = new UI.Row();
 	option.setClass( 'option' );
-	option.setTextContent( 'Delete (Del)' );
+	option.setTextContent( 'Delete' );
 	option.onClick( function () {
 
 		var object = editor.selected;
@@ -25812,50 +23742,50 @@ Menubar.Add = function ( editor ) {
 	// options.add( option );
 
 	// //
-	// var option = new UI.Row();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Library' );
-	// option.onClick( function () {
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Library' );
+	option.onClick( function () {
 
- //        // preview box
- //        var preview = "<div id='preview' class='modal-box' style='height:100%;width:100%;text-align: center;'> \
- //        <header style='background-color:#333;'> \
- //            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
- //        </header> \
- //        <div style='height:100%;'> \
- //            <iframe id='library_iframe' width='100%' height='100%' allowfullscreen src=" + LIBRARY_URL + "></iframe> \
- //        </div></div>";
- //        $("body").append($.parseHTML(preview));
+        // preview box
+        var preview = "<div id='preview' class='modal-box' style='height:100%;width:100%;text-align: center;'> \
+        <header style='background-color:#333;'> \
+            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
+        </header> \
+        <div style='height:100%;'> \
+            <iframe id='library_iframe' width='100%' height='100%' allowfullscreen src=" + LIBRARY_URL + "></iframe> \
+        </div></div>";
+        $("body").append($.parseHTML(preview));
 
- //        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
- //        $("body").append(modal);
+        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
+        $("body").append(modal);
 
- //        $(".modal-overlay").fadeTo(500, 0.9);
- //        $('#preview').fadeIn();
- //        // modal helper
- //        $(".js-modal-close, .modal-overlay").click(function() {
- //            $(".modal-box, .modal-overlay").fadeOut(500, function() {
- //            	// player.stop();
- //                $(".modal-overlay").remove();
- //                $("#preview").remove();
- //            });
- //        });
- //        $(window).resize(function() {
- //            $(".modal-box").css({
- //                top: ($(window).height() - $("#preview").outerHeight()) / 2,
- //                left: ($(window).width() - $("#preview").outerWidth()) / 2
- //            });
- //        });
+        $(".modal-overlay").fadeTo(500, 0.9);
+        $('#preview').fadeIn();
+        // modal helper
+        $(".js-modal-close, .modal-overlay").click(function() {
+            $(".modal-box, .modal-overlay").fadeOut(500, function() {
+            	// player.stop();
+                $(".modal-overlay").remove();
+                $("#preview").remove();
+            });
+        });
+        $(window).resize(function() {
+            $(".modal-box").css({
+                top: ($(window).height() - $("#preview").outerHeight()) / 2,
+                left: ($(window).width() - $("#preview").outerWidth()) / 2
+            });
+        });
 
- //        $(window).resize();
+        $(window).resize();
 
 
-	// } );
-	// options.add( option );
+	} );
+	options.add( option );
 
 	
 
-	// options.add( new UI.HorizontalRule() );
+	options.add( new UI.HorizontalRule() );
 
 	// Plane
 
@@ -25864,7 +23794,7 @@ Menubar.Add = function ( editor ) {
 	option.setTextContent( 'Plane' );
 	option.onClick( function () {
 
-		var geometry = new THREE.PlaneBufferGeometry( 2, 2 );
+		var geometry = new THREE.PlaneGeometry( 2, 2 );
 		var material = new THREE.MeshStandardMaterial();
 		var mesh = new THREE.Mesh( geometry, material );
 		mesh.name = 'Plane ' + ( ++ meshCount );
@@ -25881,7 +23811,7 @@ Menubar.Add = function ( editor ) {
 	option.setTextContent( 'Box' );
 	option.onClick( function () {
 
-		var geometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
+		var geometry = new THREE.BoxGeometry( 1, 1, 1 );
 		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Box ' + ( ++ meshCount );
 
@@ -25900,7 +23830,7 @@ Menubar.Add = function ( editor ) {
 		var radius = 1;
 		var segments = 32;
 
-		var geometry = new THREE.CircleBufferGeometry( radius, segments );
+		var geometry = new THREE.CircleGeometry( radius, segments );
 		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Circle ' + ( ++ meshCount );
 
@@ -25923,7 +23853,7 @@ Menubar.Add = function ( editor ) {
 		var heightSegments = 1;
 		var openEnded = false;
 
-		var geometry = new THREE.CylinderBufferGeometry( radiusTop, radiusBottom, height, radiusSegments, heightSegments, openEnded );
+		var geometry = new THREE.CylinderGeometry( radiusTop, radiusBottom, height, radiusSegments, heightSegments, openEnded );
 		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Cylinder ' + ( ++ meshCount );
 
@@ -25946,7 +23876,7 @@ Menubar.Add = function ( editor ) {
 		var thetaStart = 0;
 		var thetaLength = Math.PI;
 
-		var geometry = new THREE.SphereBufferGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
+		var geometry = new THREE.SphereGeometry( radius, widthSegments, heightSegments, phiStart, phiLength, thetaStart, thetaLength );
 		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Sphere ' + ( ++ meshCount );
 
@@ -25987,7 +23917,7 @@ Menubar.Add = function ( editor ) {
 		var tubularSegments = 12;
 		var arc = Math.PI * 2;
 
-		var geometry = new THREE.TorusBufferGeometry( radius, tube, radialSegments, tubularSegments, arc );
+		var geometry = new THREE.TorusGeometry( radius, tube, radialSegments, tubularSegments, arc );
 		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'Torus ' + ( ++ meshCount );
 
@@ -26005,12 +23935,13 @@ Menubar.Add = function ( editor ) {
 
 		var radius = 2;
 		var tube = 0.8;
-		var tubularSegments = 64;
-		var radialSegments = 12;
+		var radialSegments = 64;
+		var tubularSegments = 12;
 		var p = 2;
 		var q = 3;
+		var heightScale = 1;
 
-		var geometry = new THREE.TorusKnotBufferGeometry( radius, tube, tubularSegments, radialSegments, p, q );
+		var geometry = new THREE.TorusKnotGeometry( radius, tube, radialSegments, tubularSegments, p, q, heightScale );
 		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial() );
 		mesh.name = 'TorusKnot ' + ( ++ meshCount );
 
@@ -26047,39 +23978,6 @@ Menubar.Add = function ( editor ) {
 	} );
 	options.add( option );
 	*/
-
-	// Lathe
-
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Lathe' );
-	option.onClick( function() {
-
-		var points = [
-			new THREE.Vector2( 0, 0 ),
-			new THREE.Vector2( 4, 0 ),
-			new THREE.Vector2( 3.5, 0.5 ),
-			new THREE.Vector2( 1, 0.75 ),
-			new THREE.Vector2( 0.8, 1 ),
-			new THREE.Vector2( 0.8, 4 ),
-			new THREE.Vector2( 1, 4.2 ),
-			new THREE.Vector2( 1.4, 4.8 ),
-			new THREE.Vector2( 2, 5 ),
-			new THREE.Vector2( 2.5, 5.4 ),
-			new THREE.Vector2( 3, 12 )
-		];
-		var segments = 20;
-		var phiStart = 0;
-		var phiLength = 2 * Math.PI;
-
-		var geometry = new THREE.LatheBufferGeometry( points, segments, phiStart, phiLength );
-		var mesh = new THREE.Mesh( geometry, new THREE.MeshStandardMaterial( { side: THREE.DoubleSide } ) );
-		mesh.name = 'Lathe ' + ( ++ meshCount );
-
-		editor.execute( new AddObjectCommand( mesh ) );
-
-	} );
-	// options.add( option );
 
 	// Sprite
 
@@ -26130,9 +24028,9 @@ Menubar.Add = function ( editor ) {
 		var intensity = 1;
 		var distance = 0;
 		var angle = Math.PI * 0.1;
-		var penumbra = 0;
+		var exponent = 10;
 
-		var light = new THREE.SpotLight( color, intensity, distance, angle, penumbra );
+		var light = new THREE.SpotLight( color, intensity, distance, angle, exponent );
 		light.name = 'SpotLight ' + ( ++ lightCount );
 		light.target.name = 'SpotLight ' + ( lightCount ) + ' Target';
 
@@ -26219,7 +24117,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( camera ) );
 
 	} );
-	// options.add( option );
+	options.add( option );
 
 	return container;
 
@@ -26247,7 +24145,7 @@ Menubar.Play = function ( editor ) {
 
 		// if ( isPlaying === false ) {
 
-			// isPlaying = true;
+			isPlaying = true;
 			// title.setTextContent( 'Stop' );
 			signals.startPlayer.dispatch();
 
@@ -26265,6 +24163,7 @@ Menubar.Play = function ( editor ) {
 	return container;
 
 };
+
 // File:editor/js/Menubar.Examples.js
 
 /**
@@ -26682,51 +24581,6 @@ Sidebar.Scene = function ( editor ) {
 	container.setBorderTop( '0' );
 	container.setPaddingTop( '20px' );
 
-	// outliner
-
-	function buildOption( object, draggable ) {
-
-		var option = document.createElement( 'div' );
-		option.draggable = draggable;
-		option.innerHTML = buildHTML( object );
-		option.value = object.id;
-
-		return option;
-
-	}
-
-	function buildHTML( object ) {
-
-		var html = '<span class="type ' + object.type + '"></span> ' + object.name;
-
-		if ( object instanceof THREE.Mesh ) {
-
-			var geometry = object.geometry;
-			var material = object.material;
-
-			html += ' <span class="type ' + geometry.type + '"></span> ' + geometry.name;
-			html += ' <span class="type ' + material.type + '"></span> ' + material.name;
-
-		}
-
-		html += getScript( object.uuid );
-
-		return html;
-
-	}
-
-	function getScript( uuid ) {
-
-		if ( editor.scripts[ uuid ] !== undefined ) {
-
-			return ' <span class="type Script"></span>';
-
-		}
-
-		return '';
-
-	}
-
 	var ignoreObjectSelectedSignal = false;
 
 	var outliner = new UI.Outliner( editor );
@@ -26748,6 +24602,109 @@ Sidebar.Scene = function ( editor ) {
 	container.add( outliner );
 	container.add( new UI.Break() );
 
+	// //bg
+	
+	// var bgColorRow = new UI.Panel();
+	// var bgColor = new UI.Color().setHexValue( editor.config.getKey('backgroundColor'));
+	// bgColor.onChange( function () {
+	// 	signals.bgColorChanged.dispatch( bgColor.getHexValue() );
+
+	// } );
+
+	// bgColorRow.add( new UI.Text( 'Background color' ).setWidth( '90px' ) );
+	// bgColorRow.add( bgColor );
+
+	// container.add( bgColorRow );
+
+	// // fog
+
+	// var updateFogParameters = function () {
+
+	// 	var near = fogNear.getValue();
+	// 	var far = fogFar.getValue();
+	// 	var density = fogDensity.getValue();
+
+	// 	signals.fogParametersChanged.dispatch( near, far, density );
+
+	// };
+
+	// var fogTypeRow = new UI.Row();
+	// var fogType = new UI.Select().setOptions( {
+
+	// 	'None': 'None',
+	// 	'Fog': 'Linear',
+	// 	'FogExp2': 'Exponential'
+
+	// } ).setWidth( '150px' );
+	// fogType.onChange( function () {
+
+	// 	var type = fogType.getValue();
+	// 	signals.fogTypeChanged.dispatch( type );
+
+	// 	refreshFogUI();
+
+	// } );
+
+	// fogTypeRow.add( new UI.Text( 'Fog' ).setWidth( '90px' ) );
+	// fogTypeRow.add( fogType );
+
+	// container.add( fogTypeRow );
+
+	// // fog color
+
+	// var fogColorRow = new UI.Row();
+	// fogColorRow.setDisplay( 'none' );
+
+	// var fogColor = new UI.Color().setValue( '#aaaaaa' )
+	// fogColor.onChange( function () {
+
+	// 	signals.fogColorChanged.dispatch( fogColor.getHexValue() );
+
+	// } );
+
+	// fogColorRow.add( new UI.Text( 'Fog color' ).setWidth( '90px' ) );
+	// fogColorRow.add( fogColor );
+
+	// container.add( fogColorRow );
+
+	// // fog near
+
+	// var fogNearRow = new UI.Row();
+	// fogNearRow.setDisplay( 'none' );
+
+	// var fogNear = new UI.Number( 1 ).setWidth( '60px' ).setRange( 0, Infinity ).onChange( updateFogParameters );
+
+	// fogNearRow.add( new UI.Text( 'Fog near' ).setWidth( '90px' ) );
+	// fogNearRow.add( fogNear );
+
+	// container.add( fogNearRow );
+
+	// var fogFarRow = new UI.Row();
+	// fogFarRow.setDisplay( 'none' );
+
+	// // fog far
+
+	// var fogFar = new UI.Number( 5000 ).setWidth( '60px' ).setRange( 0, Infinity ).onChange( updateFogParameters );
+
+	// fogFarRow.add( new UI.Text( 'Fog far' ).setWidth( '90px' ) );
+	// fogFarRow.add( fogFar );
+
+	// container.add( fogFarRow );
+
+	// // fog density
+
+	// var fogDensityRow = new UI.Row();
+	// fogDensityRow.setDisplay( 'none' );
+
+	// var fogDensity = new UI.Number( 0.00025 ).setWidth( '60px' ).setRange( 0, 0.1 ).setPrecision( 5 ).onChange( updateFogParameters );
+
+	// fogDensityRow.add( new UI.Text( 'Fog density' ).setWidth( '90px' ) );
+	// fogDensityRow.add( fogDensity );
+
+	// container.add( fogDensityRow );
+
+	// //
+
 	var refreshUI = function () {
 
 		var camera = editor.camera;
@@ -26755,8 +24712,20 @@ Sidebar.Scene = function ( editor ) {
 
 		var options = [];
 
-		options.push( buildOption( camera, false ) );
-		options.push( buildOption( scene, false ) );
+		options.push( { static: true, value: camera.id, html: '<span class="type ' + camera.type + '"></span> ' + camera.name } );
+		options.push( { static: true, value: scene.id, html: '<span class="type ' + scene.type + '"></span> ' + scene.name + getScript( scene.uuid ) } );
+
+		function getScript( uuid ) {
+
+			if ( editor.scripts[ uuid ] !== undefined ) {
+
+				return ' <span class="type Script"></span>';
+
+			}
+
+			return '';
+
+		}
 
 		( function addObjects( objects, pad ) {
 
@@ -26764,15 +24733,27 @@ Sidebar.Scene = function ( editor ) {
 
 				var object = objects[ i ];
 
-				var option = buildOption( object, true );
-				option.style.paddingLeft = ( pad * 10 ) + 'px';
-				options.push( option );
+				var html = pad + '<span class="type ' + object.type + '"></span> ' + object.name;
 
-				addObjects( object.children, pad + 1 );
+				if ( object instanceof THREE.Mesh ) {
+
+					var geometry = object.geometry;
+					var material = object.material;
+
+					html += ' <span class="type ' + geometry.type + '"></span> ' + geometry.name;
+					html += ' <span class="type ' + material.type + '"></span> ' + material.name;
+
+				}
+
+				html += getScript( object.uuid );
+
+				options.push( { value: object.id, html: html } );
+
+				addObjects( object.children, pad + '&nbsp;&nbsp;&nbsp;' );
 
 			}
 
-		} )( scene.children, 1 );
+		} )( scene.children, '&nbsp;&nbsp;&nbsp;' );
 
 		outliner.setOptions( options );
 
@@ -26809,6 +24790,17 @@ Sidebar.Scene = function ( editor ) {
 
 	};
 
+	// var refreshFogUI = function () {
+
+	// 	var type = fogType.getValue();
+
+	// 	fogColorRow.setDisplay( type === 'None' ? 'none' : '' );
+	// 	fogNearRow.setDisplay( type === 'Fog' ? '' : 'none' );
+	// 	fogFarRow.setDisplay( type === 'Fog' ? '' : 'none' );
+	// 	fogDensityRow.setDisplay( type === 'FogExp2' ? '' : 'none' );
+
+	// };
+
 	refreshUI();
 
 	// events
@@ -26817,25 +24809,6 @@ Sidebar.Scene = function ( editor ) {
 	signals.scriptAdded.add( refreshUI );
 	signals.scriptChanged.add( refreshUI );
 	signals.scriptRemoved.add( refreshUI );
-
-	signals.objectChanged.add( function ( object ) {
-
-		var options = outliner.options;
-
-		for ( var i = 0; i < options.length; i ++ ) {
-
-			var option = options[ i ];
-
-			if ( option.value === object.id ) {
-
-				option.innerHTML = buildHTML( object );
-				return;
-
-			}
-
-		}
-
-	} );
 
 	signals.objectSelected.add( function ( object ) {
 
@@ -26847,7 +24820,7 @@ Sidebar.Scene = function ( editor ) {
 
 	return container;
 
-};
+}
 
 // File:editor/js/Sidebar.Project.js
 
@@ -26868,18 +24841,6 @@ Sidebar.Project = function ( editor ) {
 		'SoftwareRenderer': THREE.SoftwareRenderer,
 		'RaytracingRenderer': THREE.RaytracingRenderer
 
-	};
-
-	var qualityTypes = {
-		0.3:'low',
-		0.5:'medium',
-		1.0:'high'
-	};
-
-	var basicShortCutTypes = {
-
-		'Blender':'Blender',
-		'Unity':'Unity'
 	};
 
 	var container = new UI.Panel();
@@ -26922,7 +24883,8 @@ Sidebar.Project = function ( editor ) {
 
 	// antialiasing
 
-	var rendererPropertiesRow = new UI.Row().setMarginLeft( '90px' );
+	var rendererPropertiesRow = new UI.Row();
+	rendererPropertiesRow.add( new UI.Text( '' ).setWidth( '90px' ) );
 
 	var rendererAntialias = new UI.THREE.Boolean( config.getKey( 'project/renderer/antialias' ), 'antialias' ).onChange( function () {
 
@@ -26933,58 +24895,16 @@ Sidebar.Project = function ( editor ) {
 	rendererPropertiesRow.add( rendererAntialias );
 
 	// shadow
-	var shadowsRow = new UI.Row();
 
-	var rendererShadows = new UI.THREE.Boolean( config.getKey( 'project/renderer/shadows' ) ).onChange( function () {
+	var rendererShadows = new UI.THREE.Boolean( config.getKey( 'project/renderer/shadows' ), 'shadows' ).onChange( function () {
 
 		config.setKey( 'project/renderer/shadows', this.getValue() );
 		updateRenderer();
 
 	} );
-	shadowsRow.add( new UI.Text( 'Shadows' ).setWidth( '90px' ) );
+	rendererPropertiesRow.add( rendererShadows );
 
-	shadowsRow.add( rendererShadows );
-
-
-	container.add( shadowsRow );
-
-	// rendererPropertiesRow.add( new UI.Break() );
-
-	// gamma input
-
-	var rendererGammaInput = new UI.THREE.Boolean( config.getKey( 'project/renderer/gammaInput' ), 'γ input' ).onChange( function () {
-
-		config.setKey( 'project/renderer/gammaInput', this.getValue() );
-		updateRenderer();
-
-	} );
-	rendererPropertiesRow.add( rendererGammaInput );
-
-	// gamma output
-
-	var rendererGammaOutput = new UI.THREE.Boolean( config.getKey( 'project/renderer/gammaOutput' ), 'γ output' ).onChange( function () {
-
-		config.setKey( 'project/renderer/gammaOutput', this.getValue() );
-		updateRenderer();
-
-	} );
-	rendererPropertiesRow.add( rendererGammaOutput );
-
-	// container.add( rendererPropertiesRow );
-
-	// Editable
-
-	var editableRow = new UI.Row();
-	var editable = new UI.Checkbox( config.getKey( 'project/editable' ) ).setLeft( '100px' ).onChange( function () {
-
-		config.setKey( 'project/editable', this.getValue() );
-
-	} );
-
-	editableRow.add( new UI.Text( 'Editable' ).setWidth( '90px' ) );
-	editableRow.add( editable );
-
-	// container.add( editableRow );
+	container.add( rendererPropertiesRow );
 
 	// VR
 
@@ -26999,59 +24919,7 @@ Sidebar.Project = function ( editor ) {
 	vrRow.add( new UI.Text( 'VR' ).setWidth( '90px' ) );
 	vrRow.add( vr );
 
-	// container.add( vrRow );
-
-	// crosshair
-	var crosshairRow = new UI.Row();
-	var crosshair = new UI.Checkbox( config.getKey( 'project/crosshair' ) ).setLeft( '100px' ).onChange( function () {
-
-		config.setKey( 'project/crosshair', this.getValue() );
-		// updateRenderer();
-
-	} );
-		crosshairRow.add( new UI.Text( 'Crosshair' ).setWidth( '90px' ) );
-
-	crosshairRow.add( crosshair );
-
-	container.add( crosshairRow );
-
-	// Gazetime
-	var gazetimeRow = new UI.Row();
-	var gazetime = new UI.Number( config.getKey( 'project/gazetime' ) ).setLeft( '100px' ).onChange( function () {
-
-		config.setKey( 'project/gazetime', this.getValue() );
-		// updateRenderer();
-
-	} );
-
-	gazetime.min = 0.0;
-
-	gazetimeRow.add( new UI.Text( 'Gaze Time' ).setWidth( '90px' ) );
-
-	gazetimeRow.add( gazetime );
-
-	container.add( gazetimeRow );
-
-	// Quality
-	var qualityRow = new UI.Row();
-	var quality = new UI.Select().setOptions( qualityTypes ).setWidth( '150px' ).onChange( function () {
-
-		var value = this.getValue();
-
-		config.setKey( 'project/quality', value );
-
-	} );
-
-	qualityRow.add( new UI.Text( 'Quality' ).setWidth( '90px' ) );
-	qualityRow.add( quality );
-
-	container.add( qualityRow );
-
-	if ( config.getKey( 'project/quality' ) !== undefined ) {
-
-		quality.setValue( config.getKey( 'project/quality' ) );
-
-	}
+	container.add( vrRow );
 	container.add( new UI.Break() );
 
 	//bg
@@ -27067,8 +24935,6 @@ Sidebar.Project = function ( editor ) {
 	bgColorRow.add( bgColor );
 
 	container.add( bgColorRow );
-
-
 
 	// fog
 
@@ -27163,9 +25029,6 @@ Sidebar.Project = function ( editor ) {
 
 		var scene = editor.scene;
 
-		bgColor.setHexValue( editor.config.getKey('backgroundColor'));
-
-
 		if ( scene.fog ) {
 
 			fogColor.setHexValue( scene.fog.color.getHex() );
@@ -27209,19 +25072,17 @@ Sidebar.Project = function ( editor ) {
 	// events
 
 	signals.sceneGraphChanged.add( refreshUI );
-	signals.bgColorChanged.add( refreshUI );
-
 
 
 	//
 
 	function updateRenderer() {
 
-		createRenderer( rendererType.getValue(), rendererAntialias.getValue(), rendererShadows.getValue(), rendererGammaInput.getValue(), rendererGammaOutput.getValue() );
+		createRenderer( rendererType.getValue(), rendererAntialias.getValue(), rendererShadows.getValue() );
 
 	}
 
-	function createRenderer( type, antialias, shadows, gammaIn, gammaOut ) {
+	function createRenderer( type, antialias, shadows ) {
 
 		if ( type === 'WebGLRenderer' && System.support.webgl === false ) {
 
@@ -27231,25 +25092,17 @@ Sidebar.Project = function ( editor ) {
 
 		rendererPropertiesRow.setDisplay( type === 'WebGLRenderer' ? '' : 'none' );
 
-		var renderer = new rendererTypes[ type ]( { antialias: antialias} );
-		renderer.gammaInput = gammaIn;
-		renderer.gammaOutput = gammaOut;
-		if ( shadows && renderer.shadowMap ) {
-
-			renderer.shadowMap.enabled = true;
-			// renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-		}
-
+		var renderer = new rendererTypes[ type ]( { antialias: antialias } );
+		if ( shadows && renderer.shadowMap ) renderer.shadowMap.enabled = true;
 		signals.rendererChanged.dispatch( renderer );
 
-		signals.bgColorChanged.dispatch( bgColor.getHexValue() );
 	}
 
-	createRenderer( config.getKey( 'project/renderer' ), config.getKey( 'project/renderer/antialias' ), config.getKey( 'project/renderer/shadows' ), config.getKey( 'project/renderer/gammaInput' ), config.getKey( 'project/renderer/gammaOutput' ) );
+	createRenderer( config.getKey( 'project/renderer' ), config.getKey( 'project/renderer/antialias' ), config.getKey( 'project/renderer/shadows' ) );
 
 	return container;
 
-};
+}
 
 // File:editor/js/Sidebar.Settings.js
 
@@ -27422,7 +25275,7 @@ Sidebar.Object = function ( editor ) {
 
 	var signals = editor.signals;
 
-	var	radConverter = (editor.config.getKey('degree') == 'true') ? (180/Math.PI) : 1.0;
+	var radConverter = 1.0;
 
 	var container = new UI.Panel();
 	container.setBorderTop( '0' );
@@ -27513,6 +25366,7 @@ Sidebar.Object = function ( editor ) {
 	objectNameRow.add( objectName );
 
 	container.add( objectNameRow );
+
 	
 	// parent
 
@@ -27524,6 +25378,7 @@ Sidebar.Object = function ( editor ) {
 
 	container.add( objectParentRow );
 	
+
 	// position
 
 	var objectPositionRow = new UI.Row();
@@ -27539,9 +25394,9 @@ Sidebar.Object = function ( editor ) {
 	// rotation
 
 	var objectRotationRow = new UI.Row();
-	var objectRotationX = new UI.Number().setStep( 10 ).setUnit( '°' ).setWidth( '50px' ).onChange( update );
-	var objectRotationY = new UI.Number().setStep( 10 ).setUnit( '°' ).setWidth( '50px' ).onChange( update );
-	var objectRotationZ = new UI.Number().setStep( 10 ).setUnit( '°' ).setWidth( '50px' ).onChange( update );
+	var objectRotationX = new UI.Number().setWidth( '50px' ).onChange( update );
+	var objectRotationY = new UI.Number().setWidth( '50px' ).onChange( update );
+	var objectRotationZ = new UI.Number().setWidth( '50px' ).onChange( update );
 
 	objectRotationRow.add( new UI.Text( 'Rotation' ).setWidth( '90px' ) );
 	objectRotationRow.add( objectRotationX, objectRotationY, objectRotationZ );
@@ -27642,15 +25497,15 @@ Sidebar.Object = function ( editor ) {
 
 	container.add( objectAngleRow );
 
-	// penumbra
+	// exponent
 
-	var objectPenumbraRow = new UI.Row();
-	var objectPenumbra = new UI.Number().setRange( 0, 1 ).onChange( update );
+	var objectExponentRow = new UI.Row();
+	var objectExponent = new UI.Number().setRange( 0, Infinity ).onChange( update );
 
-	objectPenumbraRow.add( new UI.Text( 'Penumbra' ).setWidth( '90px' ) );
-	objectPenumbraRow.add( objectPenumbra );
+	objectExponentRow.add( new UI.Text( 'Exponent' ).setWidth( '90px' ) );
+	objectExponentRow.add( objectExponent );
 
-	container.add( objectPenumbraRow );
+	container.add( objectExponentRow );
 
 	// decay
 
@@ -27673,9 +25528,6 @@ Sidebar.Object = function ( editor ) {
 
 	var objectReceiveShadow = new UI.THREE.Boolean( false, 'receive' ).onChange( update );
 	objectShadowRow.add( objectReceiveShadow );
-
-	var objectShadowRadius = new UI.Number( 1 ).onChange( update );
-	objectShadowRow.add( objectShadowRadius );
 
 	container.add( objectShadowRow );
 
@@ -27792,6 +25644,7 @@ Sidebar.Object = function ( editor ) {
 
 			}
 			
+
 			var newPosition = new THREE.Vector3( objectPositionX.getValue(), objectPositionY.getValue(), objectPositionZ.getValue() );
 			if ( object.position.distanceTo( newPosition ) >= 0.01 ) {
 
@@ -27800,7 +25653,7 @@ Sidebar.Object = function ( editor ) {
 			}
 
 			var newRotation = new THREE.Euler( objectRotationX.getValue() / radConverter, objectRotationY.getValue() / radConverter, objectRotationZ.getValue() / radConverter);
-
+			console.log(newRotation);
 			if ( object.rotation.toVector3().distanceTo( newRotation.toVector3() ) >= 0.01 ) {
 
 				editor.execute( new SetRotationCommand( object, newRotation ) );
@@ -27863,9 +25716,9 @@ Sidebar.Object = function ( editor ) {
 
 			}
 
-			if ( object.penumbra !== undefined && Math.abs( object.penumbra - objectPenumbra.getValue() ) >= 0.01 ) {
+			if ( object.exponent !== undefined && Math.abs( object.exponent - objectExponent.getValue() ) >= 0.01 ) {
 
-				editor.execute( new SetValueCommand( object, 'penumbra', objectPenumbra.getValue() ) );
+				editor.execute( new SetValueCommand( object, 'exponent', objectExponent.getValue() ) );
 
 			}
 
@@ -27881,24 +25734,18 @@ Sidebar.Object = function ( editor ) {
 
 			}
 
-			if ( object.castShadow !== undefined && object.castShadow !== objectCastShadow.getValue() ) {
+			if ( object.castShadow !== objectCastShadow.getValue() ) {
 
 				editor.execute( new SetValueCommand( object, 'castShadow', objectCastShadow.getValue() ) );
 
 			}
 
-			if ( object.receiveShadow !== undefined && object.receiveShadow !== objectReceiveShadow.getValue() ) {
+			if ( object.receiveShadow !== undefined ) {
 
-				editor.execute( new SetValueCommand( object, 'receiveShadow', objectReceiveShadow.getValue() ) );
-				object.material.needsUpdate = true;
+				if ( object.receiveShadow !== objectReceiveShadow.getValue() ) {
 
-			}
-
-			if ( object.shadow !== undefined ) {
-
-				if ( object.shadow.radius !== objectShadowRadius.getValue() ) {
-
-					editor.execute( new SetValueCommand( object.shadow, 'radius', objectShadowRadius.getValue() ) );
+					editor.execute( new SetValueCommand( object, 'receiveShadow', objectReceiveShadow.getValue() ) );
+					object.material.needsUpdate = true;
 
 				}
 
@@ -27926,6 +25773,7 @@ Sidebar.Object = function ( editor ) {
 	function updateRows( object ) {
 
 		var properties = {
+			// 'parent': objectParentRow,
 			'fov': objectFovRow,
 			'near': objectNearRow,
 			'far': objectFarRow,
@@ -27934,11 +25782,10 @@ Sidebar.Object = function ( editor ) {
 			'groundColor': objectGroundColorRow,
 			'distance' : objectDistanceRow,
 			'angle' : objectAngleRow,
-			'penumbra' : objectPenumbraRow,
+			'exponent' : objectExponentRow,
 			'decay' : objectDecayRow,
 			'castShadow' : objectShadowRow,
-			'receiveShadow' : objectReceiveShadow,
-			'shadow': objectShadowRadius
+			'receiveShadow' : objectReceiveShadow
 		};
 
 		for ( var property in properties ) {
@@ -27984,8 +25831,8 @@ Sidebar.Object = function ( editor ) {
 		}
 
 	} );
+
 	
-	//TODO: test if working
 	signals.sceneGraphChanged.add( function () {
 
 		var scene = editor.scene;
@@ -28001,6 +25848,7 @@ Sidebar.Object = function ( editor ) {
 
 	} );
 	
+
 	signals.objectChanged.add( function ( object ) {
 
 		if ( object !== editor.selected ) return;
@@ -28019,7 +25867,9 @@ Sidebar.Object = function ( editor ) {
 
 	signals.presetChanged.add( function (){
 
-		radConverter = (editor.config.getKey('degree') == 'true') ? (180/Math.PI) : 1.0;
+		var degrees = editor.config.getKey('degree');
+
+		radConverter = (degrees == 'true') ? (180/Math.PI) : 1.0;
 
 		if(editor.selected != null)
 			updateUI( editor.selected);
@@ -28033,12 +25883,14 @@ Sidebar.Object = function ( editor ) {
 		objectUUID.setValue( object.uuid );
 		objectName.setValue( object.name );
 
+		
 		if ( object.parent !== null ) {
 
 			objectParent.setValue( object.parent.id );
 
 		}
-	
+		
+
 		objectPositionX.setValue( object.position.x );
 		objectPositionY.setValue( object.position.y );
 		objectPositionZ.setValue( object.position.z );
@@ -28099,9 +25951,9 @@ Sidebar.Object = function ( editor ) {
 
 		}
 
-		if ( object.penumbra !== undefined ) {
+		if ( object.exponent !== undefined ) {
 
-			objectPenumbra.setValue( object.penumbra );
+			objectExponent.setValue( object.exponent );
 
 		}
 
@@ -28120,12 +25972,6 @@ Sidebar.Object = function ( editor ) {
 		if ( object.receiveShadow !== undefined ) {
 
 			objectReceiveShadow.setValue( object.receiveShadow );
-
-		}
-
-		if ( object.shadow !== undefined ) {
-
-			objectShadowRadius.setValue( object.shadow.radius );
 
 		}
 
@@ -28168,7 +26014,6 @@ Sidebar.Geometry = function ( editor ) {
 
 	// Actions
 
-	/*
 	var objectActions = new UI.Select().setPosition( 'absolute' ).setRight( '8px' ).setFontSize( '11px' );
 	objectActions.setOptions( {
 
@@ -28236,8 +26081,7 @@ Sidebar.Geometry = function ( editor ) {
 		this.setValue( 'Actions' );
 
 	} );
-	container.addStatic( objectActions );
-	*/
+	// container.addStatic( objectActions );
 
 	// type
 
@@ -28287,8 +26131,8 @@ Sidebar.Geometry = function ( editor ) {
 	container.add( new Sidebar.Geometry.Geometry( editor ) );
 
 	// buffergeometry
-	// REMOVED
-	// container.add( new Sidebar.Geometry.BufferGeometry( editor ) );
+
+	container.add( new Sidebar.Geometry.BufferGeometry( editor ) );
 
 	// parameters
 
@@ -28376,10 +26220,9 @@ Sidebar.Geometry.Geometry = function ( editor ) {
 
 	//
 
-	function update( object ) {
+	var update = function ( object ) {
 
-		if ( object === null ) return; // objectSelected.dispatch( null )
-		if ( object === undefined ) return;
+		if ( object === null ) return;
 
 		var geometry = object.geometry;
 
@@ -28396,14 +26239,14 @@ Sidebar.Geometry.Geometry = function ( editor ) {
 
 		}
 
-	}
+	};
 
 	signals.objectSelected.add( update );
 	signals.geometryChanged.add( update );
 
 	return container;
 
-};
+}
 
 // File:editor/js/Sidebar.Geometry.BufferGeometry.js
 
@@ -28419,8 +26262,7 @@ Sidebar.Geometry.BufferGeometry = function ( editor ) {
 
 	function update( object ) {
 
-		if ( object === null ) return; // objectSelected.dispatch( null )
-		if ( object === undefined ) return;
+		if ( object === null ) return;
 
 		var geometry = object.geometry;
 
@@ -28436,8 +26278,7 @@ Sidebar.Geometry.BufferGeometry = function ( editor ) {
 				var panel = new UI.Row();
 				panel.add( new UI.Text( 'index' ).setWidth( '90px' ) );
 				panel.add( new UI.Text( ( index.count ).format() ).setFontSize( '12px' ) );
-				//REMOVED
-				// container.add( panel );
+				container.add( panel );
 
 			}
 
@@ -28448,8 +26289,7 @@ Sidebar.Geometry.BufferGeometry = function ( editor ) {
 				var panel = new UI.Row();
 				panel.add( new UI.Text( name ).setWidth( '90px' ) );
 				panel.add( new UI.Text( ( attributes[ name ].count ).format() ).setFontSize( '12px' ) );
-				//REMOVED
-				// container.add( panel );
+				container.add( panel );
 
 			}
 
@@ -28523,8 +26363,7 @@ Sidebar.Geometry.BoxGeometry = function ( editor, object ) {
 
 	var container = new UI.Row();
 
-	var geometry = object.geometry;
-	var parameters = geometry.parameters;
+	var parameters = object.geometry.parameters;
 
 	// width
 
@@ -28581,7 +26420,7 @@ Sidebar.Geometry.BoxGeometry = function ( editor, object ) {
 	var depthSegmentsRow = new UI.Row();
 	var depthSegments = new UI.Integer( parameters.depthSegments ).setRange( 1, Infinity ).onChange( update );
 
-	depthSegmentsRow.add( new UI.Text( 'Depth segments' ).setWidth( '90px' ) );
+	depthSegmentsRow.add( new UI.Text( 'Height segments' ).setWidth( '90px' ) );
 	depthSegmentsRow.add( depthSegments );
 
 	container.add( depthSegmentsRow );
@@ -28590,7 +26429,7 @@ Sidebar.Geometry.BoxGeometry = function ( editor, object ) {
 
 	function update() {
 
-		editor.execute( new SetGeometryCommand( object, new THREE[ geometry.type ](
+		editor.execute( new SetGeometryCommand( object, new THREE.BoxGeometry(
 			width.getValue(),
 			height.getValue(),
 			depth.getValue(),
@@ -28603,9 +26442,7 @@ Sidebar.Geometry.BoxGeometry = function ( editor, object ) {
 
 	return container;
 
-};
-
-Sidebar.Geometry.BoxBufferGeometry = Sidebar.Geometry.BoxGeometry;
+}
 
 // File:editor/js/Sidebar.Geometry.CircleGeometry.js
 
@@ -28619,8 +26456,7 @@ Sidebar.Geometry.CircleGeometry = function ( editor, object ) {
 
 	var container = new UI.Row();
 
-	var geometry = object.geometry;
-	var parameters = geometry.parameters;
+	var parameters = object.geometry.parameters;
 
 	// radius
 
@@ -28666,7 +26502,7 @@ Sidebar.Geometry.CircleGeometry = function ( editor, object ) {
 
 	function update() {
 
-		editor.execute( new SetGeometryCommand( object, new THREE[ geometry.type ](
+		editor.execute( new SetGeometryCommand( object, new THREE.CircleGeometry(
 			radius.getValue(),
 			segments.getValue(),
 			thetaStart.getValue(),
@@ -28677,9 +26513,7 @@ Sidebar.Geometry.CircleGeometry = function ( editor, object ) {
 
 	return container;
 
-};
-
-Sidebar.Geometry.CircleBufferGeometry = Sidebar.Geometry.CircleGeometry;
+}
 
 // File:editor/js/Sidebar.Geometry.CylinderGeometry.js
 
@@ -28693,8 +26527,7 @@ Sidebar.Geometry.CylinderGeometry = function ( editor, object ) {
 
 	var container = new UI.Row();
 
-	var geometry = object.geometry;
-	var parameters = geometry.parameters;
+	var parameters = object.geometry.parameters;
 
 	// radiusTop
 
@@ -28760,7 +26593,7 @@ Sidebar.Geometry.CylinderGeometry = function ( editor, object ) {
 
 	function update() {
 
-		editor.execute( new SetGeometryCommand( object, new THREE[ geometry.type ](
+		editor.execute( new SetGeometryCommand( object, new THREE.CylinderGeometry(
 			radiusTop.getValue(),
 			radiusBottom.getValue(),
 			height.getValue(),
@@ -28773,9 +26606,7 @@ Sidebar.Geometry.CylinderGeometry = function ( editor, object ) {
 
 	return container;
 
-};
-
-Sidebar.Geometry.CylinderBufferGeometry = Sidebar.Geometry.CylinderGeometry;
+}
 
 // File:editor/js/Sidebar.Geometry.IcosahedronGeometry.js
 
@@ -28789,8 +26620,7 @@ Sidebar.Geometry.IcosahedronGeometry = function ( editor, object ) {
 
 	var container = new UI.Row();
 
-	var geometry = object.geometry;
-	var parameters = geometry.parameters;
+	var parameters = object.geometry.parameters;
 
 	// radius
 
@@ -28817,7 +26647,7 @@ Sidebar.Geometry.IcosahedronGeometry = function ( editor, object ) {
 
 	function update() {
 
-		editor.execute( new SetGeometryCommand( object, new THREE[ geometry.type ](
+		editor.execute( new SetGeometryCommand( object, new THREE.IcosahedronGeometry(
 			radius.getValue(),
 			detail.getValue()
 		) ) );
@@ -28828,9 +26658,7 @@ Sidebar.Geometry.IcosahedronGeometry = function ( editor, object ) {
 
 	return container;
 
-};
-
-Sidebar.Geometry.IcosahedronBufferGeometry = Sidebar.Geometry.IcosahedronGeometry;
+}
 
 // File:editor/js/Sidebar.Geometry.PlaneGeometry.js
 
@@ -28844,8 +26672,7 @@ Sidebar.Geometry.PlaneGeometry = function ( editor, object ) {
 
 	var container = new UI.Row();
 
-	var geometry = object.geometry;
-	var parameters = geometry.parameters;
+	var parameters = object.geometry.parameters;
 
 	// width
 
@@ -28892,7 +26719,7 @@ Sidebar.Geometry.PlaneGeometry = function ( editor, object ) {
 
 	function update() {
 
-		editor.execute( new SetGeometryCommand( object, new THREE[ geometry.type ](
+		editor.execute( new SetGeometryCommand( object, new THREE.PlaneGeometry(
 			width.getValue(),
 			height.getValue(),
 			widthSegments.getValue(),
@@ -28903,9 +26730,7 @@ Sidebar.Geometry.PlaneGeometry = function ( editor, object ) {
 
 	return container;
 
-};
-
-Sidebar.Geometry.PlaneBufferGeometry = Sidebar.Geometry.PlaneGeometry;
+}
 
 // File:editor/js/Sidebar.Geometry.SphereGeometry.js
 
@@ -28919,8 +26744,7 @@ Sidebar.Geometry.SphereGeometry = function ( editor, object ) {
 
 	var container = new UI.Row();
 
-	var geometry = object.geometry;
-	var parameters = geometry.parameters;
+	var parameters = object.geometry.parameters;
 
 	// radius
 
@@ -28997,7 +26821,7 @@ Sidebar.Geometry.SphereGeometry = function ( editor, object ) {
 
 	function update() {
 
-		editor.execute( new SetGeometryCommand( object, new THREE[ geometry.type ](
+		editor.execute( new SetGeometryCommand( object, new THREE.SphereGeometry(
 			radius.getValue(),
 			widthSegments.getValue(),
 			heightSegments.getValue(),
@@ -29011,9 +26835,7 @@ Sidebar.Geometry.SphereGeometry = function ( editor, object ) {
 
 	return container;
 
-};
-
-Sidebar.Geometry.SphereBufferGeometry = Sidebar.Geometry.SphereGeometry;
+}
 
 // File:editor/js/Sidebar.Geometry.TorusGeometry.js
 
@@ -29027,8 +26849,7 @@ Sidebar.Geometry.TorusGeometry = function ( editor, object ) {
 
 	var container = new UI.Row();
 
-	var geometry = object.geometry;
-	var parameters = geometry.parameters;
+	var parameters = object.geometry.parameters;
 
 	// radius
 
@@ -29085,7 +26906,7 @@ Sidebar.Geometry.TorusGeometry = function ( editor, object ) {
 
 	function update() {
 
-		editor.execute( new SetGeometryCommand( object, new THREE[ geometry.type ](
+		editor.execute( new SetGeometryCommand( object, new THREE.TorusGeometry(
 			radius.getValue(),
 			tube.getValue(),
 			radialSegments.getValue(),
@@ -29097,9 +26918,7 @@ Sidebar.Geometry.TorusGeometry = function ( editor, object ) {
 
 	return container;
 
-};
-
-Sidebar.Geometry.TorusBufferGeometry = Sidebar.Geometry.TorusGeometry;
+}
 
 // File:editor/js/Sidebar.Geometry.TorusKnotGeometry.js
 
@@ -29113,8 +26932,7 @@ Sidebar.Geometry.TorusKnotGeometry = function ( editor, object ) {
 
 	var container = new UI.Row();
 
-	var geometry = object.geometry;
-	var parameters = geometry.parameters;
+	var parameters = object.geometry.parameters;
 
 	// radius
 
@@ -29136,16 +26954,6 @@ Sidebar.Geometry.TorusKnotGeometry = function ( editor, object ) {
 
 	container.add( tubeRow );
 
-	// tubularSegments
-
-	var tubularSegmentsRow = new UI.Row();
-	var tubularSegments = new UI.Integer( parameters.tubularSegments ).setRange( 1, Infinity ).onChange( update );
-
-	tubularSegmentsRow.add( new UI.Text( 'Tubular segments' ).setWidth( '90px' ) );
-	tubularSegmentsRow.add( tubularSegments );
-
-	container.add( tubularSegmentsRow );
-
 	// radialSegments
 
 	var radialSegmentsRow = new UI.Row();
@@ -29155,6 +26963,16 @@ Sidebar.Geometry.TorusKnotGeometry = function ( editor, object ) {
 	radialSegmentsRow.add( radialSegments );
 
 	container.add( radialSegmentsRow );
+
+	// tubularSegments
+
+	var tubularSegmentsRow = new UI.Row();
+	var tubularSegments = new UI.Integer( parameters.tubularSegments ).setRange( 1, Infinity ).onChange( update );
+
+	tubularSegmentsRow.add( new UI.Text( 'Tubular segments' ).setWidth( '90px' ) );
+	tubularSegmentsRow.add( tubularSegments );
+
+	container.add( tubularSegmentsRow );
 
 	// p
 
@@ -29176,27 +26994,36 @@ Sidebar.Geometry.TorusKnotGeometry = function ( editor, object ) {
 
 	container.add( qRow );
 
+	// heightScale
+
+	var heightScaleRow = new UI.Row();
+	var heightScale = new UI.Number( parameters.heightScale ).onChange( update );
+
+	pRow.add( new UI.Text( 'Height scale' ).setWidth( '90px' ) );
+	pRow.add( heightScale );
+
+	container.add( heightScaleRow );
+
 
 	//
 
 	function update() {
 
-		editor.execute( new SetGeometryCommand( object, new THREE[ geometry.type ](
+		editor.execute( new SetGeometryCommand( object, new THREE.TorusKnotGeometry(
 			radius.getValue(),
 			tube.getValue(),
-			tubularSegments.getValue(),
 			radialSegments.getValue(),
+			tubularSegments.getValue(),
 			p.getValue(),
-			q.getValue()
+			q.getValue(),
+			heightScale.getValue()
 		) ) );
 
 	}
 
 	return container;
 
-};
-
-Sidebar.Geometry.TorusKnotBufferGeometry = Sidebar.Geometry.TorusKnotGeometry;
+}
 
 // File:examples/js/geometries/TeapotBufferGeometry.js
 
@@ -30056,7 +27883,7 @@ Sidebar.Geometry.TeapotBufferGeometry = function ( signals, object ) {
 
 	return container;
 
-};
+}
 
 // File:editor/js/Sidebar.Material.js
 
@@ -30072,53 +27899,6 @@ Sidebar.Material = function ( editor ) {
 	var container = new UI.Panel();
 	container.setBorderTop( '0' );
 	container.setPaddingTop( '20px' );
-
-	// New / Copy / Paste
-
-	var copiedMaterial;
-	var managerRow = new UI.Row();
-
-	managerRow.add( new UI.Text( 'Actions' ).setWidth( '90px' ) );
-	managerRow.add( new UI.Button( 'Reset' ).onClick( function () {
-
-		var material = new THREE[ materialClass.getValue() ]();
-		editor.execute( new SetMaterialCommand( currentObject, material ), 'New Material: ' + materialClass.getValue() );
-		update();
-
-	} ) );
-
-	managerRow.add( new UI.Button( 'Copy' ).onClick( function () {
-
-		copiedMaterial = currentObject.material;
-
-	} ) );
-
-	managerRow.add( new UI.Button( 'Paste' ).onClick( function () {
-
-		if ( copiedMaterial === undefined ) return;
-
-		editor.execute( new SetMaterialCommand( currentObject, copiedMaterial ), 'Pasted Material: ' + materialClass.getValue() );
-		refreshUI();
-		update();
-
-	} ) );
-
-	var materialUUIDRenew = new UI.Button( 'Solo' ).onClick( function () {
-
-		materialUUID.setValue( THREE.Math.generateUUID() );
-		editor.execute( new SetMaterialValueCommand( editor.selected, 'name', materialName.getValue() + '_copy' ) );
-
-		update();
-
-	} );
-
-	// materialUUIDRow.add( new UI.Text( 'UUID' ).setWidth( '90px' ) );
-	//REMOVED
-	// materialUUIDRow.add( materialUUID );
-	managerRow.add( materialUUIDRenew );
-
-	container.add( managerRow );
-
 
 	// type
 
@@ -30145,20 +27925,19 @@ Sidebar.Material = function ( editor ) {
 
 	// uuid
 
-	var materialUUIDRow = new UI.Row();
-	var materialUUID = new UI.Input().setWidth( '115px' ).setFontSize( '12px' ).setDisabled( true );
-	var materialUUIDRenew = new UI.Button( '+' ).setMarginLeft( '7px' ).onClick( function () {
+	// var materialUUIDRow = new UI.Row();
+	// var materialUUID = new UI.Input().setWidth( '115px' ).setFontSize( '12px' ).setDisabled( true );
+	// var materialUUIDRenew = new UI.Button( '⟳' ).setMarginLeft( '7px' ).onClick( function () {
 
-		materialUUID.setValue( THREE.Math.generateUUID() );
-		update();
+	// 	materialUUID.setValue( THREE.Math.generateUUID() );
+	// 	update();
 
-	} );
+	// } );
 
-	materialUUIDRow.add( new UI.Text( 'UUID' ).setWidth( '90px' ) );
-	materialUUIDRow.add( materialUUID );
-	materialUUIDRow.add( materialUUIDRenew );
+	// materialUUIDRow.add( new UI.Text( 'UUID' ).setWidth( '90px' ) );
+	// materialUUIDRow.add( materialUUID );
+	// materialUUIDRow.add( materialUUIDRenew );
 
-	//REMOVED
 	// container.add( materialUUIDRow );
 
 	// name
@@ -30173,7 +27952,8 @@ Sidebar.Material = function ( editor ) {
 	materialNameRow.add( new UI.Text( 'Name' ).setWidth( '90px' ) );
 	materialNameRow.add( materialName );
 
-	container.add( materialNameRow );
+	//REMOVED
+	// container.add( materialNameRow );
 
 	// program
 
@@ -30761,6 +28541,12 @@ Sidebar.Material = function ( editor ) {
 
 					}
 
+					if ( material.displacementScale !== materialDisplacementScale.getValue() ) {
+
+						editor.execute( new SetMaterialValueCommand( currentObject, 'displacementScale', materialDisplacementScale.getValue() ) );
+
+					}
+
 				} else {
 
 					if ( roughnessMapEnabled ) textureWarning = true;
@@ -30779,6 +28565,12 @@ Sidebar.Material = function ( editor ) {
 					if ( material.metalnessMap !== metalnessMap ) {
 
 						editor.execute( new SetMaterialMapCommand( currentObject, 'metalnessMap', metalnessMap ) );
+
+					}
+
+					if ( material.displacementScale !== materialDisplacementScale.getValue() ) {
+
+						editor.execute( new SetMaterialValueCommand( currentObject, 'displacementScale', materialDisplacementScale.getValue() ) );
 
 					}
 
@@ -30823,15 +28615,9 @@ Sidebar.Material = function ( editor ) {
 
 				}
 
-			}
+				if ( material.reflectivity !== materialReflectivity.getValue() ) {
 
-			if ( material.reflectivity !== undefined ) {
-
-				var reflectivity = materialReflectivity.getValue();
-
-				if ( material.reflectivity !== reflectivity ) {
-
-					editor.execute( new SetMaterialValueCommand( currentObject, 'reflectivity', reflectivity ) );
+					editor.execute( new SetMaterialValueCommand( currentObject, 'reflectivity', materialReflectivity.getValue() ) );
 
 				}
 
@@ -30969,6 +28755,10 @@ Sidebar.Material = function ( editor ) {
 				editor.execute( new SetMaterialValueCommand( currentObject, 'wireframeLinewidth', materialWireframeLinewidth.getValue() ) );
 
 			}
+
+			refreshUI( false );
+
+			signals.materialChanged.dispatch( material );
 
 		}
 
@@ -31205,10 +28995,6 @@ Sidebar.Material = function ( editor ) {
 
 			}
 
-		}
-
-		if ( material.reflectivity !== undefined ) {
-
 			materialReflectivity.setValue( material.reflectivity );
 
 		}
@@ -31374,7 +29160,7 @@ Sidebar.Animation = function ( editor ) {
 
 				var material = child.material;
 
-				if ( material instanceof THREE.MultiMaterial ) {
+				if ( material instanceof THREE.MeshFaceMaterial ) {
 
 					for ( var i = 0; i < material.materials.length; i ++ ) {
 
@@ -31722,29 +29508,19 @@ Sidebar.History = function ( editor ) {
 		var options = [];
 		var enumerator = 1;
 
-		function buildOption( object ) {
-
-			var option = document.createElement( 'div' );
-			option.value = object.id;
-
-			return option;
-
-		}
-
-		( function addObjects( objects ) {
+		( function addObjects( objects, pad ) {
 
 			for ( var i = 0, l = objects.length; i < l; i ++ ) {
 
 				var object = objects[ i ];
 
-				var option = buildOption( object );
-				option.innerHTML = '&nbsp;' + object.name;
+				var html = pad + "<span style='color: #0000cc '>" + enumerator ++ + ". Undo: " + object.name + "</span>";
 
-				options.push( option );
+				options.push( { value: object.id, html: html } );
 
 			}
 
-		} )( history.undos );
+		} )( history.undos, '&nbsp;' );
 
 
 		( function addObjects( objects, pad ) {
@@ -31753,11 +29529,9 @@ Sidebar.History = function ( editor ) {
 
 				var object = objects[ i ];
 
-				var option = buildOption( object );
-				option.innerHTML = '&nbsp;' + object.name;
-				option.style.opacity = 0.3;
+				var html = pad + "<span style='color: #71544e'>" + enumerator ++ + ". Redo: " +  object.name + "</span>";
 
-				options.push( option );
+				options.push( { value: object.id, html: html } );
 
 			}
 
@@ -31872,31 +29646,14 @@ var Viewport = function ( editor ) {
 
 	container.add( new Viewport.Info( editor ) );
 
-	//
-
-	var renderer = null;
-
-	var camera = editor.camera;
 	var scene = editor.scene;
 	var sceneHelpers = editor.sceneHelpers;
 
 	var objects = [];
 
-	//
-
-	var vrEffect, vrControls;
-
-	// if ( WEBVR.isAvailable() === true ) {
-
-	// 	var vrCamera = new THREE.PerspectiveCamera();
-	// 	vrCamera.projectionMatrix = camera.projectionMatrix;
-	// 	camera.add( vrCamera );
-
-	// }
-
 	// helpers
 
-	var grid = new THREE.GridHelper( 30, 60 , 0x000000,0x000000);
+	var grid = new THREE.GridHelper( 30, 1 );
 	sceneHelpers.add( grid );
 
 	//
@@ -31912,8 +29669,6 @@ var Viewport = function ( editor ) {
 
 	// instantiate a loader
 	var loader = new THREE.JSONLoader();
-	var tex_loader = new THREE.TextureLoader();
-	var humanMap = tex_loader.load(DUMMY_TEX);
 	var vrHuman;
 
 	// load a resource
@@ -31923,15 +29678,16 @@ var Viewport = function ( editor ) {
 		// '3D/dummy.json',
 		// Function when resource is loaded
 		function ( geometry, materials ) {
-			vrHuman = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { map: humanMap }));
+			vrHuman = new THREE.Mesh( geometry, new THREE.MeshNormalMaterial( ) );
 			sceneHelpers.add( vrHuman );
-			vrHuman.scale.set(1,1,1);
-			// vrHuman.rotation.set(0,3.14,0);
+			vrHuman.scale.set(0.008,0.008,0.008);
+			vrHuman.rotation.set(0,3.14,0);
 		}
 
 	);
 
-	var box = new THREE.Box3();
+
+	//
 
 	var selectionBox = new THREE.BoxHelper();
 	selectionBox.material.depthTest = false;
@@ -31981,7 +29737,7 @@ var Viewport = function ( editor ) {
 
 		var object = transformControls.object;
 
-		if ( object !== undefined ) {
+		if ( object !== null ) {
 
 			switch ( transformControls.getMode() ) {
 
@@ -32184,39 +29940,25 @@ var Viewport = function ( editor ) {
 
 	} );
 
-	signals.enterVR.add( function () {
-
-		vrEffect.isPresenting ? vrEffect.exitPresent() : vrEffect.requestPresent();
-
-	} );
-
 	var clearColor;
 
 	signals.themeChanged.add( function ( value ) {
 
-		// grid.setColors( 0x444444, 0x888888 );
-		sceneHelpers.remove( grid );
-		grid = new THREE.GridHelper( 30, 60);// 0xbbbbbb, 0x888888 );
+		grid.setColors( 0x444444, 0x888888 );
 		clearColor = 0xaaaaaa;
 
-		/*
-		 switch ( value ) {
+		// switch ( value ) {
 
-			case 'css/light.css':
-				sceneHelpers.remove( grid );
-				grid = new THREE.GridHelper( 30, 60, 0x444444, 0x888888 );
-				sceneHelpers.add( grid );
-				clearColor = 0xaaaaaa;
-				break;
-			case 'css/dark.css':
-				sceneHelpers.remove( grid );
-				grid = new THREE.GridHelper( 30, 60, 0xbbbbbb, 0x888888 );
-				sceneHelpers.add( grid );
-				clearColor = 0x333333;
-				break;
+		// 	case 'css/light.css':
+		// 		grid.setColors( 0x444444, 0x888888 );
+		// 		clearColor = 0xaaaaaa;
+		// 		break;
+		// 	case 'css/dark.css':
+		// 		grid.setColors( 0xbbbbbb, 0x888888 );
+		// 		clearColor = 0x333333;
+		// 		break;
 
-		}
-		*/
+		// }
 
 		renderer.setClearColor( clearColor );
 
@@ -32243,8 +29985,6 @@ var Viewport = function ( editor ) {
        
         controls.controler = camera; // update
         transformControls.controler = camera; // update
-
-        // controls.zoom(0);
 
         editor.focus(editor.selected);
 		// render();
@@ -32355,19 +30095,6 @@ var Viewport = function ( editor ) {
 
 		container.dom.appendChild( renderer.domElement );
 
-		// if ( WEBVR.isAvailable() === true ) {
-
-		// 	vrControls = new THREE.VRControls( vrCamera );
-		// 	vrEffect = new THREE.VREffect( renderer );
-
-		// 	window.addEventListener( 'vrdisplaypresentchange', function ( event ) {
-
-		// 		effect.isPresenting ? signals.enteredVR.dispatch() : signals.exitedVR.dispatch();
-
-		// 	}, false );
-
-		// }
-
 		render();
 
 
@@ -32394,11 +30121,10 @@ var Viewport = function ( editor ) {
 
 		if ( object !== null ) {
 
-			box.setFromObject( object );
+			if ( object.geometry !== undefined &&
+				 object instanceof THREE.Sprite === false ) {
 
-			if ( box.isEmpty() === false ) {
-
-				selectionBox.update( box );
+				selectionBox.update( object );
 				selectionBox.visible = true;
 
 			}
@@ -32419,7 +30145,7 @@ var Viewport = function ( editor ) {
 
 	signals.geometryChanged.add( function ( object ) {
 
-		if ( object !== undefined ) {
+		if ( object !== null ) {
 
 			selectionBox.update( object );
 
@@ -32494,7 +30220,7 @@ var Viewport = function ( editor ) {
 
 	//@elephantatwork, changeable bgColor
 	signals.bgColorChanged.add(function ( bgColor ) {
-
+		console.log("ha");
 		renderer.setClearColor( bgColor, 1 );
 		editor.config.setKey( 'backgroundColor', bgColor);
 
@@ -32579,6 +30305,16 @@ var Viewport = function ( editor ) {
 
 	} );
 
+
+
+	//
+
+	// var renderer = null;
+
+	//animate();
+
+	//
+
 	function updateFog( root ) {
 
 		if ( root.fog ) {
@@ -32630,17 +30366,13 @@ var Viewport = function ( editor ) {
 
 			}
 
-		}
-		*/
-
-		if ( vrEffect && vrEffect.isPresenting ) {
-
 			render();
 
 		}
 
-		render();
+		*/
 
+		render();
 
 	}
 
@@ -32649,33 +30381,16 @@ var Viewport = function ( editor ) {
 		sceneHelpers.updateMatrixWorld();
 		scene.updateMatrixWorld();
 
-		if ( vrEffect && vrEffect.isPresenting ) {
+		renderer.clear();
+		renderer.render( scene, camera );
 
-			vrControls.update();
+		if ( renderer instanceof THREE.RaytracingRenderer === false ) {
 
-			camera.updateMatrixWorld();
-			renderer.clear();
-
-			vrEffect.render( scene, vrCamera );
-			vrEffect.render( sceneHelpers, vrCamera );
-
-		} else {
-
-			renderer.clear();
-			renderer.render( scene, camera );
-
-			if ( renderer instanceof THREE.RaytracingRenderer === false ) {
-
-				renderer.render( sceneHelpers, camera );
-
-			}
+			renderer.render( sceneHelpers, camera );
 
 		}
 
-
 	}
-
-	requestAnimationFrame( animate );
 
 	return container;
 
@@ -33046,7 +30761,6 @@ MoveObjectCommand.prototype = {
 
 		this.oldParent.remove( this.object );
 
-		// console.log(this.)
 		var children = this.newParent.children;
 		children.splice( this.newIndex, 0, this.object );
 		this.object.parent = this.newParent;
@@ -34215,7 +31929,6 @@ SetMaterialValueCommand.prototype = {
 
 		this.object.material[ this.attributeName ] = this.newValue;
 		this.object.material.needsUpdate = true;
-		this.editor.signals.objectChanged.dispatch( this.object );
 		this.editor.signals.materialChanged.dispatch( this.object.material );
 
 	},
@@ -34224,7 +31937,6 @@ SetMaterialValueCommand.prototype = {
 
 		this.object.material[ this.attributeName ] = this.oldValue;
 		this.object.material.needsUpdate = true;
-		this.editor.signals.objectChanged.dispatch( this.object );
 		this.editor.signals.materialChanged.dispatch( this.object.material );
 
 	},
@@ -34647,6 +32359,10 @@ EditorShortCuts.prototype = {
 
 		}
 		
+		//Create Raymond the raycast blocker.
+		if( this.pressed(this.shortcuts.getKey('history/undo' ))) this.editor.history.undo();
+
+
 		//History
 		//Undo
 		if( this.pressed(this.shortcuts.getKey('history/undo' ))) this.editor.history.undo();
@@ -34676,15 +32392,16 @@ EditorShortCuts.prototype = {
 			var _uuid = editor.selected.uuid;
 			var _object = editor.selected.clone();
 			var _scripts = editor.scripts[_uuid];
+
+			// console.log(_scipts)
+			
+			// console.log(_script[0]);
 			
 			editor.execute( new AddObjectCommand( _object ) );
-
-			if(_scripts !== undefined){
-				var length = _scripts.length-1;
-				for(var i = 0; i<_scripts.length; i++){
-					console.log(i);
-					editor.execute( new AddScriptCommand( _object, _scripts[i]  ) );
-				}
+			var length = _scripts.length-1;
+			for(var i = 0; i<_scripts.length; i++){
+				console.log(i);
+				editor.execute( new AddScriptCommand( _object, _scripts[i]  ) );
 			}
 		}
 
@@ -34949,97 +32666,86 @@ var Editor = function () {
 
 	var SIGNALS = signals;
 
-	 // ( width, height, fov, near, far, orthoNear, orthoFar )
-	// this.DEFAULT_CAMERA = new THREE.CombinedCamera(100,100, 50, 0.1, 10000, 0.1, 10000);
 	this.DEFAULT_CAMERA = new THREE.PerspectiveCamera( 50, 1, 0.1, 10000 );
 	this.DEFAULT_CAMERA.name = 'Camera';
 	this.DEFAULT_CAMERA.position.set( 20, 10, 20 );
 	this.DEFAULT_CAMERA.lookAt( new THREE.Vector3() );
 
-	var Signal = signals.Signal;
-
 	this.signals = {
 
 		// script
 
-		editScript: new Signal(),
+		editScript: new SIGNALS.Signal(),
 
 		// player
 
-		startPlayer: new Signal(),
-		stopPlayer: new Signal(),
+		startPlayer: new SIGNALS.Signal(),
+		stopPlayer: new SIGNALS.Signal(),
 
-		// vr
+		// actions
 
-		enterVR: new Signal(),
-
-		enteredVR: new Signal(),
-		exitedVR: new Signal(),
-
-		// actions 
-
-		showModal: new Signal(),
+		showModal: new SIGNALS.Signal(),
 
 		// notifications
 
-		editorCleared: new Signal(),
+		editorCleared: new SIGNALS.Signal(),
 
-		savingStarted: new Signal(),
-		savingFinished: new Signal(),
+		savingStarted: new SIGNALS.Signal(),
+		savingFinished: new SIGNALS.Signal(),
 
-		themeChanged: new Signal(),
+		themeChanged: new SIGNALS.Signal(),
 
-		transformModeChanged: new Signal(),
-		snapChanged: new Signal(),
-		spaceChanged: new Signal(),
-		rendererChanged: new Signal(),
+		transformModeChanged: new SIGNALS.Signal(),
+		snapChanged: new SIGNALS.Signal(),
+		spaceChanged: new SIGNALS.Signal(),
+		rendererChanged: new SIGNALS.Signal(),
 
-		sceneGraphChanged: new Signal(),
+		sceneGraphChanged: new SIGNALS.Signal(),
 
-		cameraChanged: new Signal(),
+		cameraChanged: new SIGNALS.Signal(),
 
-		geometryChanged: new Signal(),
+		geometryChanged: new SIGNALS.Signal(),
 
-		objectSelected: new Signal(),
-		objectFocused: new Signal(),
+		objectSelected: new SIGNALS.Signal(),
+		objectFocused: new SIGNALS.Signal(),
 
-		objectAdded: new Signal(),
-		objectChanged: new Signal(),
-		objectRemoved: new Signal(),
+		objectAdded: new SIGNALS.Signal(),
+		objectChanged: new SIGNALS.Signal(),
+		objectRemoved: new SIGNALS.Signal(),
 
-		helperAdded: new Signal(),
-		helperRemoved: new Signal(),
+		helperAdded: new SIGNALS.Signal(),
+		helperRemoved: new SIGNALS.Signal(),
 
-		materialChanged: new Signal(),
+		materialChanged: new SIGNALS.Signal(),
 
-		scriptAdded: new Signal(),
-		scriptChanged: new Signal(),
-		scriptRemoved: new Signal(),
+		scriptAdded: new SIGNALS.Signal(),
+		scriptChanged: new SIGNALS.Signal(),
+		scriptRemoved: new SIGNALS.Signal(),
 
-		fogTypeChanged: new Signal(),
-		fogColorChanged: new Signal(),
-		fogParametersChanged: new Signal(),
-		windowResize: new Signal(),
+		fogTypeChanged: new SIGNALS.Signal(),
+		fogColorChanged: new SIGNALS.Signal(),
+		fogParametersChanged: new SIGNALS.Signal(),
+		windowResize: new SIGNALS.Signal(),
 
-		showGridChanged: new Signal(),
-		refreshSidebarObject3D: new Signal(),
-		historyChanged: new Signal(),
-		refreshScriptEditor: new Signal(),
+		showGridChanged: new SIGNALS.Signal(),
+		refreshSidebarObject3D: new SIGNALS.Signal(),
+		historyChanged: new SIGNALS.Signal(),
+		refreshScriptEditor: new SIGNALS.Signal(),
 
-		cameraPositionSnap: new Signal(),
-		undo: new Signal(),
-		redo: new Signal(),
-		switchCameraMode: new Signal(),
-		unsaveProject: new Signal(),
-		saveProject: new Signal(),
-		showManChanged: new Signal(),
+		cameraPositionSnap: new SIGNALS.Signal(),
+		undo: new SIGNALS.Signal(),
+		redo: new SIGNALS.Signal(),
+		switchCameraMode: new SIGNALS.Signal(),
+		unsaveProject: new SIGNALS.Signal(),
+		saveProject: new SIGNALS.Signal(),
+		showManChanged: new SIGNALS.Signal(),
 
-		bgColorChanged: new Signal(),
-		presetChanged: new Signal(),
+		bgColorChanged: new SIGNALS.Signal(),
+		presetChanged: new SIGNALS.Signal()
 
 	};
 
-	this.config = new Config( 'threejs-editor' );
+	this.config = new Config();
 	this.history = new History( this );
 	this.storage = new Storage();
 	this.loader = new Loader( this );
@@ -35135,8 +32841,6 @@ Editor.prototype = {
 		} );
 
 		this.scene.add( object );
-
-		console.log("asdf");
 
 		this.signals.objectAdded.dispatch( object );
 		this.signals.sceneGraphChanged.dispatch();
@@ -35500,9 +33204,6 @@ Editor.prototype = {
 		this.deselect();
 
 		this.signals.editorCleared.dispatch();
-		this.signals.windowResize.dispatch();
-
-
 
 	},
 
@@ -35538,6 +33239,7 @@ Editor.prototype = {
 		// console.log(this.config.getKey('backgroundColor'));
 
 		// this.signals.bgColorChanged.dispatch( this.config.getKey('backgroundColor'));
+
 
 		var camera = loader.parse( json.camera );
 
@@ -35601,18 +33303,11 @@ Editor.prototype = {
 
 			metadata: {},
 			project: {
-				gammaInput: this.config.getKey( 'project/renderer/gammaInput' ),
-				gammaOutput: this.config.getKey( 'project/renderer/gammaOutput' ),
 				shadows: this.config.getKey( 'project/renderer/shadows' ),
-
 				vr: this.config.getKey( 'project/vr' ),
 				backgroundColor: this.config.getKey('backgroundColor'),
 				fog: this.scene.fog,
-				fogColor: this.config.getKey('fogColor'),
-				gazetime: this.config.getKey( 'project/gazetime' ),
-				quality: parseFloat(this.config.getKey( 'project/quality' )),
-				crosshair: this.config.getKey( 'project/crosshair' ),
-
+				fogColor: this.config.getKey('fogColor')
 			},
 			camera: this.camera.toJSON(),
 			scene: this.scene.toJSON(),

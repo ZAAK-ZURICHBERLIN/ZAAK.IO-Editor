@@ -4,130 +4,78 @@
 
 Menubar.Library = function ( editor ) {
 
+	var signals = editor.signals;
+
 	var container = new UI.Panel();
 	container.setClass( 'menu' );
+
+	// var isPlaying = false;
 
 	var title = new UI.Panel();
 	title.setClass( 'title' );
 	title.setTextContent( 'Library' );
-	container.add( title );
+	title.onClick( function () {
 
-	var options = new UI.Panel();
-	options.setClass( 'options' );
-	container.add( options );
+		// if ( isPlaying === false ) {
 
-	//
+			// isPlaying = true;
+			// title.setTextContent( 'Stop' );
+			// signals.startPlayer.dispatch();
 
-	var meshCount = 0;
-	var lightCount = 0;
-	var cameraCount = 0;
+		// } else {
 
-	var libraryURL = "./js/libraryList.json";
-	var library;
+		// 	isPlaying = false;
+		// 	title.setTextContent( 'Play' );
+		// 	signals.stopPlayer.dispatch();
 
-	// var _getAllFilesFromFolder = function(dir) {
+		// }
+		// preview box
+        var preview = "<div id='preview' class='modal-box' style='height:100%;width:100%;text-align: center;'> \
+        <header style='background-color:#333;'> \
+            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
+        </header> \
+        <div style='height:100%;'> \
+            <iframe id='library_iframe' width='100%' height='100%' allowfullscreen src=" + LIBRARY_URL + "></iframe> \
+        </div></div>";
+        $("body").append($.parseHTML(preview));
 
-	// 	var filesystem;// = require("fs");
-	// 	var results = [];
+        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
+        $("body").append(modal);
 
-	//     filesystem.readdirSync(dir).forEach(function(file) {
+        $(".modal-overlay").fadeTo(500, 0.9);
+        $('#preview').fadeIn();
+        // modal helper
+        $(".js-modal-close, .modal-overlay").click(function() {
+            $(".modal-box, .modal-overlay").fadeOut(500, function() {
+            	// player.stop();
+                $(".modal-overlay").remove();
+                $("#preview").remove();
+            });
+        });
+        $(window).resize(function() {
+            $(".modal-box").css({
+                top: ($(window).height() - $("#preview").outerHeight()) / 2,
+                left: ($(window).width() - $("#preview").outerWidth()) / 2
+            });
+        });
 
-	//         file = dir+'/'+file;
-	//         var stat = filesystem.statSync(file);
-
-	//         if (stat && stat.isDirectory()) {
-	//             results = results.concat(_getAllFilesFromFolder(file))
-	//         } else results.push(file);
-
-	//     });
-
-	// 	return results;
-
-	// };
-
-	// var allEntries = _getAllFilesFromFolder(link);
-
-	// editor.signals.editorCleared.add( function () {
-
-	// 	meshCount = 0;
-	// 	lightCount = 0;
-	// 	cameraCount = 0;
-
-	// } );
-
-	var loader = new THREE.XHRLoader();
-	loader.crossOrigin = '';
-
-	loader.load( libraryURL, function ( text ) {
-
-		library = JSON.parse( text );
-
-		console.log(library);
-
-		// for(var i = 0; i < library.entries.length; i++){
-
-		// 	var data = library.entries[i];
-
-		// 	var option = new UI.Row();
-		// 	option.setClass( 'option' );
-			
-		// 	option.setTextContent( data.name );
-		// 	option.onClick( function () {
-
-		// 		// instantiate a loader
-		// 		var loader = new THREE.JSONLoader();
-
-		// 		// load a resource
-		// 		loader.load(
-		// 			// resource URL
-		// 			'models/library/' + data.name + '.js',
-		// 			// Function when resource is loaded
-		// 			function ( geometry, materials ) {
-
-		// 				var material = new THREE.MeshFaceMaterial( materials );
-		// 				var object = new THREE.Mesh( geometry, material );
-
-		// 				editor.addObject( object );
-		// 				editor.select( object );
-		// 			}
-		// 		);	
-		// 	} );
-
-			option.onMouseOver(function(){
-				
-				document.getElementById( "preview3d" ).style.display = "block";
-				var url = './models/library/' + data.name + '.jpg';
-
-				var myimg = document.getElementById( "preview3d" ).getElementsByTagName('img')[0];
-				var mysrc = 	myimg.src = url;
-
-
-			} );
-
-			option.onMouseOut(function(){
-				
-				document.getElementById( "preview3d" ).style.display = "none";
-
-			} );
-
-			options.add( option );
-
-		}
-	} );	
-
-	var option = new UI.Row();
-	option.setClass( 'option' );
-	option.setTextContent( 'Open Library' );
-	option.onClick( function () {
-
-		// 
+        $(window).resize();
 
 	} );
-	options.add( option );
-	
-
-
+	container.add( title );
 
 	return container;
 
-}
+};
+
+
+	// var option = new UI.Row();
+	// option.setClass( 'option' );
+	// option.setTextContent( 'Library' );
+	// option.onClick( function () {
+
+        
+
+
+	// } );
+	// options.add( option );
