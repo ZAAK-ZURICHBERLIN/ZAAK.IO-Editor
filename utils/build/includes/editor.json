@@ -46,6 +46,7 @@
 	"editor/js/Menubar.Add.js",
 	"editor/js/Menubar.Play.js",
 	"editor/js/Menubar.Examples.js",
+	"editor/js/Menubar.Library.js",
 	"editor/js/Menubar.Help.js",
 	"editor/js/Menubar.Status.js",
 	"editor/js/Sidebar.js",

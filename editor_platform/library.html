@@ -8,7 +8,7 @@
 </head>
 <body>
 <script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
-<script src="../build/three.min.js"></script>
+<script src="../build/three.js"></script>
 <script src="../build/lib.js"></script>
 <!-- <script src="./js/Library.js"></script>
 <script src="./js/LibraryLoader.js"></script>
@@ -31,8 +31,9 @@
 
 <script>
 
-	var BASE_URL = '';
-	var API_URL = '';
+	var BASE_URL = 'http://www.zaak.io/';
+	var API_URL = 'api/v1/';
+	var IMAGES_URL = 'images'
 
 	var library = new Library("./library");
 	library.loadLibrary("3d");

@@ -11,8 +11,8 @@
 
 		<script src="https://code.jquery.com/jquery-2.2.0.min.js"></script>
 
-		<script src="js/three.min.js"></script>
-		<script src="js/editor.js"></script>
+		<script src="js/three.js"></script>
+		<script src="js/Editor.js"></script>
 
 		<link rel="stylesheet" href="css/platform.css">
 
@@ -55,8 +55,11 @@
             var STATIC_URL = '';//'{{ STATIC_URL|escapejs }}';
 	        var API_URL = '';//'{{ API_URL|escapejs }}';
 	        var BASE_URL = '';//'{{ BASE_URL|escapejs }}';
+	       	var LIBRARY_URL = 'library.html';
+
 
 			var DUMMY = BASE_URL + STATIC_URL + '3D/dummy.json';
+			var DUMMY_TEX = BASE_URL + STATIC_URL +'3D/dummy.jpg';
 			var THEME =  BASE_URL + STATIC_URL + 'css/light.css';
 			var main = new MainEditor();
 

@@ -13,8 +13,6 @@ var Library = function(_src) {
 	var template = document.getElementById("template").text;
 	var content = document.getElementById("content");
 
-	// var emptyScene = new THREE.Scene();
-
 	var libLoader = new LibraryLoader(this);
 
 	var id = 0;
@@ -31,9 +29,9 @@ var Library = function(_src) {
 
 		canvas = document.getElementById( "c" );
 		
-		renderer = new THREE.WebGLRenderer( { canvas: canvas, antialias: true } );
+		renderer = new THREE.WebGLRenderer( { canvas: canvas } );
 		renderer.setClearColor( 0xFFFFFF );
-
+		// renderer.setPixelRatio( window.devicePixelRatio );	
 
 	}
 
@@ -68,8 +66,6 @@ var Library = function(_src) {
 
 			} 
 		} );
-
-		console.log("preloadDone");
 	};
 
 	function loadObject ( _name, _id ){
@@ -87,14 +83,14 @@ var Library = function(_src) {
 				var loader = new THREE.XHRLoader();
 				loader.crossOrigin = '';
 
-				loader.load( library.objects[_id].media, function ( text ) {
+				url = BASE_URL + library.objects[_id].media;
+
+				loader.load( url, function ( text ) {
 
 					var fileParts = [text];
 
 					myBlob = new Blob(fileParts, {type : 'text/javascript'});
 					myFile = blobToFile(myBlob, _name);
-
-					console.log(myFile);
 
 					libLoader.loadFile( myFile );
 
@@ -105,7 +101,7 @@ var Library = function(_src) {
 				url = library.objects[_id].media;
 				script = { name: library.objects[_id].name,  source: "//The url of the audioFile\nvar url = '"+url+"';\nvar autoplay = true;\nvar distance = 20;\n\n//Don't change these\nvar audioSource;\n\nfunction init ( event ){\n\n\taudioSource = new THREE.PositionalAudio(camera.getObjectByName('Listener'));\n\taudioSource.load( url );\n\taudioSource.setRefDistance( distance );\n\taudioSource.autoplay = autoplay;\n\tthis.add( audioSource );\n\n}\n\nfunction rayStart( event ){\n\t\t \n\tif(audioSource.isPlaying)\n\t \taudioSource.pause();\n\telse\n\t \taudioSource.play();\n\t\t\n\t\n}\n\nfunction stop ( event ) {\n\t\n\taudioSource.stop();\n}"};
 
-				createScripts( script, library.objects[_id]);
+				createAudio( script, library.objects[_id], url);
 		
 			break;
 
@@ -113,7 +109,7 @@ var Library = function(_src) {
 				url = library.objects[_id].media;
 				script = { name: library.objects[_id].name,  source: "var url = '"+url+"';\n\n//\nvar video;\nvar texture;\n\nfunction init ( event ){\n\n\tvideo = document.createElement('video');\n\tvideo.setAttribute(\"webkit-playsinline\",\"\");\n\tvideo.setAttribute(\"playsinline\",\"\");\n\tvideo.autoplay = true;\n\tvideo.loop = true;\n\tvideo.width\t= 1920;\n\tvideo.height = 1080;\n\tvideo.src = url;\n\tvideo.load();\n\n\t// create the texture\n\ttexture\t= new THREE.VideoTexture( video );\n\t// expose texture as this.texture\n\t\n\tvideo.play();\n\n}\n\nfunction update( event ) {\n\n\tif( video.readyState !== video.HAVE_ENOUGH_DATA )\treturn;\n\t\ttexture.needsUpdate\t= true;\t\n\n\tthis.material\t= new THREE.MeshBasicMaterial({\n\t\tmap\t: texture\n\t});\n}\n\nfunction stop ( event ) {\n\n\tvideo.pause();\n}"};
 
-				createScripts( script, library.objects[_id]);
+				createVideo( script, library.objects[_id], url);
 		
 			break;
 
@@ -122,9 +118,9 @@ var Library = function(_src) {
 				var dloader = new THREE.XHRLoader();
 				dloader.crossOrigin = '';
 
-				var lurl = library.objects[_id].media;
+				var url = BASE_URL + library.objects[_id].media;
 
-				dloader.load(lurl, function ( text ) {
+				dloader.load(url, function ( text ) {
 
 					
 					url = text;
@@ -139,7 +135,7 @@ var Library = function(_src) {
 		}
 	}
 
-	function createScripts( _script, _object ){
+	function createVideo( _script, _object, _url ){
 
 		var element = document.createElement( "div" );
 
@@ -151,7 +147,22 @@ var Library = function(_src) {
 
 		// element.children(".nameHere")[0].innerHTML
 
-		// scene.element = element.querySelector(".scene");
+		var video = document.createElement('video');
+
+		video.setAttribute("controls","controls");
+
+		var s = video.style;
+		s.width = '100%';
+
+		var source = document.createElement('source');
+
+		source.src = BASE_URL + _url;
+		// source.type = "video/mp4";
+	
+
+		video.appendChild(source);
+
+		element.querySelector(".scene").appendChild(video);
 		// console.log(element.querySelector("#addButton"));	
 		content.appendChild( element );
 
@@ -164,92 +175,160 @@ var Library = function(_src) {
 		});
 	}
 
+	function createAudio( _script, _object, _url ){
+
+		var element = document.createElement( "div" );
+
+		element.className = "list-item";
+
+		var tags = _object.tags[0];
+		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags );
+		// element.innerHTML = template;
+
+		// element.children(".nameHere")[0].innerHTML
+
+		var audio = document.createElement('audio');
+
+		audio.setAttribute("controls","controls");
+
+		var s = audio.style;
+		s.width = '100%';
+		// s.top = '0';
+		// s.bottom = '0';
+
+		var source = document.createElement('source');
+
+		source.src = BASE_URL + _url;
+		// source.type = "video/mp4";
+	
+
+		audio.appendChild(source);
+
+		element.querySelector(".scene").appendChild(audio);
+		// console.log(element.querySelector("#addButton"));	
+		content.appendChild( element );
+
+		var _butt = element.querySelector("#addButton");
+
+		_butt.addEventListener('click', function(){
+			 window.parent.main.editor.addScriptNew(_script);
+			 window.parent.closeIFrame();
+
+		});
+	}
+
+	function createScripts( _script, _object, _url ){
+
+		var element = document.createElement( "div" );
+
+		element.className = "list-item";
+
+		var tags = _object.tags[0];
+		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags );
+
+		content.appendChild( element );
+
+		var img = document.createElement('img')
+
+		img.style.height = '200px';
+		img.src = "library/images/code.png";
+
+		element.querySelector(".scene").appendChild(img);
+
+		var _butt = element.querySelector("#addButton");
+
+		_butt.addEventListener('click', function(){
+			 window.parent.main.editor.addScriptNew(_script);
+			 window.parent.closeIFrame();
+
+		});
+	}
+
 	//For 3D objects
-	this.createScenes = function(_object, file){
+	this.createScenes = function(_object, file, _name){
 
-		var scene = new THREE.Scene();
+		var _scene = new THREE.Scene();
 
-		// console.log(_object);
-		var _name = getDisplayName(_object.name);
+		if(_object.scene !== undefined){
 
-		console.log(_object);
+			_scene.uuid = _object.scene.uuid;
+			_scene.name = _object.scene.name;
+
+			while ( _object.scene.children.length > 0 ) {
+
+				_scene.add( _object.scene.children[ 0 ] );
+
+			}
+
+		}else{
+
+			_scene.add(_object);
+
+		}
+
 
 		// make a list item
 		var element = document.createElement( "div" );
 
 		element.className = "list-item";
-		var _libraryEntry = getDisplayName(_object);
-		var tags = _libraryEntry.tags[0];
+		var _libraryEntry = getDisplayName(_name);
+		var tags = ' ';
+		tags = _libraryEntry.tags[0];
 		element.innerHTML = template.replace('$', _libraryEntry.name ).replace('£', _libraryEntry.user.name ).replace('?', _libraryEntry.description ).replace('!', tags );
 
 		var _butt = element.querySelector("#addButton");
-		// console.log(_butt);
 		_butt.addEventListener('click', function(){
 			 window.parent.editor.loader.loadFile(file);
 			 window.parent.closeIFrame();
-			 // $(".modal-box, .modal-overlay").fadeOut(500, function() {
-    //             $(".modal-overlay").remove();
 
-    //         });
 		});
 
-		scene.userData.element = element.querySelector( ".scene" );
+
+		_scene.userData.element = element.querySelector( ".scene" );
+		_scene.userData.element.style.height = "200px";
+
 		content.appendChild( element );
+
 		var camera = new THREE.PerspectiveCamera( 50, 1, 0.1, 1000 );
 		// camera.position.z = 2;
 		// Convert camera fov degrees to radians
 		var fov = camera.fov * ( Math.PI / 180 ); 
-				// _object.scale.set(_size,_size,_size);
-		_object.geometry.computeBoundingBox();
 
+		var distance = 10;
 
-
-
-		var width = _object.geometry.boundingBox.max.x - _object.geometry.boundingBox.min.x;
-		var height = _object.geometry.boundingBox.max.y - _object.geometry.boundingBox.min.y;
-		var depth = _object.geometry.boundingBox.max.z - _object.geometry.boundingBox.min.z;
-
-		// Calculate the camera distance
-		var _size = Math.max(depth, Math.max(width,height));
-
-		var distance = Math.abs( _size / Math.sin( fov / 2 ) );
 		camera.position.z = distance;
-		scene.userData.camera = camera;
+		_scene.userData.camera = camera;
 
-		controls = new THREE.OrbitControls( scene.userData.camera, scene.userData.element );
+		controls = new THREE.OrbitControls( _scene.userData.camera, _scene.userData.element );
 		
 		controls.minDistance = distance*0.2;
 		controls.maxDistance = distance*2;
 		controls.enablePan = true;
 		controls.enableZoom = true;
-		scene.userData.controls = controls;
+		_scene.userData.controls = controls;
 
-		// _object.geometry.computeBoundingBox();
-
-		// var _size = uniformDimension / Math.max(depth, Math.max(width,height));
-				scene.add(_object);
-
-		scene.add( new THREE.HemisphereLight( 0xaaaaaa, 0x444444 ) );
+		_scene.add( new THREE.HemisphereLight( 0xaaaaaa, 0x444444 ) );
 		var light = new THREE.DirectionalLight( 0xffffff, 0.5 );
 		light.position.set( 1, 1, 1 );
-		scene.add( light );
-		scenes.push( scene );
+		_scene.add( light );
+
+		scenes.push( _scene );
 
 
 	};
 
-	function getDisplayName( _object ){
+	function getDisplayName( _name ){
 
 		for(var i = 0; i < library.objects.length; i++){
 
 			var name = library.objects[i].media;
 
-			if(name == _object.name)
+			if(name == _name)
 				return library.objects[i];
 
 		} 
 
-		return null;
+		return "null";
 		// } );
 
 	}
@@ -285,12 +364,15 @@ var Library = function(_src) {
 
 		updateSize();
 		renderer.setClearColor( 0xffffff );
-		// renderer.setScissorTest( false );
+		renderer.setScissorTest( false );
 		renderer.clear();
-		renderer.setClearColor( 0xe0e0e0 );
-		// renderer.setScissorTest( true );
+		renderer.setClearColor( 0xf3f3f3 );
+		renderer.setScissorTest( true );
+		var id = 0;
 
 		scenes.forEach( function( scene ) {
+
+			id ++;
 			// so something moves
 			scene.children[0].rotation.y = Date.now() * 0.0001;
 			// get the element that is a place holder for where we want to
@@ -298,22 +380,31 @@ var Library = function(_src) {
 			var element = scene.userData.element;
 			// get its position relative to the page's viewport
 			var rect = element.getBoundingClientRect();
+
 			// check if it's offscreen. If so skip it
 			if ( rect.bottom < 0 || rect.top  > renderer.domElement.clientHeight ||
 				 rect.right  < 0 || rect.left > renderer.domElement.clientWidth ) {
 				return;  // it's off screen
 			}
+
+			// console.log("render");
 			// set the viewport
 			var width  = rect.right - rect.left;
 			var height = rect.bottom - rect.top;
 			var left   = rect.left;
 			var bottom = renderer.domElement.clientHeight - rect.bottom;
+			
 			renderer.setViewport( left, bottom, width, height );
 			renderer.setScissor( left, bottom, width, height );
+
+			// console.log(id);
+
+			// console.log(renderer.getScissor);
+
 			var camera = scene.userData.camera;
 			//camera.aspect = width / height; // not changing in this example
-			//camera.updateProjectionMatrix();
-			//scene.userData.controls.update();
+			// camera.updateProjectionMatrix();
+			// scene.userData.controls.update();
 			renderer.render( scene, camera );
 		} );
 
@@ -336,7 +427,7 @@ var LibraryLoader = function ( library ) {
 	this.loadFile = function ( file ) {
 
 		// library.createScenes(file, _id);
-		console.log(file);
+		// console.log(file);
 
 		var filename = file.name;
 		var extension = filename.split( '.' ).pop().toLowerCase();
@@ -800,10 +891,12 @@ var LibraryLoader = function ( library ) {
 
 				}
 
-				mesh.name = filename;
+				// mesh.name = filename;
 
 				// editor.execute( new AddObjectCommand( mesh ) );
-				Library.createScenes(mesh, file);
+				// console.log("mesh");
+
+				Library.createScenes(mesh, file, filename);
 
 
 				break;
@@ -824,6 +917,7 @@ var LibraryLoader = function ( library ) {
 					// editor.execute( new AddObjectCommand( result ) );
 					console.log(result);
 					// sobjects.add(result);
+					console.log("object");
 					library.createScenes(result);
 				}
 
@@ -844,7 +938,18 @@ var LibraryLoader = function ( library ) {
 
 			case 'app':
 
+				var loader = new THREE.ObjectLoader();
+				loader.setTexturePath( scope.texturePath );
+
+				var result = loader.parse( data.scene );
+
 				// editor.fromJSON( data );
+					console.log(data);
+					// sobjects.add(result);
+										console.log("app");
+
+					library.createScenes(result, file, filename);
+					// this.setScene( loader.parse(  ) );
 
 				break;
 
@@ -944,13 +1049,13 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	this.getPolarAngle = function () {
 
-		return phi;
+		return spherical.phi;
 
 	};
 
 	this.getAzimuthalAngle = function () {
 
-		return theta;
+		return spherical.theta;
 
 	};
 
@@ -981,7 +1086,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 		var lastPosition = new THREE.Vector3();
 		var lastQuaternion = new THREE.Quaternion();
 
-		return function () {
+		return function update () {
 
 			var position = scope.object.position;
 
@@ -991,12 +1096,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 			offset.applyQuaternion( quat );
 
 			// angle from z-axis around y-axis
-
-			theta = Math.atan2( offset.x, offset.z );
-
-			// angle from y-axis
-
-			phi = Math.atan2( Math.sqrt( offset.x * offset.x + offset.z * offset.z ), offset.y );
+			spherical.setFromVector3( offset );
 
 			if ( scope.autoRotate && state === STATE.NONE ) {
 
@@ -1004,29 +1104,27 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 			}
 
-			theta += thetaDelta;
-			phi += phiDelta;
+			spherical.theta += sphericalDelta.theta;
+			spherical.phi += sphericalDelta.phi;
 
 			// restrict theta to be between desired limits
-			theta = Math.max( scope.minAzimuthAngle, Math.min( scope.maxAzimuthAngle, theta ) );
+			spherical.theta = Math.max( scope.minAzimuthAngle, Math.min( scope.maxAzimuthAngle, spherical.theta ) );
 
 			// restrict phi to be between desired limits
-			phi = Math.max( scope.minPolarAngle, Math.min( scope.maxPolarAngle, phi ) );
+			spherical.phi = Math.max( scope.minPolarAngle, Math.min( scope.maxPolarAngle, spherical.phi ) );
 
-			// restrict phi to be betwee EPS and PI-EPS
-			phi = Math.max( EPS, Math.min( Math.PI - EPS, phi ) );
+			spherical.makeSafe();
 
-			var radius = offset.length() * scale;
+
+			spherical.radius *= scale;
 
 			// restrict radius to be between desired limits
-			radius = Math.max( scope.minDistance, Math.min( scope.maxDistance, radius ) );
+			spherical.radius = Math.max( scope.minDistance, Math.min( scope.maxDistance, spherical.radius ) );
 
 			// move target to panned location
 			scope.target.add( panOffset );
 
-			offset.x = radius * Math.sin( phi ) * Math.sin( theta );
-			offset.y = radius * Math.cos( phi );
-			offset.z = radius * Math.sin( phi ) * Math.cos( theta );
+			offset.setFromSpherical( spherical );
 
 			// rotate offset back to "camera-up-vector-is-up" space
 			offset.applyQuaternion( quatInverse );
@@ -1037,13 +1135,12 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 			if ( scope.enableDamping === true ) {
 
-				thetaDelta *= ( 1 - scope.dampingFactor );
-				phiDelta *= ( 1 - scope.dampingFactor );
+				sphericalDelta.theta *= ( 1 - scope.dampingFactor );
+				sphericalDelta.phi *= ( 1 - scope.dampingFactor );
 
 			} else {
 
-				thetaDelta = 0;
-				phiDelta = 0;
+				sphericalDelta.set( 0, 0, 0 );
 
 			}
 
@@ -1087,7 +1184,6 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		document.removeEventListener( 'mousemove', onMouseMove, false );
 		document.removeEventListener( 'mouseup', onMouseUp, false );
-		document.removeEventListener( 'mouseout', onMouseUp, false );
 
 		window.removeEventListener( 'keydown', onKeyDown, false );
 
@@ -1112,11 +1208,9 @@ THREE.OrbitControls = function ( object, domElement ) {
 	var EPS = 0.000001;
 
 	// current position in spherical coordinates
-	var theta;
-	var phi;
+	var spherical = new THREE.Spherical();
+	var sphericalDelta = new THREE.Spherical();
 
-	var phiDelta = 0;
-	var thetaDelta = 0;
 	var scale = 1;
 	var panOffset = new THREE.Vector3();
 	var zoomChanged = false;
@@ -1147,13 +1241,13 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	function rotateLeft( angle ) {
 
-		thetaDelta -= angle;
+		sphericalDelta.theta -= angle;
 
 	}
 
 	function rotateUp( angle ) {
 
-		phiDelta -= angle;
+		sphericalDelta.phi -= angle;
 
 	}
 
@@ -1163,11 +1257,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		return function panLeft( distance, objectMatrix ) {
 
-			var te = objectMatrix.elements;
-
-			// get X column of objectMatrix
-			v.set( te[ 0 ], te[ 1 ], te[ 2 ] );
-
+			v.setFromMatrixColumn( objectMatrix, 0 ); // get X column of objectMatrix
 			v.multiplyScalar( - distance );
 
 			panOffset.add( v );
@@ -1182,11 +1272,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		return function panUp( distance, objectMatrix ) {
 
-			var te = objectMatrix.elements;
-
-			// get Y column of objectMatrix
-			v.set( te[ 4 ], te[ 5 ], te[ 6 ] );
-
+			v.setFromMatrixColumn( objectMatrix, 1 ); // get Y column of objectMatrix
 			v.multiplyScalar( distance );
 
 			panOffset.add( v );
@@ -1200,7 +1286,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		var offset = new THREE.Vector3();
 
-		return function( deltaX, deltaY ) {
+		return function pan ( deltaX, deltaY ) {
 
 			var element = scope.domElement === document ? scope.domElement.body : scope.domElement;
 
@@ -1221,8 +1307,8 @@ THREE.OrbitControls = function ( object, domElement ) {
 			} else if ( scope.object instanceof THREE.OrthographicCamera ) {
 
 				// orthographic
-				panLeft( deltaX * ( scope.object.right - scope.object.left ) / element.clientWidth, scope.object.matrix );
-				panUp( deltaY * ( scope.object.top - scope.object.bottom ) / element.clientHeight, scope.object.matrix );
+				panLeft( deltaX * ( scope.object.right - scope.object.left ) / scope.object.zoom / element.clientWidth, scope.object.matrix );
+				panUp( deltaY * ( scope.object.top - scope.object.bottom ) / scope.object.zoom / element.clientHeight, scope.object.matrix );
 
 			} else {
 
@@ -1578,7 +1664,6 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 			document.addEventListener( 'mousemove', onMouseMove, false );
 			document.addEventListener( 'mouseup', onMouseUp, false );
-			document.addEventListener( 'mouseout', onMouseUp, false );
 
 			scope.dispatchEvent( startEvent );
 
@@ -1622,7 +1707,6 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		document.removeEventListener( 'mousemove', onMouseMove, false );
 		document.removeEventListener( 'mouseup', onMouseUp, false );
-		document.removeEventListener( 'mouseout', onMouseUp, false );
 
 		scope.dispatchEvent( endEvent );
 
@@ -1632,7 +1716,7 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 	function onMouseWheel( event ) {
 
-		if ( scope.enabled === false || scope.enableZoom === false || state !== STATE.NONE ) return;
+		if ( scope.enabled === false || scope.enableZoom === false || ( state !== STATE.NONE && state !== STATE.ROTATE ) ) return;
 
 		event.preventDefault();
 		event.stopPropagation();
@@ -1887,14 +1971,14 @@ Object.defineProperties( THREE.OrbitControls.prototype, {
 		get: function () {
 
 			console.warn( 'THREE.OrbitControls: .staticMoving has been deprecated. Use .enableDamping instead.' );
-			return ! this.constraint.enableDamping;
+			return ! this.enableDamping;
 
 		},
 
 		set: function ( value ) {
 
 			console.warn( 'THREE.OrbitControls: .staticMoving has been deprecated. Use .enableDamping instead.' );
-			this.constraint.enableDamping = ! value;
+			this.enableDamping = ! value;
 
 		}
 
@@ -1905,14 +1989,14 @@ Object.defineProperties( THREE.OrbitControls.prototype, {
 		get: function () {
 
 			console.warn( 'THREE.OrbitControls: .dynamicDampingFactor has been renamed. Use .dampingFactor instead.' );
-			return this.constraint.dampingFactor;
+			return this.dampingFactor;
 
 		},
 
 		set: function ( value ) {
 
 			console.warn( 'THREE.OrbitControls: .dynamicDampingFactor has been renamed. Use .dampingFactor instead.' );
-			this.constraint.dampingFactor = value;
+			this.dampingFactor = value;
 
 		}
 

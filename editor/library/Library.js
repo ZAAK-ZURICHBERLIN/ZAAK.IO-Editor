@@ -228,8 +228,8 @@ var Library = function(_src) {
 
 		var img = document.createElement('img')
 
-		img.style.height = '200px';
-		img.src = "library/images/code.png";
+		// img.style.height = '120px';
+		img.src = IMAGES_URL + "/code.png";
 
 		element.querySelector(".scene").appendChild(img);
 
