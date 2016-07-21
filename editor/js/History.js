@@ -22,7 +22,7 @@ History = function ( editor ) {
 
 	var scope = this;
 
-	this.editor.signals.startPlayer.add( function () {
+	/*this.editor.signals.startPlayer.add( function () {
 
 		scope.historyDisabled = true;
 
@@ -32,7 +32,7 @@ History = function ( editor ) {
 
 		scope.historyDisabled = false;
 
-	} );
+	} );*/
 
 };
 
