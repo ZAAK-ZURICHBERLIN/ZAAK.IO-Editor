@@ -270,8 +270,8 @@ var Library = function(_src) {
 
 		element.className = "list-item";
 		var _libraryEntry = getDisplayName(_name);
-		var tags = ' ';
-		tags = _libraryEntry.tags[0];
+		// var tags = ' ';
+		var tags = _libraryEntry.tags[0];
 		element.innerHTML = template.replace('$', _libraryEntry.name ).replace('£', _libraryEntry.user.name ).replace('?', _libraryEntry.description ).replace('!', tags );
 
 		var _butt = element.querySelector("#addButton");

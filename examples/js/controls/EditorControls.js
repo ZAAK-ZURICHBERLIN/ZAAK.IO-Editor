@@ -73,14 +73,12 @@ THREE.EditorControls = function ( object, domElement ) {
 
 		if(scope.controler instanceof THREE.PerspectiveCamera !== true){
 
-			console.log("distance?");
-
 			scope.controler.zoom = Math.max(scope.controler.zoom - delta.z * 0.001, 0.1);	
 
-			// scope.controler.left = scope.controler.left + delta.z*0.01;
-			// // scope.controler.right = scope.controler.right + delta.z*0.01;
-			// scope.controler.top == scope.controler.top + delta.z*0.001;
-			// scope.controler.bottom == scope.controler.bottom + delta.z*0.001;
+			/*scope.controler.left = scope.controler.left + delta.z*0.01;
+			scope.controler.right = scope.controler.right + delta.z*0.01;
+			scope.controler.top = scope.controler.top + delta.z*0.001;
+			scope.controler.bottom = scope.controler.bottom + delta.z*0.001;*/
 
 			scope.controler.updateProjectionMatrix();
 		}

@@ -495,15 +495,12 @@ var LibraryLoader = function ( library ) {
 
 				if ( result instanceof THREE.Scene ) {
 
-					// editor.execute( new SetSceneCommand( result ) );
+					console.log("scene/object");
 
 				} else {
 
-					// editor.execute( new AddObjectCommand( result ) );
-					console.log(result);
-					// sobjects.add(result);
-					console.log("object");
-					library.createScenes(result);
+					// console.log("object");
+					library.createScenes(result, file, filename);
 				}
 
 				break;
@@ -512,12 +509,7 @@ var LibraryLoader = function ( library ) {
 
 				// DEPRECATED
 
-				var loader = new THREE.SceneLoader();
-				loader.parse( data, function ( result ) {
-
-					// editor.execute( new SetSceneCommand( result.scene ) );
-
-				}, '' );
+				console.log('decprecated');
 
 				break;
 
@@ -528,13 +520,7 @@ var LibraryLoader = function ( library ) {
 
 				var result = loader.parse( data.scene );
 
-				// editor.fromJSON( data );
-					console.log(data);
-					// sobjects.add(result);
-										console.log("app");
-
-					library.createScenes(result, file, filename);
-					// this.setScene( loader.parse(  ) );
+				library.createScenes(result, file, filename);
 
 				break;
 

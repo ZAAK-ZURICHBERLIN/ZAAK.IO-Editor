@@ -42,7 +42,7 @@ var Viewport = function ( editor ) {
 	//
 
 	var camera = editor.camera;
-	var perspCam = true;	
+	// var perspCam = true;	
 
 	//
 
@@ -368,6 +368,9 @@ var Viewport = function ( editor ) {
 
 		var position = camera.position;
 
+		var distance = THREE.Vector3();
+
+
 		if (camera instanceof THREE.PerspectiveCamera) {
             camera = new THREE.OrthographicCamera(window.innerWidth / -16, window.innerWidth / 16, window.innerHeight / 16, window.innerHeight / -16, -200, 10000);
 
@@ -385,8 +388,8 @@ var Viewport = function ( editor ) {
         transformControls.controler = camera; // update
 
         // controls.zoom(0);
-
-        editor.focus(editor.selected);
+        if(editor.selected != undefined)
+        	editor.focus(editor.selected);
 		// render();
 
 	} );
@@ -394,7 +397,6 @@ var Viewport = function ( editor ) {
 	signals.cameraPositionSnap.add( function ( mode ) {
 
 		//Needs Update to work without selected object
-
 		var distance = camera.position.length();
 		var newPos;
 
@@ -803,6 +805,8 @@ var Viewport = function ( editor ) {
 
 			renderer.clear();
 			renderer.render( scene, camera );
+
+			// console.log(camera);
 
 			if ( renderer instanceof THREE.RaytracingRenderer === false ) {
 

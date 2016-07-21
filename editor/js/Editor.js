@@ -105,11 +105,6 @@ var Editor = function () {
 	this.camera.aspect = this.DEFAULT_CAMERA.aspect;
  	this.camera.updateProjectionMatrix();
 
-	// this.camera = new THREE.CombinedCamera( window.innerWidth / 2, window.innerHeight / 2, 70, 1, 1000, - 500, 1000 );
-	// this.camera.name = 'ComboCamera';//'Camera';
-	// this.camera.position.set( 20, 10, 20 );
-	// this.camera.lookAt( new THREE.Vector3() );
-
 	this.scene = new THREE.Scene();
 	this.scene.name = 'Scene';
 
@@ -559,7 +554,7 @@ Editor.prototype = {
 		this.signals.editorCleared.dispatch();
 		this.signals.windowResize.dispatch();
 
-
+		this.signals.bgColorChanged.dispatch(0xC8C8C8);
 
 	},
 

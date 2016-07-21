@@ -222,7 +222,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
-	options.add( option );
+	// options.add( option );
 
 	// Cylinder
 
@@ -245,7 +245,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
-	options.add( option );
+	// options.add( option );
 
 	// Sphere
 	var option = new UI.Row();
@@ -309,7 +309,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
-	options.add( option );
+	// options.add( option );
 
 	// TorusKnot
 
@@ -332,7 +332,7 @@ Menubar.Add = function ( editor ) {
 		editor.execute( new AddObjectCommand( mesh ) );
 
 	} );
-	options.add( option );
+	// options.add( option );
 
 	/*
 	// Teapot

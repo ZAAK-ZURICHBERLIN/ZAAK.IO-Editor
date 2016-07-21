@@ -30,9 +30,7 @@ Menubar.Status = function ( editor ) {
 	editor.storage.size( function (size){
 
 				var _size = (size !== null) ? size : "0";
-				console.log(size);
 				title.setTextContent( "Size : " + _size/10 + "/50Mb");
-				// title.setWidth(size);
 
 		});
 

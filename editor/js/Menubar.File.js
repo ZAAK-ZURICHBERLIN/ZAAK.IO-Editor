@@ -129,46 +129,46 @@ Menubar.File = function ( editor ) {
 
 	// Export Geometry
 
-	// var option = new UI.Row();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Export Geometry' );
-	// option.onClick( function () {
+	/*var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export Geometry' );
+	option.onClick( function () {
 
-	// 	var object = editor.selected;
+		var object = editor.selected;
 
-	// 	if ( object === null ) {
+		if ( object === null ) {
 
-	// 		alert( 'No object selected.' );
-	// 		return;
+			alert( 'No object selected.' );
+			return;
 
-	// 	}
+		}
 
-	// 	var geometry = object.geometry;
+		var geometry = object.geometry;
 
-	// 	if ( geometry === undefined ) {
+		if ( geometry === undefined ) {
 
-	// 		alert( 'The selected object doesn\'t have geometry.' );
-	// 		return;
+			alert( 'The selected object doesn\'t have geometry.' );
+			return;
 
-	// 	}
+		}
 
-	// 	var output = geometry.toJSON();
+		var output = geometry.toJSON();
 
-	// 	try {
+		try {
 
-	// 		output = JSON.stringify( output, null, '\t' );
-	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+			output = JSON.stringify( output, null, '\t' );
+			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-	// 	} catch ( e ) {
+		} catch ( e ) {
 
-	// 		output = JSON.stringify( output );
+			output = JSON.stringify( output );
 
-	// 	}
+		}
 
-	// 	saveString( output, 'geometry.json' );
+		saveString( output, 'geometry.json' );
 
-	// } );
-	// options.add( option );
+	} );
+	options.add( option );*/
 
 	// Export Geometry
 
@@ -215,37 +215,37 @@ Menubar.File = function ( editor ) {
 
 	// Export Object
 
-	// var option = new UI.Row();
-	// option.setClass( 'option' );
-	// option.setTextContent( 'Export Object' );
-	// option.onClick( function () {
+	var option = new UI.Row();
+	option.setClass( 'option' );
+	option.setTextContent( 'Export Object' );
+	option.onClick( function () {
 
-	// 	var object = editor.selected;
+		var object = editor.selected;
 
-	// 	if ( object === null ) {
+		if ( object === null ) {
 
-	// 		alert( 'No object selected' );
-	// 		return;
+			alert( 'No object selected' );
+			return;
 
-	// 	}
+		}
 
-	// 	var output = object.toJSON();
+		var output = object.toJSON();
 
-	// 	try {
+		try {
 
-	// 		output = JSON.stringify( output, null, '\t' );
-	// 		output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
+			output = JSON.stringify( output, null, '\t' );
+			output = output.replace( /[\n\t]+([\d\.e\-\[\]]+)/g, '$1' );
 
-	// 	} catch ( e ) {
+		} catch ( e ) {
 
-	// 		output = JSON.stringify( output );
+			output = JSON.stringify( output );
 
-	// 	}
+		}
 
-	// 	saveString( output, 'model.json' );
+		saveString( output, 'model.json' );
 
-	// } );
-	// options.add( option );
+	} );
+	options.add( option );
 
 	// // Export Scene
 

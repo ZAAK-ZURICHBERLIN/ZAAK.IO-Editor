@@ -230,8 +230,8 @@ var Library = function(_src) {
 
 		var img = document.createElement('img')
 
-		img.style.height = '200px';
-		img.src = "library/images/code.png";
+		// img.style.height = '120px';
+		img.src = IMAGES_URL + "/code.png";
 
 		element.querySelector(".scene").appendChild(img);
 
@@ -272,8 +272,8 @@ var Library = function(_src) {
 
 		element.className = "list-item";
 		var _libraryEntry = getDisplayName(_name);
-		var tags = ' ';
-		tags = _libraryEntry.tags[0];
+		// var tags = ' ';
+		var tags = _libraryEntry.tags[0];
 		element.innerHTML = template.replace('$', _libraryEntry.name ).replace('£', _libraryEntry.user.name ).replace('?', _libraryEntry.description ).replace('!', tags );
 
 		var _butt = element.querySelector("#addButton");
@@ -910,15 +910,12 @@ var LibraryLoader = function ( library ) {
 
 				if ( result instanceof THREE.Scene ) {
 
-					// editor.execute( new SetSceneCommand( result ) );
+					console.log("scene/object");
 
 				} else {
 
-					// editor.execute( new AddObjectCommand( result ) );
-					console.log(result);
-					// sobjects.add(result);
-					console.log("object");
-					library.createScenes(result);
+					// console.log("object");
+					library.createScenes(result, file, filename);
 				}
 
 				break;
@@ -927,12 +924,7 @@ var LibraryLoader = function ( library ) {
 
 				// DEPRECATED
 
-				var loader = new THREE.SceneLoader();
-				loader.parse( data, function ( result ) {
-
-					// editor.execute( new SetSceneCommand( result.scene ) );
-
-				}, '' );
+				console.log('decprecated');
 
 				break;
 
@@ -943,13 +935,7 @@ var LibraryLoader = function ( library ) {
 
 				var result = loader.parse( data.scene );
 
-				// editor.fromJSON( data );
-					console.log(data);
-					// sobjects.add(result);
-										console.log("app");
-
-					library.createScenes(result, file, filename);
-					// this.setScene( loader.parse(  ) );
+				library.createScenes(result, file, filename);
 
 				break;
 
