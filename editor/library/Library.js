@@ -11,13 +11,20 @@ var Library = function(_src) {
 	var template = document.getElementById("template").text;
 	var content = document.getElementById("content");
 
+	var xhrLoader = new THREE.XHRLoader();
+	xhrLoader.crossOrigin = '';
+
 	var libLoader = new LibraryLoader(this);
+
+	var request;
 
 	var id = 0;
 
 	var uniformDimension = 1;
 
 	var librarySource = _src;
+
+	var cCategory = '';
 
 
 	init();
@@ -34,25 +41,29 @@ var Library = function(_src) {
 	}
 
 
-	this.loadLibrary = function(_filter){
+	this.loadLibrary = function(_category){
 
-		_filter = typeof _filter !== 'undefined' ? _filter : "3d";
+		_category = typeof _category !== 'undefined' ? _category : "3d";
 
+		cCategory = _category;
 		//Clean selection
 		while (content.firstChild) {
 		    content.removeChild(content.firstChild);
 		}
 
 		// console.log(¥beta.zaak.io/api/v1/asset?format=json&limit=1);
-		// var libraryURL = librarySource+ "/lib"+_filter+".json";
-		var libraryURL = BASE_URL + API_URL +'asset?format=json&category__slug=' + _filter;
+		// var libraryURL = librarySource+ "/lib"+_category+".json";
+		var libraryURL = BASE_URL + API_URL +'asset?format=json&category__slug=' + cCategory + '&limit=25';
 
-		var loader = new THREE.XHRLoader();
-		loader.crossOrigin = '';
+		if(request != null){
+			// console.log(request);
+			request.abort();
+			// console.log(request);
+		}
 
-		loader.load( libraryURL, function ( text ) {
+		request = xhrLoader.load( libraryURL, function ( text ) {
 
-			console.log(text);
+			// console.log(text);
 
 			library = JSON.parse( text );
 
@@ -65,6 +76,13 @@ var Library = function(_src) {
 			} 
 		} );
 	};
+
+	// this.filterCategory = function(_filter){
+		
+	// 	var libraryURL = BASE_URL + API_URL +'asset?format=json&category__slug=' + cCategory + "&tag" + _filter;
+
+
+	// }
 
 	function loadObject ( _name, _id ){
 
@@ -139,9 +157,17 @@ var Library = function(_src) {
 
 		element.className = "list-item";
 
-		var tags = _object.tags[0];
-		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags );
+
+		var tags = '';
+		for(var i = 0 ; i < _object.tags.length; i++){
+			tags += _object.tags[i] + ', ';
+		}
+
+		// var tags = _object.tags[0];
+		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags ).replace('§', 'Add to selected object')
 		// element.innerHTML = template;
+
+		element.getElementsByClassName("size")[0].style.display="none";
 
 		// element.children(".nameHere")[0].innerHTML
 
@@ -180,8 +206,9 @@ var Library = function(_src) {
 		element.className = "list-item";
 
 		var tags = _object.tags[0];
-		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags );
+		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags ).replace('§', 'Add to selected object');
 		// element.innerHTML = template;
+		element.getElementsByClassName("size")[0].style.display="none";
 
 		// element.children(".nameHere")[0].innerHTML
 
@@ -222,7 +249,9 @@ var Library = function(_src) {
 		element.className = "list-item";
 
 		var tags = _object.tags[0];
-		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags );
+		element.innerHTML = template.replace('$', _object.name ).replace('£', _object.user.name ).replace('?', _object.description ).replace('!', tags ).replace('§', 'Add to selected object');
+
+		element.getElementsByClassName("size")[0].style.display="none";
 
 		content.appendChild( element );
 
@@ -268,15 +297,26 @@ var Library = function(_src) {
 
 		}
 
-
 		// make a list item
 		var element = document.createElement( "div" );
 
 		element.className = "list-item";
 		var _libraryEntry = getDisplayName(_name);
-		// var tags = ' ';
 		var tags = _libraryEntry.tags[0];
-		element.innerHTML = template.replace('$', _libraryEntry.name ).replace('£', _libraryEntry.user.name ).replace('?', _libraryEntry.description ).replace('!', tags );
+
+		var bBox = new THREE.BoundingBoxHelper(_scene, 0xffff00);
+	    bBox.update();
+	    // scene.add(bBox);
+	    var v = bBox.box.size();
+	    // document.getElementById("botcenter").innerHTML = "Size (X,Y,Z) = " + v.x.toFixed(1) + "m" + " x " + v.y.toFixed(1) + "m" + " x " + v.z.toFixed(1) + "m";
+
+
+		element.innerHTML = template.replace('$', _libraryEntry.name )
+			.replace('+', "Size (X,Y,Z) = " + v.x.toFixed(1) + "m" + " x " + v.y.toFixed(1) + "m" + " x " + v.z.toFixed(1) + "m" )
+		.replace('£', _libraryEntry.user.name )
+		.replace('?', _libraryEntry.description )
+		.replace('!', tags )
+		.replace('§', 'Add to scene');
 
 		var _butt = element.querySelector("#addButton");
 		_butt.addEventListener('click', function(){
@@ -296,8 +336,27 @@ var Library = function(_src) {
 		// Convert camera fov degrees to radians
 		var fov = camera.fov * ( Math.PI / 180 ); 
 
-		var distance = 10;
+		// console.log(_scene.compute);
+		var bbox = new THREE.Box3().setFromObject(_scene);
 
+		// Calculate the camera distance
+		var centerX = 0.5 * ( bbox.max.x - bbox.min.x );
+		var centerY = 0.5 * ( bbox.max.y - bbox.min.y );
+		var centerZ = 0.5 * ( bbox.max.z - bbox.min.z );
+
+		var _lo = Math.max(centerX, Math.max(centerY, centerZ))
+		var distance = Math.abs( _lo*2 / Math.sin( fov / 2 ) );
+
+		// console.log(bbox);
+
+
+		// con¥bbox.centroid);
+
+
+		// var distance = 10;
+
+		// camera.position.x = 0;
+		camera.position.y = centerY;
 		camera.position.z = distance;
 		_scene.userData.camera = camera;
 
@@ -307,12 +366,15 @@ var Library = function(_src) {
 		controls.maxDistance = distance*2;
 		controls.enablePan = true;
 		controls.enableZoom = true;
+		controls.target = new THREE.Vector3( 0, centerY, 0 );
 		_scene.userData.controls = controls;
 
 		_scene.add( new THREE.HemisphereLight( 0xaaaaaa, 0x444444 ) );
 		var light = new THREE.DirectionalLight( 0xffffff, 0.5 );
 		light.position.set( 1, 1, 1 );
 		_scene.add( light );
+
+
 
 		scenes.push( _scene );
 
@@ -406,7 +468,7 @@ var Library = function(_src) {
 			var camera = scene.userData.camera;
 			//camera.aspect = width / height; // not changing in this example
 			// camera.updateProjectionMatrix();
-			// scene.userData.controls.update();
+			scene.userData.controls.update();
 			renderer.render( scene, camera );
 		} );
 

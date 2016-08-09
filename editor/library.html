@@ -15,7 +15,26 @@
 <script src="./library/LibraryLoader.js"></script> -->
 <script src="./js/OrbitControls.js"></script>
 
-<div class="filteritems"><button onclick="filter('3d');">Models</button> | <button onclick="filter('audio');">Audio</button> | <button onclick="filter('video');">Video</button> | <button onclick="filter('code');">Code</button></div>
+
+<div class="header">
+	<p>LIBRARY</p>
+
+	<button id="exitButton" onclick="window.parent.closeIFrame();
+">X</button>
+
+<!-- 	<input id="searchfield" class="searcher" value="submit" >	<button onclick="getFormData()">Search</button></input> -->
+
+
+<!--   	<form name="myform" action="javascript:handleIt()">
+      <input id="searchfield" name="Submit"  type="text" value="Update"/>
+	</form> -->
+
+
+</form>
+
+
+<div class="filteritems"><button onclick="filter('3d');">Models</button><button onclick="filter('audio');">Audio</button><button onclick="filter('video');">Video</button><button onclick="filter('code');">Code</button></div>
+</div>
 
 <canvas id="c"></canvas>
 
@@ -23,17 +42,21 @@
 
 <script id="template" type="notjs" class="div">
 	<div class="scene"></div>
+	<div class="size">+</div>
 	<div class="name">$</div>
 	<div class="author">£</div>
-	<div class="description">?</div>
 	<div class="tags">!</div><br>
-	<button id="addButton">Add</button>
+	<div class="description">?</div>
+	<button id="addButton">§</button>
 </script>
+
+<div class="footy"></div>
 
 <script>
 
 	
 	var BASE_URL = 'http://www.zaak.io';
+	var STATIC_URL = '';
 	var API_URL = '/api/v1/';
 
 	var library = new Library("./library");
@@ -42,6 +65,13 @@
 	function filter(_name){
 		library.loadLibrary(_name);
 	}
+
+	function handleIt(){ 
+		var _filter = document.getElementById('searchfield').value;
+
+		console.log(_filter);
+	}
+
 </script>
 
 </body>
