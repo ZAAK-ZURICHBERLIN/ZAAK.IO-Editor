@@ -1,16 +1,20 @@
-* {
+/** {
 	box-sizing: border-box;
 	-moz-box-sizing: border-box;
-}
+}*/
 
 body {
-	color: #000;
+	/*color: #000;*/
 	font-family:Monospace;
 	font-size:13px;
 	background-color: #fff;
 	margin: 0px;
 	overflow-x : hidden;
 	overflow-y : scroll;
+	/*margin-right:300px;*/
+	width: 100%;
+	height: 100%;
+
 }
 
 /*#info {
@@ -22,9 +26,11 @@ body {
 
 #content {
 	position: relative;
-	top:55px; 
+	top:80px; 
+	bottom:-80px;
 	left:15px;
-	//z-index: 1;
+	height: calc(100% + 100px);
+	z-index: 1;
 	padding: 0 0 0 0;
 }
 
@@ -32,14 +38,75 @@ a {
 	color: #0080ff;
 }
 
-button {background: black; padding:5px; color:white; border: none; outline:none;}
-button:active { background-color: #666;}
+button {
+	background: black;
+	padding:10px;
+	color: white;
+	border: none;
+	outline:none;
+	font-size: 1.25em;
+	margin-right: 5px;
+}
+
+/*button:active { background-color: #FFC107;}*/
+button:hover { background-color: #FFC107; color:black;}
+
+.header {
+	/*float:right;*/
+	/*height:150px;*/
+	padding-left: 20px;
+	position: fixed;
+	/*top:50px;*/
+	width:100%;
+	color:black;
+	z-index:2;
+	background-color:#FFFFFF; 
+
+}
+
+
+input.searcher{
+
+	position: relative;
+	padding-right: 30px;
+    float: right;
+    border: 10px;
+    width:30%;
+    border-bottom: 2px solid red;
+}
+
+
+.footy{
+
+	height:200px;
+}
+
+button#addButton{
+
+	padding:5px;
+	background-color:#FFC107; 
+	font-size: 1em;
+
+}
+
+button#addButton:hover { background-color: #333; color:#FFC107;}
+
+
+button#exitButton{
+
+	/*¥:5px;*/
+	position: relative;
+	padding-right: 30px;
+    top: -45px;
+    float: right;
+    font-size: 2.5em;
+
+}
 
 #c {
 	position: fixed;
-	left: 0px;
-	top:0px;
 	height: 100%;
+	width: 100%;
 }
 
 .list-item {
@@ -57,6 +124,20 @@ button:active { background-color: #666;}
 	border-bottom:1px solid #e6e6e6;
 }
 
+.list-item .size {
+	width: 194px;
+	top:-15px;
+	font-size: 10px;
+	font-family: arial;
+	text-align: center;	
+	height: auto;
+	position:relative;
+	background: #CCC;
+	color:#333;
+	padding: 3px;
+	/*border-bottom:1px solid #e6e6e6;*/
+}
+
 .list-item .name {
 	color: #000;
 	font-family: sans-serif;
@@ -68,15 +149,36 @@ button:active { background-color: #666;}
 	text-overflow:ellipsis;
 }
 
-.list-item .author, .description, .tags {
+.list-item .author, .tags {
 	color: #888;
 	font-family: sans-serif;
 	font-size: 0.8em;
 	width: 200px;
+	/*height:75px;*/
 	margin-top: 0.5em;
-	white-space: nowrap;
-	overflow: hidden;
+	/*white-space: nowrap;*/
+	/*overflow: hidden;*/
+	text-overflow:ellipsis;
+}
+.list-item .description {
+	color: #888;
+	font-family: sans-serif;
+	font-size: 0.8em;
+	width: 200px;
+	height: 3.6em;
+	margin-top: 0.5em;
+	/*white-space: nowrap;*/
+	/*overflow: hidden;*/
 	text-overflow:ellipsis;
 }
 
-.filteritems{position: fixed; top:20px; left:20px; color:black; z-index:2;}
+.filteritems{
+	/*float:left;*/
+	/*height:150px;*/
+	position: fixed;
+	margin: auto;
+	/*top:50px;*/
+	/*left:20px;*/
+	color:black;
+	z-index:2;
+}

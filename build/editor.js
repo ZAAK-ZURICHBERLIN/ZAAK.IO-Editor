@@ -26361,36 +26361,30 @@ Menubar.Library = function ( editor ) {
 
 		// }
 		// preview box
-        var preview = "<div id='preview' class='modal-box' style='height:100%;width:100%;text-align: center;'> \
-        <header style='background-color:#333;'> \
-            <a class='js-modal-close close' style='top:1.5%;'>×</a> \
-        </header> \
-        <div style='height:100%;'> \
-            <iframe id='library_iframe' width='100%' height='100%' allowfullscreen src=" + LIBRARY_URL + "></iframe> \
-        </div></div>";
+        var preview = "<iframe id='library_iframe' style='width:calc(100% - 300px);height:100%;position:absolute;margin-top:32px;' src=" + LIBRARY_URL + "></iframe> ";
         $("body").append($.parseHTML(preview));
 
-        var modal =  ("<div class='modal-overlay js-modal-close'></div>");
-        $("body").append(modal);
+        // var modal =  ("<div class='modal-overlay js-modal-close'></div>");
+        // $("body").append(modal);
 
-        $(".modal-overlay").fadeTo(500, 0.9);
-        $('#preview').fadeIn();
+        // $(".modal-overlay").fadeTo(500, 0.9);
+        $('#library').fadeIn();
         // modal helper
-        $(".js-modal-close, .modal-overlay").click(function() {
-            $(".modal-box, .modal-overlay").fadeOut(500, function() {
-            	// player.stop();
-                $(".modal-overlay").remove();
-                $("#preview").remove();
-            });
-        });
-        $(window).resize(function() {
-            $(".modal-box").css({
-                top: ($(window).height() - $("#preview").outerHeight()) / 2,
-                left: ($(window).width() - $("#preview").outerWidth()) / 2
-            });
-        });
+        // $(".js-modal-close, .modal-overlay").click(function() {
+        //     $(".modal-box, .modal-overlay").fadeOut(500, function() {
+        //     	// player.stop();
+        //         $(".modal-overlay").remove();
+        //         $("#library").remove();
+        //     });
+        // });
+        // $(window).resize(function() {
+        //     $(".modal-box").css({
+        //         top: ($(window).height() - $("#library").outerHeight()) / 21 + 32,
+        //         right: ($(window).width() - $("#library").outerWidth()) / 2 + 300
+        //     });
+        // });
 
-        $(window).resize();
+        // $(window).resize();
 
 	} );
 	container.add( title );
